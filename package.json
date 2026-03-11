@@ -1,0 +1,52 @@
+{
+  "name": "coaiajs",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CoAIA unified TypeScript monorepo — CLI, MCP server, and library consolidating coaia-narrative, coaia-pde, coaia-planning, and coaiapy patterns into one package.",
+  "bin": {
+    "coaia": "./dist/src/cli.js",
+    "coaiajs-mcp": "./dist/mcp/server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/src/cli.js",
+    "mcp": "node dist/mcp/server.js",
+    "test": "node --test",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "ioredis": "^5.4.0",
+    "zod": "^3.23.0",
+    "commander": "^12.1.0",
+    "openai": "^4.70.0",
+    "@aws-sdk/client-polly": "^3.700.0",
+    "@octokit/rest": "^21.0.0",
+    "dotenv": "^16.4.0",
+    "js-yaml": "^4.1.0",
+    "langfuse": "^3.0.0",
+    "minimist": "^1.2.8",
+    "chalk": "^5.3.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/minimist": "^1.2.5",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.7.0"
+  },
+  "keywords": [
+    "coaia",
+    "structural-tension",
+    "mcp",
+    "narrative",
+    "pde",
+    "cli"
+  ],
+  "license": "MIT"
+}
