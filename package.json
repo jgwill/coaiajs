@@ -1,8 +1,73 @@
 {
   "name": "coaiajs",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "type": "module",
   "description": "CoAIA unified TypeScript monorepo — CLI, MCP server, and library consolidating coaia-narrative, coaia-pde, coaia-planning, and coaiapy patterns into one package.",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./config": {
+      "types": "./dist/src/config.d.ts",
+      "import": "./dist/src/config.js"
+    },
+    "./redis": {
+      "types": "./dist/src/redis.d.ts",
+      "import": "./dist/src/redis.js"
+    },
+    "./llm": {
+      "types": "./dist/src/llm.d.ts",
+      "import": "./dist/src/llm.js"
+    },
+    "./audio": {
+      "types": "./dist/src/audio.d.ts",
+      "import": "./dist/src/audio.js"
+    },
+    "./github": {
+      "types": "./dist/src/github.d.ts",
+      "import": "./dist/src/github.js"
+    },
+    "./environment": {
+      "types": "./dist/src/environment.d.ts",
+      "import": "./dist/src/environment.js"
+    },
+    "./langfuse": {
+      "types": "./dist/src/langfuse/index.d.ts",
+      "import": "./dist/src/langfuse/index.js"
+    },
+    "./narrative": {
+      "types": "./dist/src/narrative/index.d.ts",
+      "import": "./dist/src/narrative/index.js"
+    },
+    "./pde": {
+      "types": "./dist/src/pde/index.d.ts",
+      "import": "./dist/src/pde/index.js"
+    },
+    "./planning": {
+      "types": "./dist/src/planning/index.d.ts",
+      "import": "./dist/src/planning/index.js"
+    },
+    "./pipeline": {
+      "types": "./dist/src/pipeline/index.d.ts",
+      "import": "./dist/src/pipeline/index.js"
+    },
+    "./mcp/server": {
+      "types": "./dist/mcp/server.d.ts",
+      "import": "./dist/mcp/server.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "rispecs",
+    "README.md",
+    "KINSHIP.md",
+    "CLAUDE.md",
+    "package.json"
+  ],
   "bin": {
     "coaia": "./dist/src/cli.js",
     "coaiajs-mcp": "./dist/mcp/server.js"
@@ -15,7 +80,7 @@
     "dev": "tsc --watch",
     "start": "node dist/src/cli.js",
     "mcp": "node dist/mcp/server.js",
-    "test": "node --test",
+    "test": "npm run build && node --test",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
