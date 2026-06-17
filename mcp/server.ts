@@ -6,13 +6,28 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
   ListToolsRequestSchema,
+  ReadResourceRequestSchema,
   type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { FeatureConfig } from './config.js';
 import { getCoaiapyToolDefinitions } from './tools/index.js';
 import type { ToolDefinition } from './tools/index.js';
+import { readCoaiaResource } from './resources.js';
+import { listPrompts as listCoaiaPrompts, renderPrompt } from './prompts.js';
+import { tash as redisTash, fetch as redisFetch } from '../src/redis.js';
+import {
+  ALL_TOOL_DEFINITIONS as NARRATIVE_TOOL_DEFINITIONS,
+  handleToolCall as handleNarrativeTool,
+  KnowledgeGraphManager,
+} from '../src/narrative/index.js';
+import { PDE_MCP_TOOLS, handlePdeTool } from '../src/pde/index.js';
+import { PLANNING_MCP_TOOLS, handlePlanningTool } from '../src/planning/index.js';
+import type { McpToolResult } from '../src/types.js';
 
 // Langfuse imports
 import {
@@ -31,7 +46,7 @@ import { uploadAndAttachMedia, getMedia, formatMediaDisplay } from '../src/langf
 // ─── Server Info ────────────────────────────────────────────────────
 
 const SERVER_NAME = 'coaiajs-mcp';
-const SERVER_VERSION = '0.1.0';
+const SERVER_VERSION = '0.1.1';
 
 // ─── Parse CLI args ─────────────────────────────────────────────────
 
@@ -58,22 +73,40 @@ function textResult(text: string, isError = false): CallToolResult {
   return { content: [{ type: 'text', text }], isError };
 }
 
+function toCallToolResult(result: McpToolResult): CallToolResult {
+  return {
+    content: result.content.map((item) => ({
+      type: 'text' as const,
+      text: item.text,
+    })),
+    isError: result.isError,
+  };
+}
+
 async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallToolResult> {
   try {
     switch (name) {
       // ── Redis ──
       case 'coaia_tash': {
-        // Redis stash — defer to redis module if available, placeholder for now
+        await redisTash(
+          args.key as string,
+          args.value as string,
+          args.ttl as number | undefined,
+        );
         return textResult(JSON.stringify({
-          success: false,
-          error: 'Redis module not yet wired. Use coaiapy-mcp for Redis operations.',
-        }));
+          success: true,
+          message: `Stored '${args.key as string}' in Redis`,
+        }, null, 2));
       }
       case 'coaia_fetch': {
-        return textResult(JSON.stringify({
-          success: false,
-          error: 'Redis module not yet wired. Use coaiapy-mcp for Redis operations.',
-        }));
+        const value = await redisFetch(args.key as string);
+        if (value == null) {
+          return textResult(JSON.stringify({
+            success: false,
+            error: `Key '${args.key as string}' not found in Redis`,
+          }, null, 2), true);
+        }
+        return textResult(JSON.stringify({ success: true, value }, null, 2));
       }
 
       // ── Traces ──
@@ -256,60 +289,58 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
   }
 }
 
-// ─── Narrative/PDE/Planning tool stubs ──────────────────────────────
-// These modules will be wired by other direction agents (SOUTH/EAST/WEST).
-// For now we register placeholder definitions so the server schema is complete.
+// ─── Narrative/PDE/Planning tool routing ────────────────────────────
 
 function getNarrativeToolDefinitions(featureConfig: FeatureConfig): ToolDefinition[] {
-  const narrativeToolNames = [
-    'create_structural_tension_chart', 'telescope_action_step', 'mark_action_complete',
-    'get_chart_progress', 'list_active_charts', 'get_chart', 'get_action_step',
-    'update_action_progress', 'update_current_reality', 'manage_action_step',
-    'add_action_step', 'remove_action_step', 'update_desired_outcome',
-    'perform_mmot_evaluation', 'init_llm_guidance',
-    'create_narrative_beat', 'telescope_narrative_beat', 'list_narrative_beats',
-    'add_observations', 'create_entities', 'create_relations', 'search_nodes',
-    'open_nodes', 'read_graph', 'delete_entities', 'delete_relations',
-    'delete_observations', 'merge_entities',
-  ];
-
-  return narrativeToolNames
-    .filter((name) => featureConfig.isToolEnabled(name))
-    .map((name) => ({
-      name,
-      description: `[Narrative] ${name.replace(/_/g, ' ')} — pending wiring from narrative module`,
-      inputSchema: { type: 'object' as const, properties: {} },
+  return NARRATIVE_TOOL_DEFINITIONS
+    .filter((tool) => featureConfig.isToolEnabled(tool.name))
+    .map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
     }));
+}
+
+const NARRATIVE_TOOL_NAMES = new Set(NARRATIVE_TOOL_DEFINITIONS.map((tool) => tool.name));
+const PDE_ALIAS_TO_TOOL: Record<string, string> = {
+  pde_update_action_progress: 'update_action_progress',
+  pde_mark_action_complete: 'mark_action_complete',
+  pde_add_action_step: 'add_action_step',
+  pde_update_current_reality: 'update_current_reality',
+};
+const PDE_TOOL_NAMES = new Set([
+  ...PDE_MCP_TOOLS.map((tool) => tool.name),
+  ...Object.keys(PDE_ALIAS_TO_TOOL),
+]);
+const PLANNING_TOOL_NAMES = new Set(PLANNING_MCP_TOOLS.map((tool) => tool.name));
+
+function namespacePdeToolIfNeeded(tool: ToolDefinition): ToolDefinition {
+  if (!NARRATIVE_TOOL_NAMES.has(tool.name)) return tool;
+  return {
+    ...tool,
+    name: `pde_${tool.name}`,
+    description: `[PDE session] ${tool.description}`,
+  };
 }
 
 function getPdeToolDefinitions(featureConfig: FeatureConfig): ToolDefinition[] {
-  const pdeToolNames = [
-    'pde_decompose', 'pde_parse_response', 'pde_get', 'pde_list',
-    'pde_export_markdown', 'import_pde', 'create_stc_from_pde',
-    'pde_sessions_list', 'pde_sessions_create', 'pde_sessions_update',
-  ];
-
-  return pdeToolNames
-    .filter((name) => featureConfig.isToolEnabled(name))
-    .map((name) => ({
-      name,
-      description: `[PDE] ${name.replace(/_/g, ' ')} — pending wiring from PDE module`,
-      inputSchema: { type: 'object' as const, properties: {} },
-    }));
+  return PDE_MCP_TOOLS
+    .map((tool) => namespacePdeToolIfNeeded(tool as ToolDefinition))
+    .filter((tool) => featureConfig.isToolEnabled(tool.name));
 }
 
 function getPlanningToolDefinitions(featureConfig: FeatureConfig): ToolDefinition[] {
-  const planToolNames = [
-    'parse_plan', 'plan_to_stc', 'sync_plans', 'trace_plan', 'pde_to_plan', 'list_plans',
-  ];
-
-  return planToolNames
-    .filter((name) => featureConfig.isToolEnabled(name))
-    .map((name) => ({
-      name,
-      description: `[Planning] ${name.replace(/_/g, ' ')} — pending wiring from planning module`,
-      inputSchema: { type: 'object' as const, properties: {} },
+  return PLANNING_MCP_TOOLS
+    .filter((tool) => featureConfig.isToolEnabled(tool.name))
+    .map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
     }));
+}
+
+function normalizePdeToolName(name: string): string {
+  return PDE_ALIAS_TO_TOOL[name] ?? name;
 }
 
 // ─── Server Creation ────────────────────────────────────────────────
@@ -322,8 +353,11 @@ function createServer(): Server {
 
   const server = new Server(
     { name: SERVER_NAME, version: SERVER_VERSION },
-    { capabilities: { tools: {} } },
+    { capabilities: { tools: {}, resources: {}, prompts: {} } },
   );
+
+  const memoryPath = cliArgs.memoryPath ?? process.env['COAIAJS_MEMORY_PATH'] ?? 'coaia-memory.jsonl';
+  const narrativeManager = new KnowledgeGraphManager(memoryPath);
 
   // Collect all tool definitions
   const allToolDefs: ToolDefinition[] = [
@@ -344,6 +378,94 @@ function createServer(): Server {
     };
   });
 
+  // ── resources/list handler ──
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    return {
+      resources: [
+        {
+          uri: 'coaia://templates/',
+          name: 'Pipeline Templates',
+          description: 'List of all available pipeline templates',
+          mimeType: 'application/json',
+        },
+      ].filter((resource) => featureConfig.isResourceEnabled(resource.uri)),
+    };
+  });
+
+  // ── resources/read handler ──
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    if (!featureConfig.isResourceEnabled(uri)) {
+      return {
+        contents: [{
+          uri,
+          mimeType: 'application/json',
+          text: JSON.stringify({
+            error: `Resource '${uri}' is not available in ${featureConfig.getFeatureLevel()} feature set`,
+          }, null, 2),
+        }],
+      };
+    }
+    return {
+      contents: [{
+        uri,
+        mimeType: 'application/json',
+        text: await readCoaiaResource(uri),
+      }],
+    };
+  });
+
+  // ── prompts/list handler ──
+  server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    return {
+      prompts: listCoaiaPrompts()
+        .filter((prompt) => featureConfig.isPromptEnabled(prompt.id))
+        .map((prompt) => ({
+          name: prompt.id,
+          title: prompt.name,
+          description: prompt.description,
+          arguments: prompt.variables.map((variable) => ({
+            name: variable.name,
+            description: variable.description,
+            required: variable.required,
+          })),
+        })),
+    };
+  });
+
+  // ── prompts/get handler ──
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name, arguments: promptArgs } = request.params;
+    if (!featureConfig.isPromptEnabled(name)) {
+      const error = `Prompt '${name}' is not available in ${featureConfig.getFeatureLevel()} feature set`;
+      return {
+        description: `Error: ${error}`,
+        messages: [{ role: 'user', content: { type: 'text', text: error } }],
+      };
+    }
+
+    try {
+      const rendered = renderPrompt(name, promptArgs ?? {});
+      if (!rendered) {
+        const error = `Prompt '${name}' not found`;
+        return {
+          description: `Error: ${error}`,
+          messages: [{ role: 'user', content: { type: 'text', text: error } }],
+        };
+      }
+      return {
+        description: `Rendered prompt: ${name}`,
+        messages: [{ role: 'user', content: { type: 'text', text: rendered } }],
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        description: `Error: ${message}`,
+        messages: [{ role: 'user', content: { type: 'text', text: message } }],
+      };
+    }
+  });
+
   // ── call_tool handler ──
   server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
     const { name, arguments: args } = request.params;
@@ -354,28 +476,16 @@ function createServer(): Server {
       return handleCoaiapyTool(name, toolArgs);
     }
 
-    // Route to narrative/PDE/planning stubs
-    const stubModules = ['create_structural_tension_chart', 'telescope_action_step',
-      'mark_action_complete', 'get_chart_progress', 'list_active_charts', 'get_chart',
-      'get_action_step', 'update_action_progress', 'update_current_reality',
-      'manage_action_step', 'add_action_step', 'remove_action_step',
-      'update_desired_outcome', 'perform_mmot_evaluation', 'init_llm_guidance',
-      'create_narrative_beat', 'telescope_narrative_beat', 'list_narrative_beats',
-      'add_observations', 'create_entities', 'create_relations', 'search_nodes',
-      'open_nodes', 'read_graph', 'delete_entities', 'delete_relations',
-      'delete_observations', 'merge_entities',
-      'pde_decompose', 'pde_parse_response', 'pde_get', 'pde_list',
-      'pde_export_markdown', 'import_pde', 'create_stc_from_pde',
-      'pde_sessions_list', 'pde_sessions_create', 'pde_sessions_update',
-      'parse_plan', 'plan_to_stc', 'sync_plans', 'trace_plan', 'pde_to_plan', 'list_plans',
-    ];
+    if (NARRATIVE_TOOL_NAMES.has(name)) {
+      return toCallToolResult(await handleNarrativeTool(name, toolArgs, narrativeManager));
+    }
 
-    if (stubModules.includes(name)) {
-      return textResult(JSON.stringify({
-        status: 'pending',
-        message: `Tool '${name}' is registered but not yet wired. Module integration pending.`,
-        args: toolArgs,
-      }));
+    if (PDE_TOOL_NAMES.has(name)) {
+      return toCallToolResult(await handlePdeTool(normalizePdeToolName(name), toolArgs));
+    }
+
+    if (PLANNING_TOOL_NAMES.has(name)) {
+      return toCallToolResult(await handlePlanningTool(name, toolArgs));
     }
 
     return textResult(`Unknown tool: ${name}`, true);
@@ -391,9 +501,14 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  const featureConfig = new FeatureConfig();
+  const cliArgs = parseArgs();
+  const featureConfig = new FeatureConfig(
+    cliArgs.featureLevel as 'MINIMAL' | 'STANDARD' | 'OBSERVABILITY' | 'FULL' | undefined,
+  );
   const stats = featureConfig.getStats();
-  console.error(`${SERVER_NAME} v${SERVER_VERSION} started (${stats.level}: ${stats.tools} tools)`);
+  console.error(
+    `${SERVER_NAME} v${SERVER_VERSION} started (${stats.level}: ${stats.tools} tools, ${stats.prompts} prompts, ${stats.resources} resources)`,
+  );
 }
 
 main().catch((error) => {

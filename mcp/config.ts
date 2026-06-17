@@ -64,23 +64,23 @@ const ALL_TOOLS = new Set([
   'delete_observations',
   'merge_entities',
   // PDE (coaia-pde, 10 tools)
-  'pde_decompose',
-  'pde_parse_response',
-  'pde_get',
-  'pde_list',
-  'pde_export_markdown',
-  'import_pde',
+  'import_pde_decomposition',
   'create_stc_from_pde',
-  'pde_sessions_list',
-  'pde_sessions_create',
-  'pde_sessions_update',
+  'list_pde_decompositions',
+  'get_session',
+  'list_sessions',
+  'complete_session',
+  'pde_update_action_progress',
+  'pde_mark_action_complete',
+  'pde_add_action_step',
+  'pde_update_current_reality',
   // Planning (coaia-planning, 6 tools)
-  'parse_plan',
+  'parse_plan_structural',
   'plan_to_stc',
-  'sync_plans',
-  'trace_plan',
+  'sync_plan_to_chart',
+  'sync_chart_to_plan',
+  'create_plan_trace',
   'pde_to_plan',
-  'list_plans',
 ]);
 
 const MINIMAL_TOOLS = new Set([
@@ -139,23 +139,35 @@ const STANDARD_TOOLS = new Set([
   'delete_observations',
   'merge_entities',
   // PDE tools
-  'pde_decompose',
-  'pde_parse_response',
-  'pde_get',
-  'pde_list',
-  'pde_export_markdown',
-  'import_pde',
+  'import_pde_decomposition',
   'create_stc_from_pde',
-  'pde_sessions_list',
-  'pde_sessions_create',
-  'pde_sessions_update',
+  'list_pde_decompositions',
+  'get_session',
+  'list_sessions',
+  'complete_session',
+  'pde_update_action_progress',
+  'pde_mark_action_complete',
+  'pde_add_action_step',
+  'pde_update_current_reality',
   // Planning tools
-  'parse_plan',
+  'parse_plan_structural',
   'plan_to_stc',
-  'sync_plans',
-  'trace_plan',
+  'sync_plan_to_chart',
+  'sync_chart_to_plan',
+  'create_plan_trace',
   'pde_to_plan',
-  'list_plans',
+]);
+
+const ALL_RESOURCES = new Set([
+  'coaia://templates/',
+  'coaia://templates/{name}',
+  'coaia://templates/{name}/variables',
+]);
+
+const ALL_PROMPTS = new Set([
+  'mia_miette_duo',
+  'create_observability_pipeline',
+  'analyze_audio_workflow',
 ]);
 
 const FEATURE_SETS: Record<FeatureLevel, Set<string>> = {
@@ -179,6 +191,21 @@ export class FeatureConfig {
     return this.enabledTools.has(toolName);
   }
 
+  isResourceEnabled(uri: string): boolean {
+    if (uri === 'coaia://templates/') return ALL_RESOURCES.has(uri);
+    if (uri.startsWith('coaia://templates/') && uri.endsWith('/variables')) {
+      return ALL_RESOURCES.has('coaia://templates/{name}/variables');
+    }
+    if (uri.startsWith('coaia://templates/')) {
+      return ALL_RESOURCES.has('coaia://templates/{name}');
+    }
+    return false;
+  }
+
+  isPromptEnabled(promptName: string): boolean {
+    return ALL_PROMPTS.has(promptName);
+  }
+
   getEnabledTools(): Set<string> {
     return new Set(this.enabledTools);
   }
@@ -187,9 +214,11 @@ export class FeatureConfig {
     return this.level;
   }
 
-  getStats(): { tools: number; level: FeatureLevel } {
+  getStats(): { tools: number; prompts: number; resources: number; level: FeatureLevel } {
     return {
       tools: this.enabledTools.size,
+      prompts: ALL_PROMPTS.size,
+      resources: ALL_RESOURCES.size,
       level: this.level,
     };
   }

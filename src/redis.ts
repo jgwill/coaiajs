@@ -10,21 +10,34 @@ type RedisClient = InstanceType<typeof Redis>;
 
 let _client: RedisClient | null = null;
 
+function upstashClient(url: string, token?: string): RedisClient {
+  const parsed = new URL(url);
+  const tls = parsed.protocol === 'https:' || parsed.protocol === 'rediss:';
+  const password = token ?? decodeURIComponent(parsed.password);
+
+  return new Redis({
+    host: parsed.hostname,
+    port: parsed.port ? parseInt(parsed.port, 10) : 6379,
+    username: parsed.username ? decodeURIComponent(parsed.username) : undefined,
+    password: password || undefined,
+    lazyConnect: true,
+    tls: tls ? {} : undefined,
+  });
+}
+
 function buildClient(cfg: CoaiaConfig): RedisClient {
   const r = cfg.redis;
 
-  // Explicit URL takes priority
-  if (r?.url) {
-    return new Redis(r.url, { lazyConnect: true });
+  // Upstash/Vercel REST env vars take priority, matching coaiapy.
+  if (r?.upstashUrl) {
+    return upstashClient(r.upstashUrl, r.upstashToken);
   }
 
-  // Upstash REST-style URL (ioredis can connect via rediss:// scheme)
-  if (r?.upstashUrl) {
-    const url = r.upstashUrl.replace(/^https:\/\//, 'rediss://');
-    return new Redis(url, {
-      password: r.upstashToken,
+  // Explicit URL takes priority
+  if (r?.url) {
+    return new Redis(r.url, {
       lazyConnect: true,
-      tls: {},
+      tls: r.url.startsWith('rediss://') ? {} : undefined,
     });
   }
 
@@ -34,6 +47,7 @@ function buildClient(cfg: CoaiaConfig): RedisClient {
     port: r?.port ?? 6379,
     password: r?.password,
     lazyConnect: true,
+    tls: r?.ssl ? {} : undefined,
   });
 }
 
@@ -45,7 +59,7 @@ export function getClient(): RedisClient {
   return _client;
 }
 
-/** Store a key-value pair with optional TTL (seconds). */
+/** Store a key-value pair with optional TTL in minutes, matching coaiapy. */
 export async function tash(
   key: string,
   value: string,
@@ -53,7 +67,7 @@ export async function tash(
 ): Promise<void> {
   const client = getClient();
   if (ttl && ttl > 0) {
-    await client.set(key, value, 'EX', ttl);
+    await client.set(key, value, 'EX', ttl * 60);
   } else {
     await client.set(key, value);
   }

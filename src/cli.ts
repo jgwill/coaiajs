@@ -81,6 +81,10 @@ async function readStdin(): Promise<string> {
   return chunks.join('');
 }
 
+function parseInteger(value: string): number {
+  return parseInt(value, 10);
+}
+
 function resolveText(
   positional: string | undefined,
   opts: { file?: string },
@@ -116,9 +120,9 @@ function registerRootCommands(program: Command): void {
     .description('Store a key-value pair in Redis')
     .argument('<key>', 'Redis key')
     .argument('[value]', 'Value to store')
-    .option('--file <path>', 'Read value from file')
-    .option('--ttl <seconds>', 'Time to live in seconds', parseInt)
-    .option('--verbose', 'Verbose output')
+    .option('-F, --file <path>', 'Read value from file')
+    .option('-T, --ttl <minutes>', 'Time to live in minutes', parseInteger, 5555)
+    .option('-v, --verbose', 'Verbose output')
     .action(
       actionHandler(async (key: string, value: string | undefined, opts: { file?: string; ttl?: number; verbose?: boolean }, cmd: Command) => {
         const val = resolveText(value, opts);
@@ -128,7 +132,7 @@ function registerRootCommands(program: Command): void {
         }
         await tash(key, val, opts.ttl);
         if (opts.verbose) {
-          console.log(formatSuccess(`Stored ${key} (${val.length} bytes${opts.ttl ? `, ttl=${opts.ttl}s` : ''})`));
+          console.log(formatSuccess(`Stored ${key} (${val.length} bytes${opts.ttl ? `, ttl=${opts.ttl}m` : ''})`));
         } else {
           console.log(formatSuccess(`Stored ${key}`));
         }
@@ -140,8 +144,8 @@ function registerRootCommands(program: Command): void {
     .command('fetch')
     .description('Get a value from Redis')
     .argument('<key>', 'Redis key')
-    .option('--output <path>', 'Write result to file')
-    .option('--verbose', 'Verbose output')
+    .option('-O, --output <path>', 'Write result to file')
+    .option('-v, --verbose', 'Verbose output')
     .action(
       actionHandler(async (key: string, opts: { output?: string; verbose?: boolean }, cmd: Command) => {
         const result = await redisFetch(key);
@@ -1184,7 +1188,7 @@ async function main(): Promise<void> {
 
   program
     .name('coaia')
-    .version('0.1.0', '-V, --version')
+    .version('0.1.3', '-V, --version')
     .description('CoAIA unified CLI — structural tension, narrative, and DevOps tooling')
     .option('--env <path>', 'Load environment file')
     .option('-M, --memory-path <path>', 'JSONL memory file path')
