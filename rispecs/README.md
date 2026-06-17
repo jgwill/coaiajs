@@ -7,6 +7,15 @@
 
 These rispecs define the structural specifications for **coaiajs** — the unified TypeScript platform that consolidates `coaiapy`, `coaia-narrative`, `coaia-pde`, and `coaia-planning` into a single modern Node.js package.
 
+## RISE Framework Source
+
+These specs use the RISE Framework at `/src/llms/llms-rise-framework.txt` as the governing method:
+
+- **Reverse-engineer** parent package behavior from `coaiapy`, `coaia-narrative`, `coaia-pde`, and `coaia-planning`.
+- **Intent-extract** the creative outcome each module makes possible.
+- **Specify** the structural tension between current implementation and desired package behavior.
+- **Export** enough code-linked detail for an evaluator or implementation agent to act without rediscovery.
+
 ## Specification Index
 
 ### Platform
@@ -73,6 +82,22 @@ These rispecs define the structural specifications for **coaiajs** — the unifi
 └─────────────────────────────────────────────────────┘
 ```
 
+## Implementation Map
+
+| Spec | Primary implementation |
+|------|------------------------|
+| 00 platform | [`package.json`](../package.json), [`src/index.ts`](../src/index.ts) |
+| 01 config | [`src/config.ts`](../src/config.ts), [`src/types.ts`](../src/types.ts) |
+| 02 redis | [`src/redis.ts`](../src/redis.ts), [`mcp/tools/coaiapy-tools.ts`](../mcp/tools/coaiapy-tools.ts) |
+| 03 langfuse | [`src/langfuse/`](../src/langfuse/), [`mcp/server.ts`](../mcp/server.ts) |
+| 04 narrative | [`src/narrative/`](../src/narrative/), [`src/narrative/index.ts`](../src/narrative/index.ts) |
+| 05 PDE | [`src/pde/`](../src/pde/), [`src/pde/mcp-tools.ts`](../src/pde/mcp-tools.ts) |
+| 06 planning | [`src/planning/`](../src/planning/), [`src/planning/mcp-tools.ts`](../src/planning/mcp-tools.ts) |
+| 07 pipeline | [`src/pipeline/`](../src/pipeline/), [`mcp/resources.ts`](../mcp/resources.ts) |
+| 08 CLI | [`src/cli.ts`](../src/cli.ts), [`package.json`](../package.json) `bin.coaia` |
+| 09 MCP | [`mcp/server.ts`](../mcp/server.ts), [`mcp/config.ts`](../mcp/config.ts), [`mcp/prompts.ts`](../mcp/prompts.ts) |
+| 10 audio | [`src/audio.ts`](../src/audio.ts), [`src/llm.ts`](../src/llm.ts) |
+
 ## Conventions
 
 - **Creative orientation**: Desired Outcome describes what IS CREATED, not what is fixed
@@ -80,7 +105,7 @@ These rispecs define the structural specifications for **coaiajs** — the unifi
 - **Structural tension**: The gap between current and desired that drives advancement
 - **Variable detail**: Broad for obvious patterns, precise for critical behavior
 - **Naming**: `NN-kebab-case.spec.md`
-- **Codebase-agnostic**: Specs describe behavior, not implementation details
+- **Code-linked**: Specs describe behavior and link to the implementation files that currently carry it
 
 ## Relationship to Parent Rispecs
 
@@ -91,10 +116,11 @@ These rispecs define the structural specifications for **coaiajs** — the unifi
 | coaia-planning | — | No rispecs yet — spec 06 here is the first |
 | coaiapy | — | No rispecs — specs 01-03, 07, 10 here are the first |
 
-## RISE Framework Reference
+## Maintenance Protocol
 
-These specs follow the RISE Framework (`/src/llms/llms-rise-framework.txt`):
-- **R**everse-engineer: Extract creative intent from parent projects
-- **I**ntent-extract: Identify what each module enables users to create
-- **S**pecify: Define structural tension between current and desired
-- **E**xport: Produce specs sufficient for autonomous re-implementation
+When code changes, update the relevant spec in the same pass:
+
+1. Adjust **Current Reality** to match implemented files and verified behavior.
+2. Add or revise implementation links in the local spec and this README map.
+3. Keep **Desired Outcome** forward-looking only where a gap remains.
+4. Re-run `npm run build`, `npm test`, and `npm pack --dry-run` before handing off.

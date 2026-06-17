@@ -9,13 +9,15 @@ A PDE module that transforms `DecompositionResult` objects into coaia-narrative-
 ## Structural Tension
 
 **Current Reality:**
-- `src/pde/` directory exists but is empty
-- PDE types fully defined in `src/types.ts`: `DecompositionResult`, `PrimaryIntent`, `SecondaryIntent`, `DirectionMap`, `ActionItem`, `AmbiguityFlag`, `StoredDecomposition`, `PdeSession`
-- coaia-pde v0.1.1 has a working implementation:
-  - `stc-mapper.ts` (~300 lines) — transforms DecompositionResult → Entity[]/Relation[]
-  - `session-manager.ts` — persists PDE sessions as JSONL
-  - `mcp-server.ts` — 12 MCP tools
-- coaia-pde rispec exists: `pde-to-stc-transformation.rispec.md` — defines the Four Directions → STC mapping
+- [`src/pde/`](../src/pde/) is implemented:
+  - [`stc-mapper.ts`](../src/pde/stc-mapper.ts) transforms `DecompositionResult` into coaia-narrative-compatible `Entity[]` and `Relation[]`.
+  - [`session-manager.ts`](../src/pde/session-manager.ts) persists PDE/STC sessions as JSONL in `.coaia/pde/`.
+  - [`mcp-tools.ts`](../src/pde/mcp-tools.ts) defines 10 implemented MCP tool schemas.
+  - [`mcp-handlers.ts`](../src/pde/mcp-handlers.ts) handles import, STC creation, session listing/viewing, action progress, action completion, current-reality updates, and session completion.
+  - [`index.ts`](../src/pde/index.ts) exposes library and CLI helper functions.
+- PDE types are defined in [`src/types.ts`](../src/types.ts): `DecompositionResult`, `PrimaryIntent`, `SecondaryIntent`, `DirectionMap`, `ActionItem`, `AmbiguityFlag`, `StoredDecomposition`, `PdeSession`.
+- [`mcp/server.ts`](../mcp/server.ts) wires PDE tools and namespaces session-action tools that conflict with narrative names (`pde_add_action_step`, `pde_update_current_reality`, etc.).
+- Remaining gap: prompt decomposition itself (`pde_decompose`, `pde_parse_response`, `pde_get`, `pde_list`, `pde_export_markdown`) is not implemented inside `coaiajs`; `coaiajs` currently consumes stored/external PDE outputs and maps them to STC.
 
 **Desired Outcome:**
 PDE engine in `src/pde/` that:
@@ -77,22 +79,20 @@ class SessionManager {
 }
 ```
 
-## MCP Tools (12)
+## MCP Tools (Implemented)
 
 | Tool | Purpose |
 |------|---------|
-| `pde_decompose` | Build prompts for LLM-driven decomposition |
-| `pde_parse_response` | Parse LLM response into DecompositionResult |
-| `pde_get` | Retrieve stored decomposition by ID |
-| `pde_list` | List stored decompositions |
-| `pde_export_markdown` | Export as git-diffable markdown |
-| `pde_to_stc` | Transform decomposition into STC |
-| `pde_preview_stc` | Preview STC mapping without creating |
-| `pde_create_session` | Create new PDE session |
-| `pde_get_session` | Get session details |
-| `pde_list_sessions` | List all sessions |
-| `pde_session_status` | Get session transformation status |
-| `pde_bridge_plan` | Bridge to planning engine |
+| `import_pde_decomposition` | Load stored `.pde` decomposition and create an STC session |
+| `create_stc_from_pde` | Create an STC session from an in-memory `DecompositionResult` |
+| `list_pde_decompositions` | List importable stored PDE decomposition files |
+| `get_session` | Get PDE/STC session state |
+| `list_sessions` | List PDE/STC sessions |
+| `pde_update_action_progress` | Add factual progress to a session action |
+| `pde_mark_action_complete` | Mark a session action complete |
+| `pde_add_action_step` | Add a session action step |
+| `pde_update_current_reality` | Add observations to session current reality |
+| `complete_session` | Mark a session completed |
 
 ## Relation to Planning Engine
 
@@ -106,7 +106,7 @@ Claude Plan mode → plan.md → coaiajs planning-engine → narrative JSONL →
 ## Quality Criteria
 
 - ✅ StcMapper produces entities/relations compatible with narrative engine's JSONL format
-- ✅ All 12 coaia-pde MCP tools produce identical results
-- ✅ PDE sessions are persisted as `.pde/*.json` files
-- ✅ Preview mapping shows the transformation without side effects
+- ✅ Implemented PDE MCP tools route through `mcp/server.ts`
+- ✅ PDE sessions are persisted as `.coaia/pde/*.jsonl` files
+- ⚠️ Preview mapping and native prompt decomposition remain desired capabilities
 - ✅ Ambiguities from decomposition surface as tension sources in the STC

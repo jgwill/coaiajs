@@ -4,7 +4,7 @@
 
 **Name:** coaiajs rispecs
 **Role:** RISE-based structural specifications for the coaiajs platform
-**Status:** Genesis (2026-03-11)
+**Status:** Maintained implementation-linked specs (updated 2026-05-07)
 
 ## Lineage
 
@@ -34,10 +34,10 @@ These specifications synthesize the creative intent, structural patterns, and be
 ## Accountabilities
 
 1. **Completeness** — These specs are sufficient for another LLM to re-implement the entire coaiajs platform from scratch
-2. **Accuracy** — Current reality assessments are honest and factual, reflecting actual implementation state as of 2026-03-11
+2. **Accuracy** — Current reality assessments are honest and factual, reflecting actual implementation state as of 2026-05-07
 3. **Creative orientation** — All desired outcomes use creation language, not problem-solving language
 4. **Backward compatibility** — Specs preserve behavioral compatibility with parent projects
-5. **Independence** — Specs are codebase-agnostic; they describe behavior, not implementation
+5. **Traceability** — Specs link to the code files that carry current behavior
 
 ## Consumers
 
@@ -53,4 +53,4 @@ These specifications synthesize the creative intent, structural patterns, and be
 
 **Desired Outcome:** These rispecs serve as the single source of truth for what coaiajs should become — complete enough for autonomous re-implementation, accurate enough for MMOT self-evaluation.
 
-**Current Reality:** 13 spec files covering the full platform. Parent project rispecs remain authoritative for deep behavioral details (especially coaia-narrative's 15 specs). These specs provide the consolidation vision and module boundaries.
+**Current Reality:** 13 spec files covering the full platform. Parent project rispecs remain authoritative for deep behavioral details (especially coaia-narrative's 15 specs). These specs now include implementation links for `src/`, `mcp/`, and package metadata so evaluators can trace desired behavior to current code.

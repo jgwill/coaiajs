@@ -11,15 +11,15 @@ A KnowledgeGraphManager that provides full CRUD for entities and relations store
 ## Structural Tension
 
 **Current Reality:**
-- `src/narrative/` directory exists but is empty
-- Types fully defined in `src/types.ts`: `Entity`, `EntityMetadata`, `Relation`, `RelationMetadata`, `KnowledgeGraph`, `McpToolResult`
-- coaia-narrative v0.12.0 has a working implementation:
-  - `graph-manager.ts` (1,294 lines) — the core engine
-  - `tool-definitions.ts` — 27 MCP tool schemas
-  - `tool-handlers.ts` — tool implementation connecting MCP to graph manager
-  - `tool-groups.ts` — tool filtering by group (STC_TOOLS, KG_TOOLS, CORE_TOOLS)
-  - `types.ts` — type definitions (absorbed into coaiajs `src/types.ts`)
-- coaia-narrative rispecs are the most mature (15 specs) — detailed behavioral specifications exist for every capability
+- [`src/narrative/`](../src/narrative/) is implemented:
+  - [`graph-manager.ts`](../src/narrative/graph-manager.ts) is the core JSONL graph/STC/narrative/MMOT engine.
+  - [`tool-definitions.ts`](../src/narrative/tool-definitions.ts) defines the MCP tool schemas and groups.
+  - [`tool-handlers.ts`](../src/narrative/tool-handlers.ts) connects MCP tool calls to `KnowledgeGraphManager`.
+  - [`markdown-export.ts`](../src/narrative/markdown-export.ts) handles chart, progress, stats, and all-chart markdown exports.
+  - [`index.ts`](../src/narrative/index.ts) exposes library and CLI helper functions for `coaiajs/narrative`.
+- Types are shared through [`src/types.ts`](../src/types.ts) and re-exported through [`src/narrative/types.ts`](../src/narrative/types.ts).
+- [`mcp/server.ts`](../mcp/server.ts) now routes narrative tools to `handleToolCall()` with a `KnowledgeGraphManager`.
+- `coaia narrative list` smoke-tested successfully against an empty memory file.
 
 **Desired Outcome:**
 Narrative engine in `src/narrative/` that:

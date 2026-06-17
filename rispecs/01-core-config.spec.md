@@ -9,7 +9,7 @@ A unified config loader that provides every CoAiA module with its settings throu
 ## Structural Tension
 
 **Current Reality:**
-- `src/config.ts` is fully implemented (172 lines) with `readConfig()`, `getConfig()`, `mergeConfigs()`, `resetConfig()`, and a `config` Proxy for lazy access
+- [`src/config.ts`](../src/config.ts) is implemented with `readConfig()`, `getConfig()`, `mergeConfigs()`, `resetConfig()`, and a `config` Proxy for lazy access
 - Supports env vars > .env > coaia.json > defaults priority chain
 - Searches for `coaia.json` or `.coaia/config.json` in cwd and home directory
 - Covers Redis (URL, host/port, Upstash), Langfuse, OpenAI, AWS, GitHub credentials
@@ -30,42 +30,12 @@ Config system that handles all module configuration needs including:
 
 ```typescript
 interface CoaiaConfig {
-  // Redis
-  redis_url?: string;
-  redis_host?: string;
-  redis_port?: number;
-
-  // Langfuse
-  langfuse_secret_key?: string;
-  langfuse_public_key?: string;
-  langfuse_host?: string;
-  langfuse_dataset_name?: string;
-  langfuse_prompt_cache_ttl?: number;
-
-  // OpenAI
-  openai_api_key?: string;
-  openai_model?: string;
-
-  // AWS (Polly)
-  aws_access_key_id?: string;
-  aws_secret_access_key?: string;
-  aws_region?: string;
-  aws_polly_voice?: string;
-
-  // GitHub
-  github_token?: string;
-
-  // Narrative
-  memory_file_path?: string;
-
-  // PDE
-  pde_dir?: string;
-
-  // Pipeline
-  pipeline_template_dir?: string;
-
-  // MCP
-  mcp_mode?: 'MINIMAL' | 'STANDARD' | 'FULL';
+  redis?: { url?: string; host?: string; port?: number; password?: string; upstashUrl?: string; upstashToken?: string };
+  langfuse?: { publicKey?: string; secretKey?: string; baseUrl?: string };
+  openai?: { apiKey?: string; model?: string };
+  aws?: { accessKeyId?: string; secretAccessKey?: string; region?: string };
+  github?: { token?: string };
+  [key: string]: unknown;
 }
 ```
 

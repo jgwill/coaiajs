@@ -9,13 +9,13 @@ A template engine that loads pipeline definitions, renders them with `{{variable
 ## Structural Tension
 
 **Current Reality:**
-- `src/pipeline/` directory exists but is empty
-- Types defined in `src/types.ts`: `PipelineVariable`, `PipelineStep`, `PipelineTemplate`
-- coaiapy has two relevant files:
-  - `pipeline.py` — loads and executes pipeline templates
-  - `mobile_template.py` — a specific pipeline template for mobile workflows
-- Pipeline templates use `{{variable}}` Mustache-style substitution
-- No MCP tools exist for pipelines in any parent project
+- [`src/pipeline/`](../src/pipeline/) is implemented:
+  - [`template-engine.ts`](../src/pipeline/template-engine.ts) ports coaiapy `pipeline.py` and `mobile_template.py` patterns into `MobileTemplateEngine`, `TemplateLoader`, and `TemplateRenderer`.
+  - [`index.ts`](../src/pipeline/index.ts) exports the public pipeline API.
+- Types are defined in [`src/types.ts`](../src/types.ts): `PipelineVariable`, `PipelineStep`, `PipelineTemplate`.
+- Pipeline templates use `{{variable}}` substitution, simple filters, conditionals, defaults, and built-in functions.
+- [`mcp/resources.ts`](../mcp/resources.ts) exposes template listing, template detail, and template-variable resources.
+- Remaining gap: pipeline execution as a first-class MCP tool remains desired; current implementation renders template steps but does not execute external action dependencies.
 
 **Desired Outcome:**
 Pipeline engine in `src/pipeline/` that:
