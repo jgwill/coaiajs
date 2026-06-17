@@ -16,7 +16,7 @@ import type { ToolDefinition } from './tools/index.js';
 
 // Langfuse imports
 import {
-  addTrace, patchTraceOutput, listTraces, getTrace, formatTracesTable, formatTraceTree,
+  addTrace, patchTraceOutput, listTraces, getTrace, formatTracesMarkdown, formatTraceTree,
 } from '../src/langfuse/traces.js';
 import { addObservation, getObservation, formatObservationDisplay } from '../src/langfuse/observations.js';
 import { listPrompts, getPrompt, formatPromptsTable, formatPromptDisplay } from '../src/langfuse/prompts.js';
@@ -144,7 +144,8 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
           page: args.page as number | undefined,
           limit: args.limit as number | undefined,
         });
-        return textResult(formatTracesTable(result));
+        if (args.json_output) return textResult(result);
+        return textResult(formatTracesMarkdown(result));
       }
 
       case 'coaia_fuse_traces_session_view': {
@@ -152,7 +153,7 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
           sessionId: args.session_id as string,
         });
         if (args.json_output) return textResult(result);
-        return textResult(formatTracesTable(result));
+        return textResult(formatTracesMarkdown(result));
       }
 
       // ── Prompts ──

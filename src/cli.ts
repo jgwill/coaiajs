@@ -531,6 +531,39 @@ function registerFuseCommands(program: Command): void {
   const traces = fuse.command('traces').description('Trace operations');
 
   traces
+    .command('list')
+    .description('List traces with optional filters')
+    .option('--session-id <id>', 'Filter by session ID')
+    .option('--user-id <id>', 'Filter by user ID')
+    .option('--name <name>', 'Filter by trace name')
+    .option('--tags <tags>', 'Comma-separated tags to filter by')
+    .option('--from <timestamp>', 'From timestamp (ISO 8601)')
+    .option('--to <timestamp>', 'To timestamp (ISO 8601)')
+    .option('--order-by <field>', 'Order by field')
+    .option('--page <n>', 'Page number', parseInt)
+    .option('--limit <n>', 'Items per page (default 50)', parseInt)
+    .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
+      const filters = {
+        sessionId:     opts.sessionId as string | undefined,
+        userId:        opts.userId as string | undefined,
+        name:          opts.name as string | undefined,
+        tags:          opts.tags ? (opts.tags as string).split(',').map((t: string) => t.trim()) : undefined,
+        fromTimestamp: opts.from as string | undefined,
+        toTimestamp:   opts.to as string | undefined,
+        orderBy:       opts.orderBy as string | undefined,
+        page:          opts.page as number | undefined,
+        limit:         opts.limit as number | undefined,
+      };
+      const raw = await callModule('langfuse', 'listTraces', filters) as string;
+      if (globals(cmd).json) {
+        console.log(raw);
+      } else {
+        const formatted = await callModule('langfuse', 'formatTracesMarkdown', raw);
+        console.log(formatted);
+      }
+    }));
+
+  traces
     .command('create')
     .description('Create a trace')
     .option('--name <name>', 'Trace name')

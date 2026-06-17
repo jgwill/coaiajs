@@ -3,7 +3,7 @@
 export { LangfuseClient, LangfuseApiError, getClient, resetClient, nowISO } from './client.js';
 export type { IngestionEvent, LangfuseClientConfig } from './client.js';
 
-export { addTrace, patchTraceOutput, listTraces, getTrace, formatTracesTable, formatTraceTree } from './traces.js';
+export { addTrace, patchTraceOutput, listTraces, getTrace, formatTracesTable, formatTracesMarkdown, formatTraceTree } from './traces.js';
 export type { TraceFilters } from './traces.js';
 
 export { addObservation, getObservation, formatObservationDisplay } from './observations.js';

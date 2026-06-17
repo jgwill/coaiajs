@@ -164,6 +164,7 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
           order_by: { type: 'string', description: 'Sort order' },
           page: { type: 'integer', description: 'Page number', default: 1 },
           limit: { type: 'integer', description: 'Items per page', default: 50 },
+          json_output: { type: 'boolean', description: 'Return raw JSON instead of markdown table' },
         },
       },
     });

@@ -257,6 +257,32 @@ export function formatTraceTree(json: unknown): string {
   }
 }
 
+export function formatTracesMarkdown(json: unknown): string {
+  try {
+    const data = typeof json === 'string' ? JSON.parse(json) : json;
+    const traces: Record<string, unknown>[] = Array.isArray(data)
+      ? data
+      : (data as Record<string, unknown>).data as Record<string, unknown>[] ?? [];
+
+    if (!traces.length) return '_No traces found._';
+
+    const header = '| ID | Name | Session | User | Timestamp |';
+    const sep    = '|----|------|---------|------|-----------|';
+    const rows = traces.map((t) => {
+      const id      = trunc(String(t.id        ?? ''), 20);
+      const name    = trunc(String(t.name      ?? 'Unnamed'), 30);
+      const session = trunc(String(t.sessionId ?? ''), 24);
+      const user    = trunc(String(t.userId    ?? ''), 16);
+      const ts      = String(t.timestamp ?? '').slice(0, 19);
+      return `| ${id} | ${name} | ${session} | ${user} | ${ts} |`;
+    });
+
+    return [header, sep, ...rows, '', `_Total: ${traces.length} trace(s)_`].join('\n');
+  } catch (e) {
+    return `Error formatting traces: ${e}`;
+  }
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────
 
 function trunc(s: string, len: number): string {
