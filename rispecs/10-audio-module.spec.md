@@ -9,11 +9,11 @@ An audio module providing speech-to-text transcription via OpenAI Whisper and te
 ## Structural Tension
 
 **Current Reality:**
-- `src/audio.ts` is fully implemented (76 lines) with `synthesize()` function using AWS Polly
-- `src/llm.ts` includes `transcribeAudio()` using OpenAI Whisper
+- [`src/audio.ts`](../src/audio.ts) implements `synthesize()` with AWS Polly and lazy client initialization.
+- [`src/llm.ts`](../src/llm.ts) implements `transcribeAudio()` with OpenAI Whisper and exposes `llm()`, `generateImage()`, and `abstractProcess()`.
 - Both use lazy client initialization
 - coaiapy's `syntation.py` provides the same functionality via boto3 and openai Python packages
-- No MCP tools exist for audio in any parent project
+- Remaining gap: audio is available through the library and CLI transcription path, but standalone MCP audio tools are not wired yet.
 
 **Desired Outcome:**
 Audio module consolidating transcription and synthesis in one place:

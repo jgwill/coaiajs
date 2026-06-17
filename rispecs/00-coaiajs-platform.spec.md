@@ -15,16 +15,19 @@ Single `npm install coaiajs` provides:
 ## Structural Tension
 
 **Current Reality:**
-- Four separate repositories with overlapping type systems, duplicated JSONL logic, and fragmented MCP servers:
+- As of 2026-05-07, `coaiajs` is a buildable TypeScript package with published-package metadata:
+  - [`package.json`](../package.json) defines `main`, `types`, `exports`, `files`, `bin.coaia`, and `bin.coaiajs-mcp`.
+  - [`src/index.ts`](../src/index.ts) exposes the root library API and submodule namespaces.
+  - `npm pack --dry-run` includes `dist/`, rispecs, README, and package metadata.
+- The package consolidates four source lineages:
   - coaiapy v0.4.5 (Python, ~28,700 LOC, 68 files) — config, Redis, Langfuse, pipeline, audio, GitHub, LLM
   - coaia-narrative v0.12.0 (TypeScript, ~2,500 LOC) — JSONL graph, STC, narrative beats, MMOT, 27 MCP tools
   - coaia-pde v0.1.1 (TypeScript, ~1,600 LOC) — PDE→STC transformation, 12 MCP tools
   - coaia-planning v0.1.0 (TypeScript, ~1,400 LOC) — plan parsing, plan↔STC sync, 5 MCP tools
-- coaiajs v0.1.0 exists with core modules implemented (config, redis, github, llm, audio, environment — ~1,042 LOC) and types unified (280 lines)
-- Five sub-module directories (narrative, pde, planning, langfuse, pipeline) are empty stubs
-- MCP server directory is scaffolded but empty
-- CLI is referenced in package.json but has no implementation
-- No tests exist
+- Implemented modules exist under [`src/`](../src/): config, redis, github, llm, audio, environment, langfuse, narrative, pde, planning, and pipeline.
+- [`src/cli.ts`](../src/cli.ts) implements the unified `coaia` CLI.
+- [`mcp/server.ts`](../mcp/server.ts) implements the `coaiajs-mcp` server with tools, resources, prompts, and feature gating.
+- Test coverage is currently smoke-level: `npm test` runs successfully but has no test files (`node --test` reports 0 tests).
 
 **Desired Outcome:**
 Single `coaiajs` npm package providing:
@@ -87,10 +90,11 @@ Environment variables → `.env` file → `coaia.json` → defaults. Deep merge 
 
 ## Feature Gating
 
-The MCP server supports three modes controlled by `COAIAJS_MCP_MODE`:
-- **MINIMAL** — Core narrative tools only (STC, knowledge graph, MMOT)
-- **STANDARD** — Narrative + PDE + planning + Redis
-- **FULL** — All 64+ tools including Langfuse, pipeline, audio
+The MCP server supports feature levels controlled by `COAIAJS_FEATURES` or the `coaiajs-mcp --features <level>` CLI flag:
+- **MINIMAL** — coaiapy-compatible Redis and Langfuse observability tools
+- **STANDARD** — MINIMAL + narrative + PDE + planning
+- **OBSERVABILITY** — currently equivalent to STANDARD
+- **FULL** — All 64+ tools, including media-oriented Langfuse tools
 
 ## Quality Criteria
 
@@ -100,3 +104,12 @@ The MCP server supports three modes controlled by `COAIAJS_MCP_MODE`:
 - ✅ JSONL format is byte-compatible with coaia-narrative output
 - ✅ Redis tash/fetch behavior identical to coaiapy
 - ✅ Config loading produces identical results to coaiapy's read_config()
+
+## Verification Status
+
+Verified on 2026-05-07:
+
+- `npm run build` passes.
+- `npm test` passes with 0 tests discovered.
+- `npm pack --dry-run` includes the published package surface.
+- Installing `coaiajs-0.1.1.tgz` in a fresh temp project allows root imports, subpath imports, `npx coaia --version`, and `npx coaiajs-mcp` startup.

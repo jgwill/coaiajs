@@ -9,11 +9,12 @@ A thin Redis wrapper providing `tash(key, value, ttl?)` and `fetch(key)` with la
 ## Structural Tension
 
 **Current Reality:**
-- `src/redis.ts` is fully implemented (94 lines) with `tash()`, `fetch()`, `del()`, `keys()`, `exists()`, `disconnect()`, `resetClient()`
+- [`src/redis.ts`](../src/redis.ts) is implemented with `tash()`, `fetch()`, `del()`, `keys()`, `exists()`, `disconnect()`, `resetClient()`
 - Uses ioredis with lazy connection
 - Supports direct URL, Upstash REST (`rediss://`) URLs, host/port fallback
 - Key-value operations with optional TTL
 - Parity with coaiapy's `tash/fetch` pattern achieved
+- [`mcp/server.ts`](../mcp/server.ts) wires `coaia_tash` and `coaia_fetch` through the Redis module.
 
 **Desired Outcome:**
 Redis module with everything currently implemented plus:

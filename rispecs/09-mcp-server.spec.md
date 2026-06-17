@@ -9,62 +9,60 @@ A single MCP server (`coaiajs-mcp`) that consolidates the 44 tools from coaia-na
 ## Structural Tension
 
 **Current Reality:**
-- MCP server entry defined in `package.json` as `"coaiajs-mcp": "./dist/mcp/server.js"` but `mcp/` directory is empty (only a `tools/` subdirectory stub)
-- `@modelcontextprotocol/sdk` v1.25.0 is installed as a dependency
-- Four separate MCP servers exist in parent projects:
-  - coaia-narrative: 27 tools (STC lifecycle, knowledge graph, narrative beats, MMOT)
-  - coaia-pde: 12 tools (decomposition, session management, STC transformation)
-  - coaia-planning: 5 tools (plan parsing, plan↔STC sync, PDE bridge)
-  - coaiapy: 0 MCP tools (Python library only, no MCP)
-- Each parent server has its own startup, tool registration, and transport handling
-- Users currently need 3 MCP server entries in their config to access all tools
+- [`package.json`](../package.json) defines `"coaiajs-mcp": "./dist/mcp/server.js"`.
+- [`mcp/server.ts`](../mcp/server.ts) implements stdio MCP transport using `@modelcontextprotocol/sdk`.
+- [`mcp/config.ts`](../mcp/config.ts) implements `MINIMAL`, `STANDARD`, `OBSERVABILITY`, and `FULL` feature sets via `COAIAJS_FEATURES` or `--features`.
+- [`mcp/tools/coaiapy-tools.ts`](../mcp/tools/coaiapy-tools.ts) defines coaiapy-compatible Redis and Langfuse tool schemas.
+- [`mcp/resources.ts`](../mcp/resources.ts) implements `coaia://templates/` resources backed by the pipeline template loader.
+- [`mcp/prompts.ts`](../mcp/prompts.ts) implements the three coaiapy-mcp prompt templates.
+- `npx coaiajs-mcp` starts successfully from an installed package tarball and reports `STANDARD: 64 tools, 3 prompts, 3 resources`.
+- Remaining gap: several desired package-native tool groups (audio and pipeline execution tools) are not exposed as standalone MCP tools yet; pipeline templates are currently exposed as resources.
 
 **Desired Outcome:**
 Single MCP server at `mcp/server.ts` providing:
-- All 44 parent tools with identical schemas and behavior
-- 20 new tools for previously-CLI-only functionality
-- Feature gating via `COAIAJS_MCP_MODE` environment variable
+- Parent and coaiapy-compatible tools through one stdio server
+- Template resources and workflow prompts from coaiapy-mcp
+- Feature gating via `COAIAJS_FEATURES` or `--features`
 - Single server entry in MCP client config
 
 ## Feature Gating
 
 ```typescript
-type McpMode = 'MINIMAL' | 'STANDARD' | 'FULL';
+type FeatureLevel = 'MINIMAL' | 'STANDARD' | 'OBSERVABILITY' | 'FULL';
 ```
 
 | Mode | Tools loaded | Use case |
 |------|-------------|----------|
-| **MINIMAL** | STC tools (11), KG tools (9), MMOT (2), narrative beats (3) = **25** | Memory-constrained agents, basic STC workflow |
-| **STANDARD** | MINIMAL + PDE (12) + planning (6) + Redis (5) = **48** | Standard development sessions |
-| **FULL** | STANDARD + Langfuse (8) + pipeline (3) + audio (2) + guidance (3) = **64** | Full-featured agent sessions |
+| **MINIMAL** | Redis + Langfuse observability core tools | Observability-only sessions |
+| **STANDARD** | MINIMAL + narrative + PDE + planning tools | Standard development sessions |
+| **OBSERVABILITY** | Alias of STANDARD in current implementation | Compatibility mode |
+| **FULL** | All registered tools, including media tools | Full-featured agent sessions |
 
-Default mode: `STANDARD`.
+Default feature level: `STANDARD`.
 
 ## Server Architecture
 
 ```typescript
 // mcp/server.ts
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-
-const server = new McpServer({
+const featureConfig = new FeatureConfig(cliArgs.featureLevel);
+const server = new Server({
   name: 'coaiajs-mcp',
-  version: pkg.version
+  version: '0.1.1',
+}, {
+  capabilities: {
+    tools: {},
+    resources: {},
+    prompts: {},
+  },
 });
 
-// Register tools based on mode
-const mode = (process.env.COAIAJS_MCP_MODE ?? 'STANDARD') as McpMode;
-registerNarrativeTools(server);       // always
-if (mode !== 'MINIMAL') {
-  registerPdeTools(server);
-  registerPlanningTools(server);
-  registerRedisTools(server);
-}
-if (mode === 'FULL') {
-  registerLangfuseTools(server);
-  registerPipelineTools(server);
-  registerAudioTools(server);
-}
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: allTools.filter((tool) => featureConfig.isToolEnabled(tool.name)),
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  return handleToolCall(request.params.name, request.params.arguments ?? {});
+});
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
@@ -82,47 +80,44 @@ Narrative Beats: `create_narrative_beat`, `telescope_narrative_beat`, `list_narr
 
 MMOT: `perform_mmot_evaluation`, `init_llm_guidance`
 
-### PDE Engine (12 tools — STANDARD+)
+### PDE Engine (10 tools — STANDARD+)
 
-`pde_decompose`, `pde_parse_response`, `pde_get`, `pde_list`, `pde_export_markdown`, `pde_to_stc`, `pde_preview_stc`, `pde_create_session`, `pde_get_session`, `pde_list_sessions`, `pde_session_status`, `pde_bridge_plan`
+`import_pde_decomposition`, `create_stc_from_pde`, `list_pde_decompositions`, `get_session`, `list_sessions`, `pde_update_action_progress`, `pde_mark_action_complete`, `pde_add_action_step`, `pde_update_current_reality`, `complete_session`
 
 ### Planning Engine (6 tools — STANDARD+)
 
-`plan_parse`, `plan_to_stc`, `plan_from_stc`, `plan_sync`, `plan_diff`, `plan_bridge_pde`
+`parse_plan_structural`, `plan_to_stc`, `sync_plan_to_chart`, `sync_chart_to_plan`, `create_plan_trace`, `pde_to_plan`
 
-### Redis (5 tools — STANDARD+)
+### Redis
 
-`redis_tash`, `redis_fetch`, `redis_del`, `redis_keys`, `redis_exists`
+`coaia_tash`, `coaia_fetch`
 
-### Langfuse (8 tools — FULL only)
+### Langfuse
 
-`langfuse_list_traces`, `langfuse_get_trace`, `langfuse_list_prompts`, `langfuse_get_prompt`, `langfuse_list_datasets`, `langfuse_list_scores`, `langfuse_create_score`, `langfuse_list_score_configs`
+`coaia_fuse_trace_create`, `coaia_fuse_add_observation`, `coaia_fuse_trace_patch_output`, `coaia_fuse_trace_get`, `coaia_fuse_trace_view`, `coaia_fuse_observation_get`, `coaia_fuse_traces_list`, `coaia_fuse_traces_session_view`, comments, prompts, datasets, score configs, score application, and media tools.
 
-### Pipeline (3 tools — FULL only)
+### Resources
 
-`pipeline_list`, `pipeline_render`, `pipeline_execute`
+`coaia://templates/`, `coaia://templates/{name}`, `coaia://templates/{name}/variables`
 
-### Audio (2 tools — FULL only)
+### Prompts
 
-`audio_transcribe`, `audio_synthesize`
+`mia_miette_duo`, `create_observability_pipeline`, `analyze_audio_workflow`
 
 ## Tool Registration Pattern
 
-Each module provides a `registerXxxTools(server: McpServer)` function:
+The current server uses plain tool definition arrays plus dispatch handlers:
 
 ```typescript
-// mcp/tools/redis.ts
-export function registerRedisTools(server: McpServer) {
-  server.tool('redis_tash', 'Store a value in Redis with optional TTL', {
-    key: z.string().describe('Redis key'),
-    value: z.string().describe('Value to store'),
-    ttl: z.number().optional().describe('TTL in seconds'),
-  }, async ({ key, value, ttl }) => {
-    await tash(key, value, ttl);
-    return { content: [{ type: 'text', text: `Stored ${key}` }] };
-  });
-  // ... more tools
-}
+const allToolDefs = [
+  ...getCoaiapyToolDefinitions(featureConfig),
+  ...getNarrativeToolDefinitions(featureConfig),
+  ...getPdeToolDefinitions(featureConfig),
+  ...getPlanningToolDefinitions(featureConfig),
+];
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: allToolDefs }));
+server.setRequestHandler(CallToolRequestSchema, async (request) => routeToolCall(request.params));
 ```
 
 ## Transport
@@ -132,9 +127,9 @@ stdio transport only (standard MCP pattern). Server reads JSON-RPC from stdin, w
 ## Quality Criteria
 
 - ✅ Single MCP config entry replaces three separate servers
-- ✅ All 44 parent tools produce identical results to their parent implementations
+- ✅ Implemented parent tools route to TypeScript handlers instead of placeholders
 - ✅ Feature gating reduces tool count without breaking functionality
-- ✅ `COAIAJS_MCP_MODE=MINIMAL` loads ≤25 tools
-- ✅ Server starts in <500ms for MINIMAL mode
+- ✅ `COAIAJS_FEATURES` and `--features` select feature level
+- ✅ Server starts from installed tarball with `npx coaiajs-mcp`
 - ✅ Tool descriptions are self-documenting (LLMs understand usage without external docs)
 - ✅ Error responses include actionable information

@@ -23,6 +23,7 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
         properties: {
           key: { type: 'string', description: 'Redis key' },
           value: { type: 'string', description: 'Value to store' },
+          ttl: { type: 'integer', description: 'Optional TTL in seconds' },
         },
         required: ['key', 'value'],
       },

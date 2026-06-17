@@ -67,8 +67,8 @@ import type { Entity, DecompositionResult, CoaiaConfig } from 'coaiajs/src/types
 
 Configuration is loaded with the following priority (highest wins):
 
-1. **Environment variables** — `REDIS_URL`, `OPENAI_API_KEY`, `LANGFUSE_PUBLIC_KEY`, etc.
-2. **`.env` file** — in current working directory
+1. **Environment variables** — `UPSTASH_REDIS_REST_URL`, `REDIS_URL`, `OPENAI_API_KEY`, etc.
+2. **`.env` files** — explicit `--env`, `COAIAJS_ENV_PATH`, `COAIAPY_ENV_PATH`, current working directory `.env`, then `~/.coaia/.env`
 3. **`coaia.json`** — searched in `./coaia.json`, `~/coaia.json`, `~/.coaia/config.json`
 4. **Defaults**
 
@@ -76,12 +76,18 @@ Configuration is loaded with the following priority (highest wins):
 
 | Variable | Description |
 |---|---|
-| `REDIS_URL` | Redis connection URL |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis endpoint and token, preferred over direct Redis URLs |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Vercel KV REST aliases for Upstash Redis |
+| `KV_URL` / `REDIS_URL` | Redis connection URL (`redis://` or `rediss://`) |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_SSL` | Traditional Redis host/port/password configuration |
+| `UPSTASH_HOST` / `UPSTASH_PASSWORD` | coaiapy-compatible fallback aliases |
 | `OPENAI_API_KEY` | OpenAI API key |
 | `LANGFUSE_PUBLIC_KEY` | Langfuse public key |
 | `LANGFUSE_SECRET_KEY` | Langfuse secret key |
 | `AWS_ACCESS_KEY_ID` | AWS credentials for Polly |
 | `GITHUB_TOKEN` | GitHub API token |
+
+`coaia tash` follows coaiapy semantics: `-F/--file` reads the value from a file, `-T/--ttl` is interpreted in minutes, and the default CLI TTL is `5555`.
 
 ### coaia.json
 

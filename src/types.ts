@@ -256,6 +256,7 @@ export interface CoaiaConfig {
     host?: string;
     port?: number;
     password?: string;
+    ssl?: boolean;
     upstashUrl?: string;
     upstashToken?: string;
   };

@@ -9,12 +9,11 @@ A single `coaia` CLI binary that provides subcommands for every CoAiA module —
 ## Structural Tension
 
 **Current Reality:**
-- CLI entry point defined in `package.json` as `"coaia": "./dist/src/cli.js"` but no implementation exists
-- commander dependency is installed
-- coaiapy has an argparse-based CLI covering: tash, fetch, env, pipeline, transcribe, synthesize, fuse, gh
-- coaia-narrative has a minimist-based CLI covering: chart visualization, markdown export, progress display
-- coaia-pde has no CLI
-- coaia-planning has no CLI
+- [`package.json`](../package.json) defines `"coaia": "./dist/src/cli.js"`.
+- [`src/cli.ts`](../src/cli.ts) implements a commander-based CLI covering root coaiapy parity commands, Langfuse, pipeline, environment, GitHub, narrative, PDE, and planning command groups.
+- [`src/narrative/index.ts`](../src/narrative/index.ts), [`src/pde/index.ts`](../src/pde/index.ts), and [`src/planning/index.ts`](../src/planning/index.ts) expose helper functions used by the CLI dynamic module loader.
+- `npx coaia --help` works from an installed package tarball.
+- Remaining gaps: `synthesize` and explicit `mcp` CLI subcommands are desired but not currently registered as CLI groups.
 
 **Desired Outcome:**
 Unified CLI at `src/cli.ts` using commander, with subcommands:
@@ -26,12 +25,10 @@ coaia env [list|get|set|unset|init]
 coaia fuse [traces|trace|prompts|scores|datasets]
 coaia pipeline [list|render|execute] <template>
 coaia transcribe <audio-file>
-coaia synthesize <text> --output <file>
 coaia gh [issues|issue|comments]
 coaia narrative [charts|chart|progress|export]
-coaia pde [decompose|list|get|export|to-stc]
-coaia plan [parse|to-stc|from-stc|sync|diff]
-coaia mcp [start|tools]
+coaia pde [import|list|sessions|show]
+coaia plan [parse|convert|sync-to-chart|sync-to-plan]
 ```
 
 ## Core Structure
@@ -54,7 +51,6 @@ program.addCommand(ghCommands());
 program.addCommand(narrativeCommands());
 program.addCommand(pdeCommands());
 program.addCommand(planCommands());
-program.addCommand(mcpCommands());
 ```
 
 ## Command Details
@@ -95,26 +91,18 @@ coaia narrative export <id> [--format md|json]  # Export chart
 
 ### PDE Commands
 ```
-coaia pde decompose <prompt>            # Decompose a prompt
+coaia pde import <id>                   # Import stored PDE decomposition into STC session
 coaia pde list                          # List decompositions
-coaia pde get <id>                      # Get decomposition
-coaia pde export <id>                   # Export as markdown
-coaia pde to-stc <id>                   # Transform to STC
+coaia pde sessions                      # List PDE sessions
+coaia pde show <session-id>             # Show PDE session state
 ```
 
 ### Plan Commands
 ```
 coaia plan parse <file>                 # Parse plan markdown
-coaia plan to-stc <file>                # Convert plan to STC
-coaia plan from-stc <chart-id>          # Generate plan from STC
-coaia plan sync <file> <chart-id>       # Bidirectional sync
-coaia plan diff <file> <chart-id>       # Show differences
-```
-
-### MCP Commands
-```
-coaia mcp start [--mode MINIMAL|STANDARD|FULL]  # Start MCP server
-coaia mcp tools [--mode X]                       # List available tools
+coaia plan convert <file>               # Convert plan to STC JSONL
+coaia plan sync-to-chart <file> <jsonl> # Sync plan into chart JSONL
+coaia plan sync-to-plan <jsonl> <file>  # Sync chart JSONL back to plan markdown
 ```
 
 ## Output Formatting

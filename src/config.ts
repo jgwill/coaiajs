@@ -2,12 +2,23 @@
 // Priority: env vars > .env > coaia.json > defaults
 
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve, join, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import dotenv from 'dotenv';
 import type { CoaiaConfig } from './types.js';
 
-const CONFIG_FILENAMES = ['coaia.json', '.coaia/config.json'];
+const CONFIG_FILENAMES = [
+  'coaia.json',
+  '.coaia/config.json',
+  '.config/jgwill/coaia.json',
+  'Documents/coaia.json',
+];
+
+function expandPath(filePath: string): string {
+  if (filePath === '~') return homedir();
+  if (filePath.startsWith('~/')) return join(homedir(), filePath.slice(2));
+  return isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath);
+}
 
 /** Search for an existing coaia.json config file. */
 export function findExistingConfig(): string | null {
@@ -22,6 +33,21 @@ export function findExistingConfig(): string | null {
     }
   }
   return null;
+}
+
+/** Resolve dotenv files in priority order. Earlier files win over later files. */
+export function findEnvFiles(envPath?: string): string[] {
+  const explicitEnvPath =
+    envPath ?? process.env['COAIAJS_ENV_PATH'] ?? process.env['COAIAPY_ENV_PATH'];
+
+  if (explicitEnvPath) {
+    return [expandPath(explicitEnvPath)].filter((candidate) => existsSync(candidate));
+  }
+
+  return [
+    resolve(process.cwd(), '.env'),
+    join(homedir(), '.coaia', '.env'),
+  ].filter((candidate) => existsSync(candidate));
 }
 
 /** Deep-merge two config objects; override wins on conflicts. */
@@ -61,19 +87,31 @@ function loadJsonConfig(filePath: string): Partial<CoaiaConfig> {
   }
 }
 
+function parseBool(value: string | undefined): boolean | undefined {
+  if (!value) return undefined;
+  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+}
+
 function envOverrides(): Partial<CoaiaConfig> {
   const cfg: Partial<CoaiaConfig> = {};
   const env = process.env;
 
   // Redis
-  if (env['REDIS_URL'] || env['REDIS_HOST'] || env['UPSTASH_REDIS_REST_URL']) {
+  const upstashUrl = env['UPSTASH_REDIS_REST_URL'] ?? env['KV_REST_API_URL'];
+  const upstashToken = env['UPSTASH_REDIS_REST_TOKEN'] ?? env['KV_REST_API_TOKEN'];
+  const redisUrl = env['KV_URL'] ?? env['REDIS_URL'];
+  const redisHost = env['REDIS_HOST'] ?? env['UPSTASH_HOST'];
+  const redisPassword = env['REDIS_PASSWORD'] ?? env['UPSTASH_PASSWORD'];
+
+  if (upstashUrl || redisUrl || redisHost || env['REDIS_PORT'] || redisPassword) {
     cfg.redis = {
-      url: env['REDIS_URL'],
-      host: env['REDIS_HOST'],
+      url: redisUrl,
+      host: redisHost,
       port: env['REDIS_PORT'] ? parseInt(env['REDIS_PORT'], 10) : undefined,
-      password: env['REDIS_PASSWORD'],
-      upstashUrl: env['UPSTASH_REDIS_REST_URL'],
-      upstashToken: env['UPSTASH_REDIS_REST_TOKEN'],
+      password: redisPassword,
+      ssl: parseBool(env['REDIS_SSL']),
+      upstashUrl,
+      upstashToken,
     };
   }
 
@@ -119,11 +157,8 @@ function envOverrides(): Partial<CoaiaConfig> {
  */
 export function readConfig(envPath?: string): CoaiaConfig {
   // 1. Load .env (lowest priority file source)
-  const dotenvPath = envPath ?? resolve(process.cwd(), '.env');
-  if (existsSync(dotenvPath)) {
-    dotenv.config({ path: dotenvPath });
-  } else {
-    dotenv.config(); // default search
+  for (const dotenvPath of findEnvFiles(envPath)) {
+    dotenv.config({ path: dotenvPath, override: false });
   }
 
   // 2. Load coaia.json

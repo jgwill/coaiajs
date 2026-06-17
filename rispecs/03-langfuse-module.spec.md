@@ -9,11 +9,13 @@ A comprehensive Langfuse client covering traces, observations, prompts, datasets
 ## Structural Tension
 
 **Current Reality:**
-- `src/langfuse/` directory exists but is empty
-- Types defined in `src/types.ts`: `ScoreCategory`, `ScoreConfig`
-- coaiapy's `cofuse.py` is 4,480 lines covering: traces, observations (spans/generations/events), prompts, datasets, scores, score configs, comments, media, projects
-- cofuse.py uses raw `requests` library against Langfuse REST API
-- No MCP tools exist for Langfuse in any parent project
+- [`src/langfuse/`](../src/langfuse/) is implemented as a REST client module split by domain:
+  - [`client.ts`](../src/langfuse/client.ts) centralizes auth, base URL, JSON requests, and errors.
+  - [`traces.ts`](../src/langfuse/traces.ts), [`observations.ts`](../src/langfuse/observations.ts), [`prompts.ts`](../src/langfuse/prompts.ts), [`datasets.ts`](../src/langfuse/datasets.ts), [`scores.ts`](../src/langfuse/scores.ts), [`comments.ts`](../src/langfuse/comments.ts), and [`media.ts`](../src/langfuse/media.ts) port the coaiapy `cofuse.py` surface.
+  - [`index.ts`](../src/langfuse/index.ts) exposes a public barrel for `coaiajs/langfuse`.
+- [`mcp/server.ts`](../mcp/server.ts) wires coaiapy-compatible Langfuse MCP tools such as `coaia_fuse_trace_create`, `coaia_fuse_add_observation`, `coaia_fuse_score_apply`, comments, prompts, datasets, and media.
+- Types defined in [`src/types.ts`](../src/types.ts): `ScoreCategory`, `ScoreConfig`.
+- Remaining gap: not every Langfuse formatting and cache helper from `cofuse.py` has a TypeScript equivalent; the core trace/observation/prompt/dataset/score/comment/media path is present.
 
 **Desired Outcome:**
 TypeScript Langfuse client with:

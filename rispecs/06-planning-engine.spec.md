@@ -9,12 +9,13 @@ A planning module that parses markdown plans (particularly Claude Plan mode outp
 ## Structural Tension
 
 **Current Reality:**
-- `src/planning/` directory exists but is empty
-- Types defined in `src/types.ts`: `StructuralTensionPlan`, `StructuralElement`
-- coaia-planning v0.1.0 has a working implementation:
-  - `plan-parser.ts` (821 lines) — parses markdown plans into structured objects
-  - `tools/index.ts` — 5 MCP tools + 1 PDE bridge tool
-- No rispecs exist for coaia-planning — this is the first specification
+- [`src/planning/`](../src/planning/) is implemented:
+  - [`plan-parser.ts`](../src/planning/plan-parser.ts) parses markdown plans, converts plans to STC entities/relations, exports JSONL, and converts `DecompositionResult` to plan/STC output.
+  - [`mcp-tools.ts`](../src/planning/mcp-tools.ts) defines 6 MCP tool schemas.
+  - [`mcp-handlers.ts`](../src/planning/mcp-handlers.ts) handles parse, plan-to-STC, plan-to-chart sync, chart-to-plan sync, plan trace creation, and PDE-to-plan conversion.
+  - [`index.ts`](../src/planning/index.ts) exposes library and CLI helper functions.
+- Types are defined in [`src/types.ts`](../src/types.ts): `StructuralTensionPlan`, `StructuralElement`.
+- [`mcp/server.ts`](../mcp/server.ts) routes planning tools to `handlePlanningTool()`.
 
 **Desired Outcome:**
 Planning engine in `src/planning/` that:
@@ -108,21 +109,21 @@ STC → Plan:
 
 Conflict resolution: STC wins by default (it is the source of truth). Conflicts are reported in `SyncResult.conflicts` for human review.
 
-## MCP Tools (6)
+## MCP Tools (Implemented)
 
 | Tool | Purpose |
 |------|---------|
-| `plan_parse` | Parse markdown plan into structured object |
+| `parse_plan_structural` | Parse markdown plan into structured object |
 | `plan_to_stc` | Convert parsed plan to STC entities |
-| `plan_from_stc` | Generate plan markdown from STC |
-| `plan_sync` | Bidirectional sync between plan and STC |
-| `plan_diff` | Show differences between plan and STC |
-| `plan_bridge_pde` | Import PDE decomposition as plan |
+| `sync_plan_to_chart` | Write plan-derived STC JSONL |
+| `sync_chart_to_plan` | Generate plan markdown from STC JSONL |
+| `create_plan_trace` | Generate trace payload for plan→STC transformation |
+| `pde_to_plan` | Convert PDE decomposition into STC JSONL |
 
 ## Quality Criteria
 
 - ✅ Parses Claude Plan mode output without modification
 - ✅ Checkbox state (`[ ]` / `[x]`) maps correctly to action completion
 - ✅ Sub-items preserved through parse → STC → plan round-trip
-- ✅ Bidirectional sync detects and reports conflicts
+- ✅ Bidirectional sync supports dry-run and write modes
 - ✅ Generated markdown is readable and re-parseable
