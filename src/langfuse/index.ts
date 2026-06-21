@@ -3,10 +3,14 @@
 export { LangfuseClient, LangfuseApiError, getClient, resetClient, nowISO } from './client.js';
 export type { IngestionEvent, LangfuseClientConfig } from './client.js';
 
-export { addTrace, patchTraceOutput, listTraces, getTrace, formatTracesTable, formatTracesMarkdown, formatTraceTree } from './traces.js';
+export {
+  addTrace, createTrace, patchTraceOutput,
+  listTraces, getTrace, traceView, sessionView,
+  formatTracesTable, formatTracesMarkdown, formatTraceTree,
+} from './traces.js';
 export type { TraceFilters } from './traces.js';
 
-export { addObservation, getObservation, formatObservationDisplay } from './observations.js';
+export { addObservation, addObservations, getObservation, formatObservationDisplay } from './observations.js';
 
 export { listPrompts, getPrompt, createPrompt, formatPromptsTable, formatPromptDisplay } from './prompts.js';
 

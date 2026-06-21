@@ -11,9 +11,12 @@ export async function addObservation(params: {
   type?: string;
   name: string;
   parentId?: string;
+  parentObservationId?: string;
+  input?: string;
   inputData?: unknown;
+  output?: string;
   outputData?: unknown;
-  metadata?: unknown;
+  metadata?: string | unknown;
   startTime?: string;
   endTime?: string;
   level?: string;
@@ -33,10 +36,10 @@ export async function addObservation(params: {
   };
 
   if (params.name) body.name = params.name;
-  if (params.inputData) body.input = params.inputData;
-  if (params.outputData) body.output = params.outputData;
-  if (params.metadata) body.metadata = params.metadata;
-  if (params.parentId) body.parentObservationId = params.parentId;
+  if (params.inputData ?? params.input) body.input = parseJsonOption(params.inputData ?? params.input);
+  if (params.outputData ?? params.output) body.output = parseJsonOption(params.outputData ?? params.output);
+  if (params.metadata) body.metadata = parseJsonOption(params.metadata);
+  if (params.parentId ?? params.parentObservationId) body.parentObservationId = params.parentId ?? params.parentObservationId;
   if (params.endTime) body.endTime = params.endTime;
   if (params.model) body.model = params.model;
   if (params.usage) body.usage = params.usage;
@@ -63,6 +66,27 @@ export async function getObservation(observationId: string): Promise<string> {
   const client = getClient();
   const result = await client.request<unknown>('GET', `/api/public/observations/${observationId}`);
   return JSON.stringify(result, null, 2);
+}
+
+function parseJsonOption(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
+export async function addObservations(params: { traceId?: string; observations?: Array<Record<string, unknown>> }): Promise<string> {
+  const observations = params.observations ?? [];
+  const results: unknown[] = [];
+  for (const observation of observations) {
+    const traceId = String(observation.traceId ?? params.traceId ?? '');
+    const name = String(observation.name ?? 'Observation');
+    if (!traceId) throw new Error('traceId is required for every observation');
+    results.push(JSON.parse(await addObservation({ ...observation, traceId, name })) as unknown);
+  }
+  return JSON.stringify({ success: true, count: results.length, observations: results }, null, 2);
 }
 
 // ─── Formatters ─────────────────────────────────────────────────────

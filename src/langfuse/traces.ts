@@ -61,14 +61,23 @@ export async function addTrace(params: {
   }, null, 2);
 }
 
-export async function patchTraceOutput(traceId: string, outputData: unknown): Promise<string> {
+export async function patchTraceOutput(
+  traceIdOrParams: string | { traceId?: string; output?: string; outputData?: unknown },
+  outputData?: unknown,
+): Promise<string> {
+  const traceId = typeof traceIdOrParams === 'string' ? traceIdOrParams : traceIdOrParams.traceId;
+  if (!traceId) throw new Error('traceId is required');
+  const output = typeof traceIdOrParams === 'string'
+    ? outputData
+    : parseJsonOption(traceIdOrParams.outputData ?? traceIdOrParams.output);
+
   const client = getClient();
   const now = nowISO();
 
   const body: Record<string, unknown> = {
     id: traceId,
     timestamp: now,
-    output: outputData,
+    output,
   };
 
   const eventId = `${traceId}-patch-${uuidv4().slice(0, 8)}`;
@@ -86,6 +95,38 @@ export async function patchTraceOutput(traceId: string, outputData: unknown): Pr
     traceId,
     message: `Trace output patched for ${traceId}`,
   }, null, 2);
+}
+
+function parseJsonOption(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
+export async function createTrace(params: {
+  traceId?: string;
+  id?: string;
+  userId?: string;
+  sessionId?: string;
+  name?: string;
+  input?: string;
+  inputData?: unknown;
+  output?: string;
+  outputData?: unknown;
+  metadata?: string | unknown;
+}): Promise<string> {
+  return addTrace({
+    traceId: params.traceId ?? params.id,
+    userId: params.userId,
+    sessionId: params.sessionId,
+    name: params.name,
+    inputData: parseJsonOption(params.inputData ?? params.input),
+    outputData: parseJsonOption(params.outputData ?? params.output),
+    metadata: parseJsonOption(params.metadata),
+  });
 }
 
 export async function listTraces(filters: TraceFilters): Promise<string> {
@@ -139,6 +180,16 @@ export async function getTrace(traceId: string): Promise<string> {
   }
 
   return JSON.stringify(trace, null, 2);
+}
+
+export async function traceView(traceId: string): Promise<string> {
+  const raw = await getTrace(traceId);
+  return formatTraceTree(raw);
+}
+
+export async function sessionView(sessionId: string): Promise<string> {
+  const raw = await listTraces({ sessionId, limit: 20, orderBy: 'timestamp.desc' });
+  return formatTracesMarkdown(raw);
 }
 
 // ─── Formatters ─────────────────────────────────────────────────────
