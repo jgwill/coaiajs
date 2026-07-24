@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "coaia": {
+      "command": "npx",
+      "args": ["-y", "--package=coaiajs", "coaiajs-mcp"]
+    }
+  }
+}

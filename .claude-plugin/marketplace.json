@@ -1,0 +1,26 @@
+{
+  "name": "coaiajs-marketplace",
+  "owner": {
+    "name": "Guillaume Isabelle",
+    "email": "jgi@jgwill.com",
+    "url": "https://github.com/jgwill"
+  },
+  "metadata": {
+    "description": "CoAIA Claude Code plugins",
+    "version": "0.3.0"
+  },
+  "plugins": [
+    {
+      "name": "coaiajs-langfuse",
+      "source": "./coaiajs-langfuse-claude-plugin",
+      "description": "CoAIA unified MCP — 64+ tools (structural tension charts, narrative knowledge graph, PDE, planning, Redis tash/fetch, Langfuse tracing).",
+      "version": "0.3.0",
+      "author": {
+        "name": "Guillaume Isabelle",
+        "url": "https://github.com/jgwill"
+      },
+      "license": "MIT",
+      "keywords": ["coaia", "mcp", "structural-tension", "narrative", "pde", "planning", "langfuse"]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "coaiajs-langfuse",
+  "description": "CoAIA unified MCP for Claude Code — 64+ tools across structural-tension charts, narrative knowledge graph, Prompt Decomposition Engine (PDE), action planning, Redis tash/fetch, and Langfuse tracing. Bundles the published `coaiajs` npm package's `coaiajs-mcp` server via npx.",
+  "version": "0.3.0",
+  "author": { "name": "Guillaume Isabelle", "email": "jgi@jgwill.com", "url": "https://github.com/jgwill" },
+  "homepage": "https://github.com/jgwill/coaiajs/tree/master/coaiajs-langfuse-claude-plugin",
+  "repository": "https://github.com/jgwill/coaiajs",
+  "license": "MIT",
+  "keywords": ["coaia", "mcp", "structural-tension", "narrative", "pde", "planning", "langfuse"]
+}

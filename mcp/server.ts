@@ -28,6 +28,7 @@ import {
 import { PDE_MCP_TOOLS, handlePdeTool } from '../src/pde/index.js';
 import { PLANNING_MCP_TOOLS, handlePlanningTool } from '../src/planning/index.js';
 import type { McpToolResult } from '../src/types.js';
+import { getPackageVersion } from '../src/version.js';
 
 // Langfuse imports
 import {
@@ -46,7 +47,7 @@ import { uploadAndAttachMedia, getMedia, formatMediaDisplay } from '../src/langf
 // ─── Server Info ────────────────────────────────────────────────────
 
 const SERVER_NAME = 'coaiajs-mcp';
-const SERVER_VERSION = '0.1.1';
+const SERVER_VERSION = getPackageVersion();
 
 // ─── Parse CLI args ─────────────────────────────────────────────────
 
