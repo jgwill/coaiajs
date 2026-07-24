@@ -57,4 +57,4 @@ None of these are set by the plugin itself — they are inherited from whatever 
 
 ## Versioning
 
-This plugin tracks the published npm `coaiajs` package rather than vendoring source. `.mcp.json` calls `npx -y --package=coaiajs coaiajs-mcp`, which always resolves the latest published version at launch time. To pin a specific version, edit `.mcp.json` and change `--package=coaiajs` to `--package=coaiajs@<version>` (e.g. `coaiajs@0.2.1`).
+This plugin tracks the published npm `coaiajs` package rather than vendoring source. `.mcp.json` calls `npx -y --package=coaiajs coaiajs-mcp`, which always resolves the latest published version at launch time. To pin a specific version, edit `.mcp.json` and change `--package=coaiajs` to `--package=coaiajs@<version>` (e.g. `coaiajs@0.3.0`).

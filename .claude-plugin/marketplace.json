@@ -7,14 +7,14 @@
   },
   "metadata": {
     "description": "CoAIA Claude Code plugins",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "coaiajs-langfuse",
       "source": "./coaiajs-langfuse-claude-plugin",
       "description": "CoAIA unified MCP — 64+ tools (structural tension charts, narrative knowledge graph, PDE, planning, Redis tash/fetch, Langfuse tracing).",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "author": {
         "name": "Guillaume Isabelle",
         "url": "https://github.com/jgwill"
