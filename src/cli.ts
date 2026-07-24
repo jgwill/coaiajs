@@ -9,6 +9,7 @@ import { readConfig, getConfig } from './config.js';
 import { llm as llmCall, transcribeAudio, abstractProcess } from './llm.js';
 import { listIssues, getIssue } from './github.js';
 import { createEnvironment, findEnvironment } from './environment.js';
+import { getPackageVersion } from './version.js';
 import {
   formatTable, formatJson, formatError, formatSuccess,
   truncate, formatDate, formatProgress, setColorEnabled,
@@ -1221,7 +1222,7 @@ async function main(): Promise<void> {
 
   program
     .name('coaia')
-    .version('0.1.3', '-V, --version')
+    .version(getPackageVersion(), '-V, --version')
     .description('CoAIA unified CLI — structural tension, narrative, and DevOps tooling')
     .option('--env <path>', 'Load environment file')
     .option('-M, --memory-path <path>', 'JSONL memory file path')
