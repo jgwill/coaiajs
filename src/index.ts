@@ -46,6 +46,8 @@ export {
   findEnvironment,
 } from './environment.js';
 
+export { getPackageVersion } from './version.js';
+
 export * as langfuse from './langfuse/index.js';
 export * as narrative from './narrative/index.js';
 export * as pde from './pde/index.js';
