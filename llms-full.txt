@@ -1,0 +1,361 @@
+# coaiajs — Full Reference
+
+> Complete API surface for `coaiajs`: every entry point, every export, all 63 MCP tools, and the full CLI. Written for AI agents integrating against this package.
+
+Package: `coaiajs` · License: MIT · Node.js >= 20 · **ESM only**
+
+---
+
+## 1. Orientation
+
+`coaiajs` is the TypeScript consolidation of four CoAIA projects — `coaia-narrative` (knowledge graph, charts), `coaia-pde` (Prompt Decomposition Engine), `coaia-planning` (action planning), and `coaiapy` (Redis/LLM/audio/GitHub/config). It is consumable three ways, all sharing the same modules and the same type system (`src/types.ts`):
+
+1. **Library** — `import { ... } from 'coaiajs'`
+2. **CLI** — `npx coaia <command>`
+3. **MCP server** — `npx coaiajs-mcp` (stdio)
+
+### Central concept: the structural tension chart
+
+The core data model comes from Robert Fritz's creative process framework. A chart holds three parts:
+
+- **Desired Outcome** — what is to be created
+- **Current Reality** — an honest assessment of where things stand
+- **Action Steps** — steps holding the tension between the two; any step can *telescope* into its own sub-chart
+
+Charts are stored as JSONL entities in a knowledge graph. "MMOT" (Managerial Moment of Truth) is a structured evaluation over a chart: acknowledge → analyze → plan → recommit.
+
+### Rules that prevent the common mistakes
+
+- **ESM only.** `require('coaiajs')` fails. Use `import`. The package sets `"type": "module"`.
+- **Never import `coaiajs/src/...`.** `src/` is not in the published tarball. Use the documented subpaths. (Older documentation showed `coaiajs/src/redis.js`; that path has never resolved from an installed package.)
+- **No side effects at import.** Importing opens no connection and reads no file. Clients are constructed on first use.
+- **Close what you open.** `disconnect()` on Redis; `resetClient()` on any module to drop cached client state (primarily for tests).
+
+---
+
+## 2. Installation
+
+```bash
+npm install coaiajs
+```
+
+```typescript
+import { tash, fetch, narrative } from 'coaiajs';
+import { parsePlan } from 'coaiajs/planning';
+import type { StructuralTensionPlan, Entity, CoaiaConfig } from 'coaiajs';
+```
+
+TypeScript consumers should use `"module": "NodeNext"` and `"moduleResolution": "NodeNext"` so the `exports` map and its `.d.ts` files resolve correctly.
+
+---
+
+## 3. Library API
+
+Root import exposes everything below plus five namespaces (`langfuse`, `narrative`, `pde`, `planning`, `pipeline`) and 26 shared types. A subpath import and its root namespace are the same module.
+
+### `coaiajs/config`
+
+```
+readConfig, getConfig, resetConfig, config, mergeConfigs, findExistingConfig, findEnvFiles
+```
+
+Resolution order (highest wins): environment variables → `.env` files (explicit `--env`, `COAIAJS_ENV_PATH`, `COAIAPY_ENV_PATH`, `./.env`, `~/.coaia/.env`) → `coaia.json` (`./coaia.json`, `~/coaia.json`, `~/.coaia/config.json`) → defaults.
+
+### `coaiajs/redis`
+
+```
+tash, fetch, del, keys, exists, disconnect, getClient, resetClient
+```
+
+`tash`/`fetch` are SET/GET shorthand carried over from coaiapy. TTL is expressed in **minutes** at the CLI layer (default `5555`).
+
+```typescript
+import { tash, fetch, disconnect } from 'coaiajs/redis';
+await tash('session:42', JSON.stringify({ phase: 'design' }));
+const raw = await fetch('session:42');
+await disconnect();
+```
+
+### `coaiajs/llm`
+
+```
+llm, transcribeAudio, generateImage, abstractProcess, resetClient
+```
+
+OpenAI-backed. `abstractProcess` applies a named tag/template to text; `transcribeAudio` uses Whisper.
+
+### `coaiajs/audio`
+
+```
+synthesize, resetClient
+```
+
+AWS Polly text-to-speech.
+
+### `coaiajs/github`
+
+```
+listIssues, getIssue, getIssueComments, resetClient
+```
+
+Octokit-backed; reads `GITHUB_TOKEN`.
+
+### `coaiajs/environment`
+
+```
+EnvironmentManager, createEnvironment, findEnvironment
+```
+
+### `coaiajs/version`
+
+```
+getPackageVersion
+```
+
+Returns the resolved version of the installed package, read from `package.json` at runtime.
+
+### `coaiajs/narrative`
+
+```
+KnowledgeGraphManager, ValidationSchemas, validate,
+addAction, completeAction, addObservation, setDueDate, setCurrentChart, getCurrentChart,
+updateChart, viewChart, listCharts, getProgress, getStats, performMmot,
+exportChart, exportAllCharts, exportChartToMarkdown, exportAllChartsToMarkdown,
+exportChartProgress, exportChartStats, writeMarkdownToFile, getDefaultFilename,
+handleToolCall, ALL_TOOL_DEFINITIONS, CORE_TOOLS, KG_TOOLS, NARRATIVE_TOOLS, STC_TOOLS
+```
+
+```typescript
+import { KnowledgeGraphManager } from 'coaiajs/narrative';
+const kg = new KnowledgeGraphManager('./memory.jsonl');
+const graph = await kg.readGraph();
+```
+
+### `coaiajs/pde`
+
+```
+SessionManager, sessionManager, StcMapper, stcMapper,
+importDecomposition, listDecompositions, listSessions, showSession,
+handlePdeTool, PDE_MCP_TOOLS
+```
+
+### `coaiajs/planning`
+
+```
+parsePlan, parsePlanContent, planToSTC, convertToChart, decompositionResultToPlan,
+syncToChart, syncToPlan, exportToJSONL, handlePlanningTool, PLANNING_MCP_TOOLS
+```
+
+```typescript
+import { parsePlan, planToSTC } from 'coaiajs/planning';
+const plan = await parsePlan('./PLAN.md');
+const chart = planToSTC(plan);
+```
+
+### `coaiajs/pipeline`
+
+```
+MobileTemplateEngine, TemplateLoader, TemplateRenderer
+```
+
+### `coaiajs/langfuse`
+
+Client and errors: `LangfuseClient`, `LangfuseApiError`, `getClient`, `resetClient`, `nowISO`, `detectContentType`
+
+- **Traces:** `createTrace`, `addTrace`, `getTrace`, `listTraces`, `patchTraceOutput`, `traceView`, `sessionView`
+- **Observations:** `addObservation`, `addObservations`, `getObservation`
+- **Prompts:** `createPrompt`, `getPrompt`, `listPrompts`
+- **Datasets:** `createDataset`, `getDataset`, `listDatasets`, `createDatasetItem`, `listDatasetItems`
+- **Scores:** `createScore`, `listScores`, `createScoreForTarget`, `applyScoreToTrace`, `createScoreConfig`, `getScoreConfig`, `listScoreConfigs`, `applyScoreConfig`, `importScoreConfigs`, `exportScoreConfigs`, `getBuiltInPresets`, `installPreset`
+- **Comments:** `createComment`, `getComment`, `listComments`
+- **Media:** `uploadAndAttachMedia`, `getMedia`
+- **Formatters:** `formatTracesTable`, `formatTracesMarkdown`, `formatTraceTree`, `formatObservationDisplay`, `formatPromptDisplay`, `formatPromptsTable`, `formatDatasetsTable`, `formatDatasetForFinetuning`, `formatScoresTable`, `formatScoreConfigsTable`, `formatMediaDisplay`
+
+### Exported types
+
+```
+Entity, EntityMetadata, Relation, RelationMetadata, KnowledgeGraph, McpToolResult,
+PrimaryIntent, SecondaryIntent, ContextRequirements, ExpectedOutputs,
+DirectionItem, DirectionMap, ActionItem, AmbiguityFlag,
+DecompositionResult, StoredDecomposition, DecompositionOptions, PdeSession,
+StructuralElement, StructuralTensionPlan,
+ScoreCategory, ScoreConfig,
+PipelineVariable, PipelineStep, PipelineTemplate, CoaiaConfig
+```
+
+---
+
+## 4. MCP Server
+
+```bash
+npx coaiajs-mcp
+```
+
+Transport: **stdio**. Serves **63 tools, 3 prompts, 1 listable resource**.
+
+Flags: `--memory-path <path>` (JSONL knowledge graph), `--plans-dir <path>`, `--feature-level <level>`.
+
+Claude Code / client registration:
+
+```json
+{
+  "mcpServers": {
+    "coaia": { "command": "npx", "args": ["-y", "--package=coaiajs", "coaiajs-mcp"] }
+  }
+}
+```
+
+### Feature levels
+
+`COAIAJS_FEATURES` selects the exposed tool set; default `STANDARD`.
+
+| Level | Effect |
+|---|---|
+| `MINIMAL` | Core tash/fetch and essential graph tools |
+| `STANDARD` | Default — the 63 tools listed below |
+| `OBSERVABILITY` | Same set as `STANDARD` |
+| `FULL` | Everything, including media tools |
+
+### Tools — coaiapy + Langfuse (20)
+
+```
+coaia_tash, coaia_fetch,
+coaia_fuse_trace_create, coaia_fuse_add_observation, coaia_fuse_trace_patch_output,
+coaia_fuse_trace_get, coaia_fuse_trace_view, coaia_fuse_observation_get,
+coaia_fuse_traces_list, coaia_fuse_traces_session_view,
+coaia_fuse_prompts_list, coaia_fuse_prompts_get,
+coaia_fuse_datasets_list, coaia_fuse_datasets_get,
+coaia_fuse_score_configs_list, coaia_fuse_score_configs_get, coaia_fuse_score_apply,
+coaia_fuse_comments_list, coaia_fuse_comments_get, coaia_fuse_comments_create
+```
+
+### Tools — narrative / knowledge graph (27)
+
+```
+create_entities, create_relations, add_observations,
+delete_entities, delete_observations, delete_relations,
+read_graph, search_nodes, open_nodes,
+create_structural_tension_chart, manage_action_step, add_action_step,
+telescope_action_step, remove_action_step, mark_action_complete,
+get_chart_progress, list_active_charts, get_chart, get_action_step,
+update_action_progress, update_current_reality, update_desired_outcome,
+perform_mmot_evaluation,
+create_narrative_beat, telescope_narrative_beat, list_narrative_beats,
+init_llm_guidance
+```
+
+### Tools — PDE (10)
+
+```
+import_pde_decomposition, create_stc_from_pde, list_pde_decompositions,
+get_session, list_sessions, complete_session,
+pde_update_action_progress, pde_mark_action_complete,
+pde_add_action_step, pde_update_current_reality
+```
+
+The last four carry a `pde_` prefix because their unprefixed names belong to the narrative group. Calling `add_action_step` targets the narrative chart; `pde_add_action_step` targets the PDE session.
+
+### Tools — planning (6)
+
+```
+parse_plan_structural, plan_to_stc, sync_plan_to_chart,
+sync_chart_to_plan, create_plan_trace, pde_to_plan
+```
+
+### Prompts (3)
+
+- `mia_miette_duo` — dual AI embodiment for narrative-driven technical work
+- `create_observability_pipeline` — step-by-step guide for creating a Langfuse observability pipeline
+- `analyze_audio_workflow` — workflow for audio analysis
+
+### Resources
+
+- `coaia://templates/` — listable; returns all pipeline templates
+- `coaia://templates/{name}` — readable URI pattern; a single template
+- `coaia://templates/{name}/variables` — readable URI pattern; a template's variables
+
+### Error convention
+
+Tool failures return a normal result with `isError: true` and a text explanation rather than a JSON-RPC error. An unknown tool name yields `Unknown tool: <name>`.
+
+---
+
+## 5. CLI
+
+```bash
+npx coaia <command>
+```
+
+Global options: `--env <path>` · `-M, --memory-path <path>` · `--json` · `--no-color` · `-V, --version` · `-h, --help`
+
+| Command | Aliases | Purpose |
+|---|---|---|
+| `tash <key> [value]` | `m` | Store a key-value pair in Redis. `-F/--file` reads value from a file; `-T/--ttl` in minutes (default 5555) |
+| `fetch <key>` | | Get a value from Redis |
+| `llm <user> [system]` | | Raw LLM call |
+| `summarize [text]` | `s` | Summarize text |
+| `transcribe <file>` | `t` | Transcribe audio via Whisper |
+| `p <tag> [text]` | | Process text with a custom tag |
+| `init` | | Create a sample `coaia.json` |
+| `fuse` | | Langfuse operations |
+| `narrative` | `n` | Structural tension chart operations |
+| `pde` | | Prompt Decomposition Engine |
+| `plan` | | Structural tension plan operations |
+| `pipeline` | | Pipeline template operations |
+| `env` | | Environment variable management |
+| `gh` | | GitHub operations |
+
+Subcommands:
+
+- **`fuse`** — `traces`, `prompts`, `datasets`, `sessions`, `scores` (`sc`), `score-configs` (`scc`), `comments`, `media`, `dataset-items`, `projects`
+- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`)
+- **`pde`** — `import <pdeId>`, `list`, `sessions`, `show <sessionId>`
+- **`plan`** — `parse <planPath>`, `convert <planPath>`, `sync-to-chart <planPath> <chartsPath>`, `sync-to-plan <chartsPath> <planPath>`
+- **`pipeline`** — `list`, `show <name>`, `create <name>`, `init <name>`
+- **`env`** — `init`, `list`, `source`, `set <key> <value>`, `get <key>`, `unset <key>`, `clear`, `save`
+- **`gh`** — `issues`
+
+---
+
+## 6. Configuration reference
+
+| Variable | Description |
+|---|---|
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis endpoint and token; preferred over direct Redis URLs |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Vercel KV REST aliases for Upstash Redis |
+| `KV_URL` / `REDIS_URL` | Redis connection URL (`redis://` or `rediss://`) |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_SSL` | Traditional Redis configuration |
+| `UPSTASH_HOST` / `UPSTASH_PASSWORD` | coaiapy-compatible fallback aliases |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | Langfuse credentials |
+| `AWS_ACCESS_KEY_ID` | AWS credentials for Polly |
+| `GITHUB_TOKEN` | GitHub API token |
+| `COAIAJS_ENV_PATH` / `COAIAPY_ENV_PATH` | Explicit `.env` file locations |
+| `COAIAJS_FEATURES` | MCP feature level |
+
+`coaia.json`:
+
+```json
+{
+  "redis": { "url": "redis://localhost:6379" },
+  "openai": { "apiKey": "sk-...", "model": "gpt-4o" },
+  "langfuse": { "publicKey": "pk-...", "secretKey": "sk-..." },
+  "github": { "token": "ghp_..." }
+}
+```
+
+---
+
+## 7. Working on this codebase
+
+```bash
+npm install
+npm run build      # tsc
+npm run lint       # tsc --noEmit
+npm test           # node --test
+npm run dev        # tsc --watch
+```
+
+Conventions: ESM only, relative imports end in `.js` · `strict: true`, no unjustified `any` · shared types live in `src/types.ts` · clients lazy, each module exports `resetClient()` · no side effects at import time.
+
+Per-module RISE specifications live in `rispecs/`, one file per module.

@@ -65,7 +65,9 @@
     "rispecs",
     "README.md",
     "KINSHIP.md",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "llms.txt",
+    "llms-full.txt"
   ],
   "bin": {
     "coaia": "dist/src/cli.js",
@@ -79,6 +81,7 @@
     "dev": "tsc --watch",
     "start": "node dist/src/cli.js",
     "mcp": "node dist/mcp/server.js",
+    "pretest": "tsc",
     "test": "node --test",
     "lint": "tsc --noEmit"
   },

@@ -1,6 +1,6 @@
 # coaiajs-langfuse — Claude Code Plugin
 
-A Claude Code plugin that registers the `coaiajs-mcp` server — 64+ tools, 3 prompts, and 3 resources — as an MCP server inside Claude Code. It does not bundle its own copy of the server; it launches the published `coaiajs` npm package on demand via `npx`:
+A Claude Code plugin that registers the `coaiajs-mcp` server — 63 tools, 3 prompts, and a pipeline-templates resource — as an MCP server inside Claude Code. It does not bundle its own copy of the server; it launches the published `coaiajs` npm package on demand via `npx`:
 
 ```
 npx -y --package=coaiajs coaiajs-mcp

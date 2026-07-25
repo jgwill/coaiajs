@@ -4,7 +4,7 @@
 
 **Name:** coaiajs
 **Role:** TypeScript consolidation monorepo — CLI, MCP server, and library
-**Status:** Genesis (v0.1.0)
+**Status:** Published — library, CLI, and MCP server all consumable from npm
 
 ## Lineage
 
