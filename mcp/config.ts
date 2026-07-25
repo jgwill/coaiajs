@@ -62,7 +62,6 @@ const ALL_TOOLS = new Set([
   'delete_entities',
   'delete_relations',
   'delete_observations',
-  'merge_entities',
   // PDE (coaia-pde, 10 tools)
   'import_pde_decomposition',
   'create_stc_from_pde',
@@ -137,7 +136,6 @@ const STANDARD_TOOLS = new Set([
   'delete_entities',
   'delete_relations',
   'delete_observations',
-  'merge_entities',
   // PDE tools
   'import_pde_decomposition',
   'create_stc_from_pde',

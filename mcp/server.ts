@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // coaiajs/mcp/server.ts — Unified MCP server
-// Consolidates all tools: coaiapy-mcp (20) + narrative (28) + PDE (10) + planning (6) = 64+ tools
+// Consolidates all tools: coaiapy/langfuse (20) + narrative (27) + PDE (10) + planning (6) = 63 tools
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
