@@ -1,0 +1,2725 @@
+openapi: 3.1.0
+info:
+  title: winter_solstice_ceremony_langfuse
+  version: "0.9.2608231857"
+  description: "This is the ceremony tracing. "
+  summary: "This is where we trace, get prompts, store prompts versions, and get scores. and various things for the ceremony."
+
+servers:
+  - url: https://cloud.langfuse.com
+paths:
+  /api/public/dataset-items:
+    get:
+      description: Get dataset items
+      operationId: datasetItems_list
+      x-openai-isConsequential: false
+      tags:
+        - DatasetItems
+      parameters:
+        - name: datasetName
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: sourceTraceId
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: sourceObservationId
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: page
+          in: query
+          description: page number, starts at 1
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: limit
+          in: query
+          description: limit of items per page
+          required: false
+          schema:
+            type: integer
+            nullable: true
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDatasetItems'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+  /api/public/dataset-items/{id}:
+    get:
+      description: Get a dataset item
+      operationId: datasetItems_get
+      x-openai-isConsequential: false
+      tags:
+        - DatasetItems
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetItem'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '401':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '403':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+        '405':
+          description: ''
+          content:
+            application/json:
+              schema: {}
+  /api/public/comments:
+    post:
+      description: Create a comment. Comments may be attached to different object types (trace, prompt).
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateCommentResponse"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      operationId: comments_create
+      x-openai-isConsequential: false
+    get:
+      description: Get all comments
+      parameters:
+        - name: page
+          in: query
+          description: Page number, starts at 1.
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: limit
+          in: query
+          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: objectType
+          in: query
+          description: Filter comments by object type (trace, prompt).
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: objectId
+          in: query
+          description: Filter comments by object id. If objectType is not provided, an error will be thrown.
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: authorUserId
+          in: query
+          description: Filter comments by author user id.
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetCommentsResponse"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+
+      operationId: comments_get
+      x-openai-isConsequential: false
+  /api/public/traces:
+    post:
+      description: "Create a new trace. Provide a sessionId to group multiple traces under one session."
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trace"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TraceBody"
+      operationId: trace_create
+      x-openai-isConsequential: false
+    get:
+      description: Get list of traces
+      parameters:
+        - name: page
+          in: query
+          description: Page number, starts at 1
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: limit
+          in: query
+          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit.
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: fromTimestamp
+          in: query
+          description: Optional filter to only include traces with a trace.timestamp on or after a certain datetime (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+            nullable: true
+        - name: toTimestamp
+          in: query
+          description: Optional filter to only include traces with a trace.timestamp before a certain datetime (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+            nullable: true
+        - name: orderBy
+          in: query
+          description:
+            "Format of the string [field].[asc/desc]. Fields: id, timestamp, name, userId, release, version, public,
+            bookmarked, sessionId. Example: timestamp.asc"
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: tags
+          in: query
+          description: Only traces that include all of these tags will be returned.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              nullable: true
+        - name: version
+          in: query
+          description: Optional filter to only include traces with a certain version.
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: release
+          in: query
+          description: Optional filter to only include traces with a certain release.
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Traces"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: trace_list
+      x-openai-isConsequential: false
+  /api/public/traces/{traceId}:
+    get:
+      description: "Get a trace by ID."
+      parameters:
+        - name: traceId
+          in: path
+          description: The unique id of a trace
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trace"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      security:
+        - BasicAuth: []
+      operationId: trace_get
+      x-openai-isConsequential: false
+  /api/public/sessions/{sessionId}:
+    get:
+      description:
+        Get a session. Please note that `traces` on this endpoint are not paginated, if you plan to fetch large
+        sessions, consider `GET /api/public/traces?sessionId=<sessionId>`
+      parameters:
+        - name: sessionId
+          in: path
+          description: The unique id of a session
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionWithTraces"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: sessions_get
+      x-openai-isConsequential: false
+  /api/public/v2/prompts:
+    get:
+      description: "Get a list of prompts with versions, labels, and optional filtering by name, label, tag."
+      parameters:
+        - name: page
+          in: query
+          description: Page number, starts at 1
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: limit
+          in: query
+          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit.
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: label
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: fromUpdatedAt
+          in: query
+          description: Optional filter to only include prompt versions created/updated on or after a certain datetime (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+            nullable: true
+        - name: toUpdatedAt
+          in: query
+          description: Optional filter to only include prompt versions created/updated before a certain datetime (ISO 8601)
+          required: false
+          schema:
+            type: string
+            format: date-time
+            nullable: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptMetaListResponse"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: prompts_list
+      x-openai-isConsequential: false
+    post:
+      description: Create a new version for the prompt with the given `name`
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePromptRequest"
+      operationId: prompts_create
+      x-openai-isConsequential: false
+  /api/public/v2/prompts/{promptName}:
+    get:
+      description: Get a prompt by name
+      parameters:
+        - name: promptName
+          in: path
+          description: The unique name of a prompt
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: query
+          description: Version of the prompt to be retrieved.
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: label
+          in: query
+          description: Label of the prompt to be retrieved. Defaults to "production" if no label or version is set.
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: prompts_get
+      x-openai-isConsequential: false
+  /api/public/v2/prompts/{promptName}/version/{version}:
+    patch:
+      description: Update labels for a specific prompt version
+      parameters:
+        - name: promptName
+          in: path
+          description: The name of the prompt
+          required: true
+          schema:
+            type: string
+        - name: version
+          in: path
+          description: Version of the prompt to update
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prompt"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newLabels:
+                  type: array
+                  items:
+                    type: string
+                  description:
+                    New labels for the prompt version. Labels are unique across versions. The "latest" label is reserved and
+                    managed by Langfuse.
+              required:
+                - newLabels
+      operationId: promptVersion_update
+      x-openai-isConsequential: false
+  /api/public/scores:
+    post:
+      description: "Create a new score. Add feedback to a trace or event."
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateScoreResponse"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScoreRequest"
+      operationId: score_create
+      x-openai-isConsequential: false
+    get:
+      description: "Get a list of scores."
+      parameters:
+        - name: page
+          in: query
+          description: Page number, starts at 1
+          required: false
+          schema:
+            type: integer
+            nullable: true
+        - name: limit
+          in: query
+          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit.
+          required: false
+          schema:
+            type: integer
+            nullable: true
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetScoresResponse"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: score_get
+      x-openai-isConsequential: false
+  /api/public/scores/{scoreId}:
+    get:
+      description: Get a score by id
+      parameters:
+        - name: scoreId
+          in: path
+          description: The unique id of a score
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Score"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: score_get-by-id
+  /api/public/score-configs:
+    post:
+      description: "Create a score configuration (config). Score configs are used to define the structure of scores"
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreConfig"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScoreConfig"
+      operationId: scoreConfigs_create
+      x-openai-isConsequential: false
+    get:
+      description: "Get all score configs"
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScoreConfig"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: scoreConfigs_get
+      x-openai-isConsequential: false
+  /api/public/score-configs/{configId}:
+    get:
+      description: "Get a score config"
+      parameters:
+        - name: configId
+          in: path
+          description: The unique id of the score config
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreConfig"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: scoreConfigs_get-by-id
+  /api/public/media:
+    post:
+      description: Get a presigned upload URL for a media record
+      operationId: media_getUploadUrl
+      x-openai-isConsequential: false
+      tags:
+        - Media
+      parameters: []
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetMediaUploadUrlResponse"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetMediaUploadUrlRequest"
+      operationId: media_getUploadUrl
+      x-openai-isConsequential: false
+      tags:
+        - Media
+      security:
+        - BasicAuth: []
+  /api/public/media/{mediaId}:
+    get:
+      description: Get a media record
+      operationId: media_get
+      x-openai-isConsequential: false
+      tags:
+        - Media
+      parameters:
+        - name: mediaId
+          in: path
+          description: The unique langfuse identifier of a media record
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetMediaResponse"
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      operationId: media_get
+      x-openai-isConsequential: false
+      tags:
+        - Media
+      security:
+        - BasicAuth: []
+    patch:
+      description: Patch a media record
+      operationId: media_patch
+      x-openai-isConsequential: false
+      tags:
+        - Media
+      parameters:
+        - name: mediaId
+          in: path
+          description: The unique langfuse identifier of a media record
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "400":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+        "405":
+          description: ""
+          content:
+            application/json:
+              schema: {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchMediaBody"
+      operationId: media_patch
+      x-openai-isConsequential: false
+      tags:
+        - Media
+      security:
+        - BasicAuth: []
+components:
+  schemas:
+    CreateCommentRequest:
+      title: CreateCommentRequest
+      type: object
+      properties:
+        projectId:
+          type: string
+          description: The id of the project to attach the comment to.
+        objectType:
+          type: string
+          description: The type of the object to attach the comment to (trace, observation, session, prompt).
+        objectId:
+          type: string
+          description:
+            The id of the object to attach the comment to. If this does not reference a valid existing object, an error
+            will be thrown.
+        content:
+          type: string
+          description: The content of the comment. May include markdown. Currently limited to 3000 characters.
+        authorUserId:
+          type: string
+          nullable: true
+          description: The id of the user who created the comment.
+      required:
+        - projectId
+        - objectType
+        - objectId
+        - content
+    CreateCommentResponse:
+      title: CreateCommentResponse
+      type: object
+      properties:
+        id:
+          type: string
+          description: The id of the created object in Langfuse
+      required:
+        - id
+    GetCommentsResponse:
+      title: GetCommentsResponse
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comment"
+        meta:
+          $ref: "#/components/schemas/utilsMetaResponse"
+      required:
+        - data
+        - meta
+    Trace:
+      title: Trace
+      type: object
+      properties:
+        id:
+          type: string
+          description: The unique identifier of a trace
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp when the trace was created
+        name:
+          type: string
+          nullable: true
+          description: The name of the trace
+        input:
+          nullable: true
+          description: The input data of the trace. Can be any JSON.
+        output:
+          nullable: true
+          description: The output data of the trace. Can be any JSON.
+        sessionId:
+          type: string
+          nullable: true
+          description: The session identifier associated with the trace
+        release:
+          type: string
+          nullable: true
+          description: The release version of the application when the trace was created
+        version:
+          type: string
+          nullable: true
+          description: The version of the trace
+        userId:
+          type: string
+          nullable: true
+          description: The user identifier associated with the trace
+        metadata:
+          nullable: true
+          description: The metadata associated with the trace. Can be any JSON.
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: The tags associated with the trace. Can be an array of strings or null.
+        public:
+          type: boolean
+          nullable: true
+          description: Public traces are accessible via url without login
+      required:
+        - id
+        - timestamp
+    TraceBody:
+      title: TraceBody
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        userId:
+          type: string
+          nullable: true
+        input:
+          nullable: true
+        output:
+          nullable: true
+        sessionId:
+          type: string
+          nullable: true
+        release:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+        metadata:
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+        public:
+          type: boolean
+          nullable: true
+          description: Make trace publicly accessible via url
+    Comment:
+      title: Comment
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        objectType:
+          $ref: "#/components/schemas/CommentObjectType"
+        objectId:
+          type: string
+        content:
+          type: string
+        authorUserId:
+          type: string
+          nullable: true
+      required:
+        - id
+        - projectId
+        - createdAt
+        - updatedAt
+        - objectType
+        - objectId
+        - content
+    Traces:
+      title: Traces
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trace"
+        meta:
+          $ref: "#/components/schemas/utilsMetaResponse"
+      required:
+        - data
+        - meta
+    utilsMetaResponse:
+      title: utilsMetaResponse
+      type: object
+      properties:
+        page:
+          type: integer
+          description: current page number
+        limit:
+          type: integer
+          description: number of items per page
+        totalItems:
+          type: integer
+          description: number of total items given the current filters/selection (if any)
+        totalPages:
+          type: integer
+          description: number of total pages given the current limit
+      required:
+        - page
+        - limit
+        - totalItems
+        - totalPages
+    CommentObjectType:
+      title: CommentObjectType
+      type: string
+      enum:
+        - TRACE
+        - OBSERVATION
+        - SESSION
+        - PROMPT
+    Session:
+      title: Session
+      type: object
+      properties:
+        id:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        projectId:
+          type: string
+      required:
+        - id
+        - createdAt
+        - projectId
+    SessionWithTraces:
+      title: SessionWithTraces
+      type: object
+      properties:
+        traces:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trace"
+      required:
+        - traces
+      allOf:
+        - $ref: "#/components/schemas/Session"
+    PaginatedSessions:
+      title: PaginatedSessions
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
+        meta:
+          $ref: "#/components/schemas/utilsMetaResponse"
+      required:
+        - data
+        - meta
+    IngestionEvent:
+      title: IngestionEvent
+      oneOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - trace-create
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/TraceBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - score-create
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/ScoreBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - span-create
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/CreateSpanBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - span-update
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/UpdateSpanBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - generation-create
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/CreateGenerationBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - generation-update
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/UpdateGenerationBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - event-create
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/CreateEventBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - sdk-log
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/SDKLogBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - observation-create
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/ObservationBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - observation-update
+            id:
+              type: string
+            timestamp:
+              type: string
+            metadata:
+              nullable: true
+            body:
+              $ref: "#/components/schemas/ObservationBody"
+          required:
+            - type
+            - id
+            - timestamp
+            - body
+    BaseEvent:
+      title: BaseEvent
+      type: object
+      properties:
+        id:
+          type: string
+          description: UUID v4 that identifies the event
+        timestamp:
+          type: string
+          description: "Datetime (ISO 8601) of event creation in client. Should be as close to actual event creation in client as possible, this timestamp will be used for ordering of events in future release. Resolution: milliseconds (required), microseconds (optimal)."
+        metadata:
+          nullable: true
+          description: Optional. Metadata field used by the Langfuse SDKs for debugging.
+      required:
+        - id
+        - timestamp
+
+    TraceEvent:
+      title: TraceEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/TraceBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    ScoreEvent:
+      title: ScoreEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/ScoreBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    CreateSpanEvent:
+      title: CreateSpanEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/CreateSpanBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    UpdateSpanEvent:
+      title: UpdateSpanEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/UpdateSpanBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    CreateGenerationEvent:
+      title: CreateGenerationEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/CreateGenerationBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    UpdateGenerationEvent:
+      title: UpdateGenerationEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/UpdateGenerationBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    CreateEventEvent:
+      title: CreateEventEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/CreateEventBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    SDKLogEvent:
+      title: SDKLogEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/SDKLogBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    CreateObservationEvent:
+      title: CreateObservationEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/ObservationBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    UpdateObservationEvent:
+      title: UpdateObservationEvent
+      type: object
+      properties:
+        body:
+          $ref: "#/components/schemas/ObservationBody"
+      required:
+        - body
+      allOf:
+        - $ref: "#/components/schemas/BaseEvent"
+
+    ScoreBody:
+      title: ScoreBody
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        traceId:
+          type: string
+        name:
+          type: string
+        value:
+          type: number
+          format: double
+        comment:
+          type: string
+          nullable: true
+      required:
+        - traceId
+        - name
+        - value
+
+    CreateSpanBody:
+      title: CreateSpanBody
+      type: object
+      properties:
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+      allOf:
+        - $ref: "#/components/schemas/CreateEventBody"
+
+    UpdateSpanBody:
+      title: UpdateSpanBody
+      type: object
+      properties:
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+      allOf:
+        - $ref: "#/components/schemas/UpdateEventBody"
+
+    CreateGenerationBody:
+      title: CreateGenerationBody
+      type: object
+      properties:
+        completionStartTime:
+          type: string
+          format: date-time
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        modelParameters:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/MapValue"
+          nullable: true
+        usage:
+          $ref: "#/components/schemas/IngestionUsage"
+          nullable: true
+        usageDetails:
+          $ref: "#/components/schemas/UsageDetails"
+          nullable: true
+        costDetails:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          nullable: true
+        promptName:
+          type: string
+          nullable: true
+        promptVersion:
+          type: integer
+          nullable: true
+      allOf:
+        - $ref: "#/components/schemas/CreateSpanBody"
+
+    UpdateGenerationBody:
+      title: UpdateGenerationBody
+      type: object
+      properties:
+        completionStartTime:
+          type: string
+          format: date-time
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        modelParameters:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/MapValue"
+          nullable: true
+        usage:
+          $ref: "#/components/schemas/IngestionUsage"
+          nullable: true
+        promptName:
+          type: string
+          nullable: true
+        usageDetails:
+          $ref: "#/components/schemas/UsageDetails"
+          nullable: true
+        costDetails:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          nullable: true
+        promptVersion:
+          type: integer
+          nullable: true
+      allOf:
+        - $ref: "#/components/schemas/UpdateSpanBody"
+
+    UsageDetails:
+      title: UsageDetails
+      oneOf:
+        - type: object
+          properties:
+            input:
+              type: integer
+            output:
+              type: integer
+            total:
+              type: integer
+          additionalProperties:
+            type: integer
+        - $ref: "#/components/schemas/OpenAIUsageSchema"
+
+    OpenAIUsageSchema:
+      title: OpenAIUsageSchema
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        prompt_tokens_details:
+          type: object
+          additionalProperties:
+            type: integer
+          nullable: true
+        completion_tokens_details:
+          type: object
+          additionalProperties:
+            type: integer
+          nullable: true
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
+
+    MapValue:
+      title: MapValue
+      oneOf:
+        - type: string
+          nullable: true
+        - type: integer
+          nullable: true
+        - type: boolean
+          nullable: true
+        - type: array
+          items:
+            type: string
+          nullable: true
+
+    ObservationType:
+      title: ObservationType
+      type: string
+      enum:
+        - SPAN
+        - GENERATION
+        - EVENT
+
+    IngestionUsage:
+      title: IngestionUsage
+      oneOf:
+        - $ref: "#/components/schemas/Usage"
+        - $ref: "#/components/schemas/OpenAIUsage"
+
+    OpenAIUsage:
+      title: OpenAIUsage
+      type: object
+      description: Usage interface of OpenAI for improved compatibility.
+      properties:
+        promptTokens:
+          type: integer
+          nullable: true
+        completionTokens:
+          type: integer
+          nullable: true
+        totalTokens:
+          type: integer
+          nullable: true
+
+    IngestionSuccess:
+      title: IngestionSuccess
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: integer
+      required:
+        - id
+        - status
+
+    IngestionError:
+      title: IngestionError
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: integer
+        message:
+          type: string
+          nullable: true
+        error:
+          nullable: true
+      required:
+        - id
+        - status
+
+    IngestionResponse:
+      title: IngestionResponse
+      type: object
+      properties:
+        successes:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngestionSuccess"
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngestionError"
+      required:
+        - successes
+        - errors
+
+    CreateEventBody:
+      title: CreateEventBody
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+      allOf:
+        - $ref: "#/components/schemas/OptionalObservationBody"
+
+    SDKLogBody:
+      title: SDKLogBody
+      type: object
+      properties:
+        log:
+          type: object
+          additionalProperties: true
+      required:
+        - log
+
+    ObservationBody:
+      title: ObservationBody
+      type: object
+      properties:
+        traceId:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        startTime:
+          type: string
+          format: date-time
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+        input:
+          type: object
+          additionalProperties: true
+          nullable: true
+        output:
+          type: object
+          additionalProperties: true
+          nullable: true
+        level:
+          type: string
+          enum: [DEBUG, DEFAULT, WARNING, ERROR]
+          nullable: true
+        statusMessage:
+          type: string
+          nullable: true
+        parentObservationId:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+
+    OptionalObservationBody:
+      title: OptionalObservationBody
+      type: object
+      properties:
+        traceId:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        startTime:
+          type: string
+          format: date-time
+          nullable: true
+        metadata:
+          nullable: true
+        input:
+          nullable: true
+        output:
+          nullable: true
+        level:
+          $ref: "#/components/schemas/ObservationLevel"
+          nullable: true
+        statusMessage:
+          type: string
+          nullable: true
+        parentObservationId:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+
+    UpdateEventBody:
+      title: UpdateEventBody
+      type: object
+      properties:
+        id:
+          type: string
+      required:
+        - id
+      allOf:
+        - $ref: "#/components/schemas/OptionalObservationBody"
+
+    Usage:
+      title: Usage
+      type: object
+      description: Standard interface for usage and cost
+      properties:
+        input:
+          type: integer
+          nullable: true
+          description: Number of input units (e.g. tokens)
+        output:
+          type: integer
+          nullable: true
+          description: Number of output units (e.g. tokens)
+        total:
+          type: integer
+          nullable: true
+          description: Defaults to input+output if not set
+        unit:
+          $ref: "#/components/schemas/ModelUsageUnit"
+          nullable: true
+        inputCost:
+          type: number
+          format: double
+          nullable: true
+          description: USD input cost
+        outputCost:
+          type: number
+          format: double
+          nullable: true
+          description: USD output cost
+        totalCost:
+          type: number
+          format: double
+          nullable: true
+          description: Defaults to input+output if not set
+
+    ModelUsageUnit:
+      title: ModelUsageUnit
+      type: string
+      enum:
+        - CHARACTERS
+        - TOKENS
+        - MILLISECONDS
+        - SECONDS
+        - IMAGES
+        - REQUESTS
+      description: Unit of usage in Langfuse
+
+    ObservationLevel:
+      title: ObservationLevel
+      type: string
+      enum:
+        - DEBUG
+        - DEFAULT
+        - WARNING
+        - ERROR
+
+    CreateScoreRequest:
+      title: CreateScoreRequest
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        traceId:
+          type: string
+        name:
+          type: string
+        value:
+          type: number
+          format: double
+        comment:
+          type: string
+          nullable: true
+      required:
+        - traceId
+        - name
+        - value
+
+    CreateScoreResponse:
+      title: CreateScoreResponse
+      type: object
+      properties:
+        id:
+          type: string
+      required:
+        - id
+
+    GetScoresResponse:
+      title: GetScoresResponse
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Score"
+        meta:
+          $ref: "#/components/schemas/utilsMetaResponse"
+      required:
+        - data
+        - meta
+
+    Score:
+      title: Score
+      oneOf:
+        - type: object
+          properties:
+            id:
+              type: string
+
+    ScoreConfig:
+      title: ScoreConfig
+      type: object
+      properties:
+        id:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          $ref: "#/components/schemas/ConfigCategory"
+        dataType:
+          $ref: "#/components/schemas/ScoreDataType"
+        source:
+          $ref: "#/components/schemas/ScoreSource"
+      required:
+        - name
+        - category
+        - dataType
+        - source
+
+    ConfigCategory:
+      title: ConfigCategory
+      type: string
+      enum:
+        - SYSTEM
+        - USER
+
+    BaseScore:
+      title: BaseScore
+      type: object
+      properties:
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    NumericScore:
+      title: NumericScore
+      allOf:
+        - $ref: "#/components/schemas/BaseScore"
+      type: object
+      properties:
+        value:
+          type: number
+
+    BooleanScore:
+      title: BooleanScore
+      allOf:
+        - $ref: "#/components/schemas/BaseScore"
+      type: object
+      properties:
+        state:
+          type: boolean
+
+    CategoricalScore:
+      title: CategoricalScore
+      allOf:
+        - $ref: "#/components/schemas/BaseScore"
+      type: object
+      properties:
+        category:
+          type: string
+
+    ScoreSource:
+      title: ScoreSource
+      type: string
+      enum:
+        - MANUAL
+        - AUTO
+
+    ScoreDataType:
+      title: ScoreDataType
+      type: string
+      enum:
+        - NUMERIC
+        - BOOLEAN
+        - CATEGORICAL
+
+    PromptMetaListResponse:
+      title: PromptMetaListResponse
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptMeta"
+        meta:
+          $ref: "#/components/schemas/utilsMetaResponse"
+      required:
+        - data
+        - meta
+
+    PromptMeta:
+      title: PromptMeta
+      type: object
+      properties:
+        name:
+          type: string
+        versions:
+          type: array
+          items:
+            type: integer
+        labels:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        lastConfig:
+          description: Config object of the most recent prompt version
+          type: object
+          additionalProperties: true
+      required:
+        - name
+        - versions
+        - labels
+        - tags
+        - lastUpdatedAt
+        - lastConfig
+    Prompt:
+      title: Prompt
+      type: object
+      required:
+        - type
+        - name
+        - version
+        - config
+        - labels
+        - tags
+      properties:
+        type:
+          type: string
+          enum:
+            - chat
+            - text
+        name:
+          type: string
+        version:
+          type: integer
+        config:
+          type: object
+        labels:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        prompt:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: "#/components/schemas/ChatMessage"
+    CreatePromptRequest:
+      title: CreatePromptRequest
+      type: object
+      required:
+        - type
+        - name
+        - prompt
+      properties:
+        type:
+          type: string
+          enum:
+            - chat
+            - text
+        name:
+          type: string
+        prompt:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                $ref: "#/components/schemas/ChatMessage"
+        config:
+          type: object
+          nullable: true
+        labels:
+          type: array
+          items:
+            type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+    CreateChatPromptRequest:
+      title: CreateChatPromptRequest
+      type: object
+      properties:
+        name:
+          type: string
+        prompt:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        config:
+          nullable: true
+        labels:
+          type: array
+          items:
+            type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+      required:
+        - name
+        - prompt
+    CreateTextPromptRequest:
+      title: CreateTextPromptRequest
+      type: object
+      properties:
+        name:
+          type: string
+        prompt:
+          type: string
+        config:
+          nullable: true
+        labels:
+          type: array
+          items:
+            type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+      required:
+        - name
+        - prompt
+    BasePrompt:
+      title: BasePrompt
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: integer
+        config: {}
+        labels:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - version
+        - config
+        - labels
+        - tags
+    ChatMessage:
+      title: ChatMessage
+      type: object
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+      required:
+        - role
+        - content
+    TextPrompt:
+      title: TextPrompt
+      type: object
+      properties:
+        prompt:
+          type: string
+      required:
+        - prompt
+      allOf:
+        - $ref: "#/components/schemas/BasePrompt"
+    ChatPrompt:
+      title: ChatPrompt
+      type: object
+      properties:
+        prompt:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required:
+        - prompt
+      allOf:
+        - $ref: "#/components/schemas/BasePrompt"
+    Dataset:
+      title: Dataset
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        metadata:
+          nullable: true
+        projectId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - projectId
+        - createdAt
+        - updatedAt
+    DatasetItem:
+      title: DatasetItem
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/DatasetStatus'
+        input:
+          nullable: true
+        expectedOutput:
+          nullable: true
+        metadata:
+          nullable: true
+        sourceTraceId:
+          type: string
+          nullable: true
+        sourceObservationId:
+          type: string
+          nullable: true
+        datasetId:
+          type: string
+        datasetName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - status
+        - datasetId
+        - datasetName
+        - createdAt
+        - updatedAt
+    DatasetStatus:
+      title: DatasetStatus
+      type: string
+      enum:
+        - ACTIVE
+        - ARCHIVED
+    PaginatedDatasetItems:
+      title: PaginatedDatasetItems
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DatasetItem'
+        meta:
+          $ref: '#/components/schemas/utilsMetaResponse'
+      required:
+        - data
+        - meta
+    GetMediaResponse:
+      title: GetMediaResponse
+      type: object
+      properties:
+        mediaId:
+          type: string
+          description: The unique langfuse identifier of a media record
+        contentType:
+          type: string
+          description: The MIME type of the media record
+        contentLength:
+          type: integer
+          description: The size of the media record in bytes
+        uploadedAt:
+          type: string
+          format: date-time
+          description: The date and time when the media record was uploaded
+        url:
+          type: string
+          description: The download URL of the media record
+        urlExpiry:
+          type: string
+          format: date-time
+          description: The expiry date and time of the media record download URL
+      required:
+        - mediaId
+        - contentType
+        - contentLength
+        - uploadedAt
+        - url
+        - urlExpiry
+    PatchMediaBody:
+      title: PatchMediaBody
+      type: object
+      properties:
+        uploadedAt:
+          type: string
+          format: date-time
+          description: The date and time when the media record was uploaded
+        uploadHttpStatus:
+          type: integer
+          description: The HTTP status code of the upload
+        uploadHttpError:
+          type: string
+          nullable: true
+          description: The HTTP error message of the upload
+        uploadTimeMs:
+          type: integer
+          description: The time in milliseconds it took to upload the media record
+      required:
+        - uploadedAt
+        - uploadHttpStatus
+    GetMediaUploadUrlRequest:
+      title: GetMediaUploadUrlRequest
+      type: object
+      properties:
+        traceId:
+          type: string
+          description: The trace ID associated with the media record
+        observationId:
+          type: string
+          nullable: true
+          description: The observation ID associated with the media record
+        contentType:
+          $ref: "#/components/schemas/MediaContentType"
+        contentLength:
+          type: integer
+          description: The size of the media record in bytes
+        sha256Hash:
+          type: string
+          description: The SHA-256 hash of the media record
+        field:
+          type: string
+          description: The field name for the media record
+      required:
+        - traceId
+        - contentType
+        - contentLength
+        - sha256Hash
+        - field
+    GetMediaUploadUrlResponse:
+      title: GetMediaUploadUrlResponse
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+          description: The presigned upload URL for the media record
+        mediaId:
+          type: string
+          description: The unique langfuse identifier of a media record
+      required:
+        - uploadUrl
+        - mediaId
+    MediaContentType:
+      title: MediaContentType
+      type: string
+      enum:
+        - image/png
+        - image/jpeg
+        - image/jpg
+        - image/webp
+        - image/gif
+        - image/svg+xml
+        - image/tiff
+        - image/bmp
+        - audio/mpeg
+        - audio/mp3
+        - audio/wav
+        - audio/ogg
+        - audio/oga
+        - audio/aac
+        - audio/mp4
+        - audio/flac
+        - video/mp4
+        - video/webm
+        - text/plain
+        - text/html
+        - text/css
+        - text/csv
+        - application/pdf
+        - application/msword
+        - application/vnd.ms-excel
+        - application/zip
+        - application/json
+        - application/xml
+        - application/octet-stream
+      description: The MIME type of the media record
