@@ -65,11 +65,28 @@ function globals(cmd: Command): GlobalOpts {
 
 function output(data: unknown, cmd: Command): void {
   if (globals(cmd).json) {
+    if (typeof data === 'string') {
+      try {
+        console.log(formatJson(JSON.parse(data)));
+        return;
+      } catch {
+        // Non-JSON strings are valid command results.
+      }
+    }
     console.log(formatJson(data));
   } else if (typeof data === 'string') {
     console.log(data);
   } else {
     console.log(formatJson(data));
+  }
+}
+
+function parseJsonValue(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
   }
 }
 
@@ -286,22 +303,37 @@ function registerFuseCommands(program: Command): void {
   comments
     .command('list')
     .description('List comments')
+    .option('--object-type <type>', 'Filter by object type')
+    .option('--object-id <id>', 'Filter by object ID')
     .option('--trace-id <id>', 'Filter by trace ID')
+    .option('--author-user-id <id>', 'Filter by author user ID')
     .option('--page <n>', 'Page number', parseInt)
     .option('--limit <n>', 'Results per page', parseInt)
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'listComments', opts);
+      const result = await callModule('langfuse', 'listComments', {
+        objectType: opts.objectType ?? (opts.traceId ? 'TRACE' : undefined),
+        objectId: opts.objectId ?? opts.traceId,
+        authorUserId: opts.authorUserId,
+        page: opts.page,
+        limit: opts.limit,
+      });
       output(result, cmd);
     }));
 
   comments
     .command('post')
     .description('Post a comment')
-    .option('--trace-id <id>', 'Trace ID')
-    .option('--content <text>', 'Comment content')
-    .option('--author <name>', 'Author name')
+    .requiredOption('--content <text>', 'Comment content')
+    .requiredOption('--object-type <type>', 'Object type')
+    .requiredOption('--object-id <id>', 'Object ID')
+    .option('--author-user-id <id>', 'Author user ID')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'postComment', opts);
+      const result = await callModule('langfuse', 'createComment', {
+        text: opts.content,
+        objectType: opts.objectType,
+        objectId: opts.objectId,
+        authorUserId: opts.authorUserId,
+      });
       output(result, cmd);
     }));
 
@@ -345,12 +377,23 @@ function registerFuseCommands(program: Command): void {
   prompts
     .command('create')
     .description('Create a prompt')
-    .option('--name <name>', 'Prompt name')
-    .option('--prompt <text>', 'Prompt text')
-    .option('--model <model>', 'Model name')
+    .requiredOption('--name <name>', 'Prompt name')
+    .requiredOption('--prompt <text>', 'Prompt text')
+    .option('--type <type>', 'Prompt type (text|chat)', 'text')
+    .option('--labels <labels>', 'Comma-separated labels')
+    .option('--tags <tags>', 'Comma-separated tags')
+    .option('--commit-message <text>', 'Commit message')
     .option('--config <json>', 'Config JSON')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'createPrompt', opts);
+      const result = await callModule('langfuse', 'createPrompt', {
+        name: opts.name,
+        content: opts.type === 'chat' ? parseJsonValue(opts.prompt) : opts.prompt,
+        promptType: opts.type,
+        labels: opts.labels ? String(opts.labels).split(',').map((v) => v.trim()) : undefined,
+        tags: opts.tags ? String(opts.tags).split(',').map((v) => v.trim()) : undefined,
+        commitMessage: opts.commitMessage,
+        config: parseJsonValue(opts.config),
+      });
       output(result, cmd);
     }));
 
@@ -379,42 +422,28 @@ function registerFuseCommands(program: Command): void {
   datasets
     .command('create')
     .description('Create a dataset')
-    .option('--name <name>', 'Dataset name')
+    .requiredOption('--name <name>', 'Dataset name')
     .option('--description <text>', 'Description')
+    .option('--metadata <json>', 'Metadata JSON')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'createDataset', opts);
+      const result = await callModule('langfuse', 'createDataset', {
+        ...opts,
+        metadata: parseJsonValue(opts.metadata),
+      });
       output(result, cmd);
     }));
 
   // ── sessions ─────────────────────────────────────────────────────────
-  const sessions = fuse.command('sessions').description('Session management');
-
-  sessions
-    .command('create')
-    .description('Create a session')
-    .option('--id <id>', 'Session ID')
-    .option('--project-id <id>', 'Project ID')
-    .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'createSession', opts);
-      output(result, cmd);
-    }));
-
-  sessions
-    .command('addnode')
-    .description('Add a node to a session')
-    .option('--session-id <id>', 'Session ID')
-    .option('--trace-id <id>', 'Trace ID')
-    .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'addSessionNode', opts);
-      output(result, cmd);
-    }));
+  // Langfuse v4 has no session entity endpoint. Sessions are reconstructed
+  // from observations sharing a sessionId.
+  const sessions = fuse.command('sessions').description('Session observation views');
 
   sessions
     .command('view')
-    .description('View a session')
+    .description('View traces reconstructed from observations in a session')
     .argument('<sessionId>', 'Session ID')
     .action(actionHandler(async (sessionId: string, opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'viewSession', sessionId);
+      const result = await callModule('langfuse', 'sessionView', sessionId);
       output(result, cmd);
     }));
 
@@ -424,11 +453,11 @@ function registerFuseCommands(program: Command): void {
   scores
     .command('create')
     .description('Create a score')
-    .option('--name <name>', 'Score name')
+    .requiredOption('--name <name>', 'Score name')
     .option('--trace-id <id>', 'Trace ID')
     .option('--observation-id <id>', 'Observation ID')
-    .option('--value <n>', 'Score value', parseFloat)
-    .option('--data-type <type>', 'Data type (NUMERIC|CATEGORICAL|BOOLEAN)')
+    .requiredOption('--value <n>', 'Score value', parseFloat)
+    .option('--config-id <id>', 'Score config ID')
     .option('--comment <text>', 'Comment')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
       const result = await callModule('langfuse', 'createScore', opts);
@@ -438,23 +467,42 @@ function registerFuseCommands(program: Command): void {
   scores
     .command('apply')
     .description('Apply a score config')
-    .option('--config <name>', 'Score config name')
-    .option('--trace-id <id>', 'Trace ID')
-    .option('--value <n>', 'Score value', parseFloat)
+    .requiredOption('--config <name>', 'Score config name or ID')
+    .requiredOption('--trace-id <id>', 'Trace ID')
+    .requiredOption('--value <n>', 'Score value', parseFloat)
+    .option('--observation-id <id>', 'Observation ID')
+    .option('--comment <text>', 'Comment')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'applyScore', opts);
+      const result = await callModule(
+        'langfuse',
+        'applyScoreConfig',
+        opts.config,
+        'trace',
+        opts.traceId,
+        opts.value,
+        opts.observationId,
+        opts.comment,
+      );
       output(result, cmd);
     }));
 
   scores
     .command('list')
-    .description('List scores')
+    .description('List scores through Scores API v3')
     .option('--trace-id <id>', 'Filter by trace ID')
+    .option('--observation-id <id>', 'Filter by observation ID (requires trace ID)')
+    .option('--session-id <id>', 'Filter by session ID')
     .option('--name <name>', 'Filter by name')
-    .option('--page <n>', 'Page number', parseInt)
-    .option('--limit <n>', 'Results per page', parseInt)
+    .option('--from <timestamp>', 'Inclusive score timestamp')
+    .option('--to <timestamp>', 'Exclusive score timestamp')
+    .option('--cursor <cursor>', 'Cursor from a prior response')
+    .option('--limit <n>', 'Results per request (max 100)', parseInt)
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'listScores', opts);
+      const result = await callModule('langfuse', 'listScores', {
+        ...opts,
+        fromTimestamp: opts.from,
+        toTimestamp: opts.to,
+      });
       output(result, cmd);
     }));
 
@@ -483,14 +531,21 @@ function registerFuseCommands(program: Command): void {
   scc
     .command('create')
     .description('Create a score config')
-    .option('--name <name>', 'Config name')
-    .option('--data-type <type>', 'NUMERIC | CATEGORICAL | BOOLEAN')
+    .requiredOption('--name <name>', 'Config name')
+    .requiredOption('--data-type <type>', 'NUMERIC | CATEGORICAL | BOOLEAN')
     .option('--description <text>', 'Description')
     .option('--min <n>', 'Min value (NUMERIC)', parseFloat)
     .option('--max <n>', 'Max value (NUMERIC)', parseFloat)
     .option('--categories <json>', 'Categories JSON (CATEGORICAL)')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'createScoreConfig', opts);
+      const result = await callModule('langfuse', 'createScoreConfig', {
+        name: opts.name,
+        dataType: opts.dataType,
+        description: opts.description,
+        minValue: opts.min,
+        maxValue: opts.max,
+        categories: parseJsonValue(opts.categories),
+      });
       output(result, cmd);
     }));
 
@@ -499,7 +554,7 @@ function registerFuseCommands(program: Command): void {
     .description('Export score configs')
     .option('--output <path>', 'Output file path')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'exportScoreConfigs', opts);
+      const result = await callModule('langfuse', 'exportScoreConfigs', opts.output);
       output(result, cmd);
     }));
 
@@ -516,33 +571,16 @@ function registerFuseCommands(program: Command): void {
     .command('presets')
     .description('List available presets')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'listScoreConfigPresets');
+      const result = await callModule('langfuse', 'getBuiltInPresets');
       output(result, cmd);
     }));
 
   scc
     .command('apply')
-    .description('Apply a preset')
+    .description('Install a preset')
     .argument('<preset>', 'Preset name')
     .action(actionHandler(async (preset: string, opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'applyScoreConfigPreset', preset);
-      output(result, cmd);
-    }));
-
-  scc
-    .command('available')
-    .description('Show available score types')
-    .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'availableScoreTypes');
-      output(result, cmd);
-    }));
-
-  scc
-    .command('show')
-    .description('Show a score config in detail')
-    .argument('<name>', 'Config name')
-    .action(actionHandler(async (name: string, opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'showScoreConfig', name);
+      const result = await callModule('langfuse', 'installPreset', preset);
       output(result, cmd);
     }));
 
@@ -551,16 +589,15 @@ function registerFuseCommands(program: Command): void {
 
   traces
     .command('list')
-    .description('List traces with optional filters')
+    .description('List traces reconstructed from Langfuse v4 observations')
     .option('--session-id <id>', 'Filter by session ID')
     .option('--user-id <id>', 'Filter by user ID')
     .option('--name <name>', 'Filter by trace name')
     .option('--tags <tags>', 'Comma-separated tags to filter by')
-    .option('--from <timestamp>', 'From timestamp (ISO 8601)')
-    .option('--to <timestamp>', 'To timestamp (ISO 8601)')
-    .option('--order-by <field>', 'Order by field')
-    .option('--page <n>', 'Page number', parseInt)
-    .option('--limit <n>', 'Items per page (default 50)', parseInt)
+    .option('--from <timestamp>', 'Observation start time from (ISO 8601)')
+    .option('--to <timestamp>', 'Observation start time to (ISO 8601)')
+    .option('--cursor <cursor>', 'Cursor from a prior response')
+    .option('--limit <n>', 'Items per request (default 50)', parseInt)
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
       const filters = {
         sessionId:     opts.sessionId as string | undefined,
@@ -569,8 +606,7 @@ function registerFuseCommands(program: Command): void {
         tags:          opts.tags ? (opts.tags as string).split(',').map((t: string) => t.trim()) : undefined,
         fromTimestamp: opts.from as string | undefined,
         toTimestamp:   opts.to as string | undefined,
-        orderBy:       opts.orderBy as string | undefined,
-        page:          opts.page as number | undefined,
+        cursor:        opts.cursor as string | undefined,
         limit:         opts.limit as number | undefined,
       };
       const raw = await callModule('langfuse', 'listTraces', filters) as string;
@@ -584,26 +620,45 @@ function registerFuseCommands(program: Command): void {
 
   traces
     .command('create')
-    .description('Create a trace')
-    .option('--name <name>', 'Trace name')
+    .description('Create a complete root observation through OpenTelemetry')
+    .requiredOption('--name <name>', 'Trace and root observation name')
+    .option('--trace-id <id>', 'Trace ID (UUID or 32 hexadecimal characters)')
     .option('--session-id <id>', 'Session ID')
-    .option('--input <json>', 'Input JSON')
+    .option('--user-id <id>', 'User ID')
+    .option('--input <json>', 'Root observation input JSON')
+    .option('--output <json>', 'Root observation output JSON')
     .option('--metadata <json>', 'Metadata JSON')
+    .option('--tags <tags>', 'Comma-separated tags')
+    .option('--version <version>', 'Version')
+    .option('--environment <environment>', 'Environment')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'createTrace', opts);
+      const result = await callModule('langfuse', 'createTrace', {
+        ...opts,
+        tags: opts.tags ? String(opts.tags).split(',').map((v) => v.trim()) : undefined,
+      });
       output(result, cmd);
     }));
 
   traces
     .command('add-observation')
-    .description('Add an observation to a trace')
-    .option('--trace-id <id>', 'Trace ID')
-    .option('--name <name>', 'Observation name')
-    .option('--type <type>', 'Type: generation | span | event')
+    .description('Export a complete immutable observation through OpenTelemetry')
+    .requiredOption('--trace-id <id>', 'Trace ID')
+    .requiredOption('--name <name>', 'Observation name')
+    .option('--type <type>', 'Type: generation | span | event', 'event')
+    .option('--parent-id <id>', 'Parent observation ID')
     .option('--input <json>', 'Input JSON')
     .option('--output <json>', 'Output JSON')
+    .option('--metadata <json>', 'Metadata JSON')
+    .option('--trace-name <name>', 'Propagated trace name')
+    .option('--session-id <id>', 'Propagated session ID')
+    .option('--user-id <id>', 'Propagated user ID')
+    .option('--tags <tags>', 'Comma-separated propagated tags')
+    .option('--model <model>', 'Model name for generation observations')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'addObservation', opts);
+      const result = await callModule('langfuse', 'addObservation', {
+        ...opts,
+        tags: opts.tags ? String(opts.tags).split(',').map((v) => v.trim()) : undefined,
+      });
       output(result, cmd);
     }));
 
@@ -619,16 +674,6 @@ function registerFuseCommands(program: Command): void {
         data = { traceId: opts.traceId, observations: JSON.parse(raw) };
       }
       const result = await callModule('langfuse', 'addObservations', data);
-      output(result, cmd);
-    }));
-
-  traces
-    .command('patch-output')
-    .description('Patch trace output')
-    .option('--trace-id <id>', 'Trace ID')
-    .option('--output <json>', 'Output JSON')
-    .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'patchTraceOutput', opts);
       output(result, cmd);
     }));
 
@@ -675,9 +720,18 @@ function registerFuseCommands(program: Command): void {
     .command('upload')
     .description('Upload a media file')
     .argument('<file>', 'File path')
-    .option('--trace-id <id>', 'Associate with trace')
+    .requiredOption('--trace-id <id>', 'Associate with trace')
+    .option('--observation-id <id>', 'Associate with observation')
+    .option('--field <field>', 'Attach to input, output, or metadata', 'input')
+    .option('--content-type <type>', 'MIME type override')
     .action(actionHandler(async (file: string, opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'uploadMedia', resolve(file), opts);
+      const result = await callModule('langfuse', 'uploadAndAttachMedia', {
+        filePath: resolve(file),
+        traceId: opts.traceId,
+        observationId: opts.observationId,
+        field: opts.field,
+        contentType: opts.contentType,
+      });
       output(result, cmd);
     }));
 
@@ -696,12 +750,21 @@ function registerFuseCommands(program: Command): void {
   datasetItems
     .command('create')
     .description('Create a dataset item')
-    .option('--dataset <name>', 'Dataset name')
-    .option('--input <json>', 'Input JSON')
+    .requiredOption('--dataset <name>', 'Dataset name')
+    .requiredOption('--input <json>', 'Input JSON')
     .option('--expected <json>', 'Expected output JSON')
     .option('--metadata <json>', 'Metadata JSON')
+    .option('--source-trace-id <id>', 'Source trace ID')
+    .option('--source-observation-id <id>', 'Source observation ID')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('langfuse', 'createDatasetItem', opts);
+      const result = await callModule('langfuse', 'createDatasetItem', {
+        datasetName: opts.dataset,
+        input: parseJsonValue(opts.input),
+        expectedOutput: parseJsonValue(opts.expected),
+        metadata: parseJsonValue(opts.metadata),
+        sourceTraceId: opts.sourceTraceId,
+        sourceObservationId: opts.sourceObservationId,
+      });
       output(result, cmd);
     }));
 }

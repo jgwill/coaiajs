@@ -1,9 +1,12 @@
 // coaiajs/src/langfuse/traces.ts — Trace operations
 // Port of cofuse.py trace functions
 
-import { v4 as uuidv4 } from 'uuid';
-import { getClient, nowISO } from './client.js';
-import type { IngestionEvent } from './client.js';
+import { getClient } from './client.js';
+import {
+  ALL_OBSERVATION_FIELDS,
+  fetchAllObservations,
+  fetchObservationsPage,
+} from './observations.js';
 
 export interface TraceFilters {
   sessionId?: string;
@@ -12,12 +15,13 @@ export interface TraceFilters {
   tags?: string[];
   fromTimestamp?: string;
   toTimestamp?: string;
-  orderBy?: string;
   version?: string;
   release?: string;
   environment?: string[];
-  page?: number;
+  cursor?: string;
   limit?: number;
+  /** @deprecated Langfuse v4 always sorts observations by startTime descending. */
+  orderBy?: string;
 }
 
 export async function addTrace(params: {
@@ -28,73 +32,47 @@ export async function addTrace(params: {
   inputData?: unknown;
   outputData?: unknown;
   metadata?: unknown;
+  tags?: string[];
+  version?: string;
+  environment?: string;
 }): Promise<string> {
   const client = getClient();
-  const now = nowISO();
-  const traceId = params.traceId ?? uuidv4();
-
-  const body: Record<string, unknown> = {
-    id: traceId,
-    timestamp: now,
-  };
-
-  if (params.sessionId) body.sessionId = params.sessionId;
-  if (params.name) body.name = params.name;
-  if (params.inputData) body.input = params.inputData;
-  if (params.outputData) body.output = params.outputData;
-  if (params.userId) body.userId = params.userId;
-  if (params.metadata) body.metadata = params.metadata;
-
-  const event: IngestionEvent = {
-    id: `${traceId}-event`,
-    timestamp: now,
-    type: 'trace-create',
-    body,
-  };
-
-  await client.ingest([event]);
+  const metadata = asRecord(params.metadata);
+  const result = await client.exportObservation({
+    traceId: params.traceId,
+    name: params.name ?? 'trace',
+    type: 'SPAN',
+    input: params.inputData,
+    output: params.outputData,
+    metadata,
+    traceName: params.name,
+    userId: params.userId,
+    sessionId: params.sessionId,
+    tags: params.tags,
+    version: params.version,
+    environment: params.environment,
+    traceMetadata: metadata,
+  });
 
   return JSON.stringify({
     success: true,
-    traceId,
-    message: `Trace ${traceId} created`,
+    traceId: result.traceId,
+    rootObservationId: result.observationId,
+    message: `Trace ${result.traceId} created through OpenTelemetry`,
   }, null, 2);
 }
 
+/**
+ * Langfuse v4 observations are immutable after export. Callers must set the
+ * root observation output before it is ended and exported.
+ */
 export async function patchTraceOutput(
-  traceIdOrParams: string | { traceId?: string; output?: string; outputData?: unknown },
-  outputData?: unknown,
-): Promise<string> {
-  const traceId = typeof traceIdOrParams === 'string' ? traceIdOrParams : traceIdOrParams.traceId;
-  if (!traceId) throw new Error('traceId is required');
-  const output = typeof traceIdOrParams === 'string'
-    ? outputData
-    : parseJsonOption(traceIdOrParams.outputData ?? traceIdOrParams.output);
-
-  const client = getClient();
-  const now = nowISO();
-
-  const body: Record<string, unknown> = {
-    id: traceId,
-    timestamp: now,
-    output,
-  };
-
-  const eventId = `${traceId}-patch-${uuidv4().slice(0, 8)}`;
-  const event: IngestionEvent = {
-    id: eventId,
-    timestamp: now,
-    type: 'trace-create',
-    body,
-  };
-
-  await client.ingest([event]);
-
-  return JSON.stringify({
-    success: true,
-    traceId,
-    message: `Trace output patched for ${traceId}`,
-  }, null, 2);
+  _traceIdOrParams?: string | { traceId?: string; output?: string; outputData?: unknown },
+  _outputData?: unknown,
+): Promise<never> {
+  throw new Error(
+    'patchTraceOutput is not supported by Langfuse v4. Set output when creating the root observation.',
+  );
 }
 
 function parseJsonOption(value: unknown): unknown {
@@ -104,6 +82,13 @@ function parseJsonOption(value: unknown): unknown {
   } catch {
     return value;
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  const parsed = parseJsonOption(value);
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : undefined;
 }
 
 export async function createTrace(params: {
@@ -117,6 +102,9 @@ export async function createTrace(params: {
   output?: string;
   outputData?: unknown;
   metadata?: string | unknown;
+  tags?: string[];
+  version?: string;
+  environment?: string;
 }): Promise<string> {
   return addTrace({
     traceId: params.traceId ?? params.id,
@@ -126,59 +114,45 @@ export async function createTrace(params: {
     inputData: parseJsonOption(params.inputData ?? params.input),
     outputData: parseJsonOption(params.outputData ?? params.output),
     metadata: parseJsonOption(params.metadata),
+    tags: params.tags,
+    version: params.version,
+    environment: params.environment,
   });
 }
 
-export async function listTraces(filters: TraceFilters): Promise<string> {
-  const client = getClient();
-  const params = new URLSearchParams();
-
-  if (filters.sessionId) params.set('sessionId', filters.sessionId);
-  if (filters.userId) params.set('userId', filters.userId);
-  if (filters.name) params.set('name', filters.name);
-  if (filters.fromTimestamp) params.set('fromTimestamp', filters.fromTimestamp);
-  if (filters.toTimestamp) params.set('toTimestamp', filters.toTimestamp);
-  if (filters.orderBy) params.set('orderBy', filters.orderBy);
-  if (filters.version) params.set('version', filters.version);
-  if (filters.release) params.set('release', filters.release);
-  if (filters.tags) {
-    for (const tag of filters.tags) params.append('tags', tag);
+export async function listTraces(filters: TraceFilters = {}): Promise<string> {
+  if (filters.orderBy) {
+    throw new Error('Langfuse v4 observations are always sorted by startTime descending; orderBy is unsupported.');
   }
-  if (filters.environment) {
-    for (const env of filters.environment) params.append('environment', env);
+  if (filters.release) {
+    throw new Error('Langfuse v4 Observations API v2 does not support filtering by release.');
   }
-
-  const page = filters.page ?? 1;
-  const limit = filters.limit ?? 50;
-  params.set('page', String(page));
-  params.set('limit', String(limit));
-
-  const qs = params.toString();
-  const path = `/api/public/traces${qs ? `?${qs}` : ''}`;
-  const result = await client.request<unknown>('GET', path);
-  return JSON.stringify(result, null, 2);
+  const filter = buildTraceFilter(filters);
+  const result = await fetchObservationsPage({
+    fields: ALL_OBSERVATION_FIELDS,
+    limit: filters.limit ?? 50,
+    cursor: filters.cursor,
+    filter,
+  });
+  const traces = result.data.map(traceFromRootObservation);
+  return JSON.stringify({ data: traces, meta: result.meta }, null, 2);
 }
 
 export async function getTrace(traceId: string): Promise<string> {
-  const client = getClient();
+  const observations = await fetchAllObservations({
+    fields: ALL_OBSERVATION_FIELDS,
+    traceId,
+    limit: 1000,
+  });
+  if (!observations.length) throw new Error(`Trace not found: ${traceId}`);
 
-  const trace = await client.request<Record<string, unknown>>('GET', `/api/public/traces/${traceId}`);
-
-  // Fetch observations for this trace
-  try {
-    const obsResult = await client.request<Record<string, unknown>>(
-      'GET',
-      `/api/public/observations?traceId=${traceId}`,
-    );
-    if (obsResult && typeof obsResult === 'object' && 'data' in obsResult) {
-      trace.observations = obsResult.data;
-    } else {
-      trace.observations = obsResult;
-    }
-  } catch {
-    trace.observations = [];
-  }
-
+  const root = observations.find((observation) => observation.isRootObservation === true)
+    ?? observations.find((observation) => !observation.parentObservationId)
+    ?? observations[observations.length - 1];
+  const trace = {
+    ...traceFromRootObservation(root),
+    observations,
+  };
   return JSON.stringify(trace, null, 2);
 }
 
@@ -188,8 +162,53 @@ export async function traceView(traceId: string): Promise<string> {
 }
 
 export async function sessionView(sessionId: string): Promise<string> {
-  const raw = await listTraces({ sessionId, limit: 20, orderBy: 'timestamp.desc' });
+  const raw = await listTraces({ sessionId, limit: 20 });
   return formatTracesMarkdown(raw);
+}
+
+function buildTraceFilter(filters: TraceFilters): Array<Record<string, unknown>> {
+  const result: Array<Record<string, unknown>> = [{
+    type: 'boolean', column: 'isRootObservation', operator: '=', value: true,
+  }];
+  if (filters.sessionId) result.push(stringFilter('sessionId', filters.sessionId));
+  if (filters.userId) result.push(stringFilter('userId', filters.userId));
+  if (filters.name) result.push(stringFilter('traceName', filters.name));
+  if (filters.version) result.push(stringFilter('version', filters.version));
+  if (filters.fromTimestamp) result.push(datetimeFilter('startTime', '>=', filters.fromTimestamp));
+  if (filters.toTimestamp) result.push(datetimeFilter('startTime', '<', filters.toTimestamp));
+  if (filters.tags?.length) {
+    result.push({ type: 'arrayOptions', column: 'tags', operator: 'all of', value: filters.tags });
+  }
+  if (filters.environment?.length) {
+    result.push({ type: 'stringOptions', column: 'environment', operator: 'any of', value: filters.environment });
+  }
+  return result;
+}
+
+function stringFilter(column: string, value: string): Record<string, unknown> {
+  return { type: 'string', column, operator: '=', value };
+}
+
+function datetimeFilter(column: string, operator: string, value: string): Record<string, unknown> {
+  return { type: 'datetime', column, operator, value };
+}
+
+function traceFromRootObservation(observation: Record<string, unknown>): Record<string, unknown> {
+  return {
+    id: observation.traceId,
+    name: observation.traceName ?? observation.name,
+    sessionId: observation.sessionId,
+    userId: observation.userId,
+    timestamp: observation.startTime,
+    input: observation.input,
+    output: observation.output,
+    metadata: observation.metadata,
+    tags: observation.tags,
+    release: observation.release,
+    version: observation.version,
+    environment: observation.environment,
+    rootObservationId: observation.id,
+  };
 }
 
 // ─── Formatters ─────────────────────────────────────────────────────

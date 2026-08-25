@@ -1,9 +1,31 @@
-// coaiajs/src/langfuse/observations.ts — Observation operations
-// Port of cofuse.py observation functions
+// coaiajs/src/langfuse/observations.ts — Langfuse v4 observation operations
 
-import { v4 as uuidv4 } from 'uuid';
-import { getClient, nowISO } from './client.js';
-import type { IngestionEvent } from './client.js';
+import { getClient } from './client.js';
+import type { V4ObservationInput, V4ObservationType } from './client.js';
+
+export const ALL_OBSERVATION_FIELDS = [
+  'core', 'basic', 'time', 'io', 'metadata', 'model',
+  'usage', 'prompt', 'metrics', 'trace_context',
+].join(',');
+
+export interface ObservationFilters {
+  fields?: string;
+  limit?: number;
+  cursor?: string;
+  name?: string;
+  userId?: string;
+  sessionId?: string;
+  type?: string;
+  traceId?: string;
+  level?: 'DEBUG' | 'DEFAULT' | 'WARNING' | 'ERROR';
+  parentObservationId?: string;
+  isRootObservation?: boolean;
+  environment?: string | string[];
+  fromStartTime?: string;
+  toStartTime?: string;
+  version?: string;
+  filter?: Array<Record<string, unknown>>;
+}
 
 export async function addObservation(params: {
   observationId?: string;
@@ -16,56 +38,155 @@ export async function addObservation(params: {
   inputData?: unknown;
   output?: string;
   outputData?: unknown;
-  metadata?: string | unknown;
+  metadata?: string | Record<string, unknown>;
   startTime?: string;
   endTime?: string;
   level?: string;
+  statusMessage?: string;
   model?: string;
-  usage?: unknown;
+  modelParameters?: Record<string, string | number>;
+  usage?: Record<string, number>;
+  cost?: Record<string, number>;
+  traceName?: string;
+  userId?: string;
+  sessionId?: string;
+  tags?: string[];
+  traceMetadata?: Record<string, unknown>;
 }): Promise<string> {
   const client = getClient();
-  const now = nowISO();
-  const obsId = params.observationId ?? uuidv4();
-
-  const body: Record<string, unknown> = {
-    id: obsId,
+  const type = normalizeObservationType(params.type);
+  const result = await client.exportObservation({
     traceId: params.traceId,
-    type: params.type ?? 'EVENT',
-    startTime: params.startTime ?? now,
-    level: params.level ?? 'DEFAULT',
-  };
-
-  if (params.name) body.name = params.name;
-  if (params.inputData ?? params.input) body.input = parseJsonOption(params.inputData ?? params.input);
-  if (params.outputData ?? params.output) body.output = parseJsonOption(params.outputData ?? params.output);
-  if (params.metadata) body.metadata = parseJsonOption(params.metadata);
-  if (params.parentId ?? params.parentObservationId) body.parentObservationId = params.parentId ?? params.parentObservationId;
-  if (params.endTime) body.endTime = params.endTime;
-  if (params.model) body.model = params.model;
-  if (params.usage) body.usage = params.usage;
-
-  const event: IngestionEvent = {
-    id: `${obsId}-event`,
-    timestamp: now,
-    type: 'observation-create',
-    body,
-  };
-
-  await client.ingest([event]);
+    observationId: params.observationId,
+    parentObservationId: params.parentId ?? params.parentObservationId,
+    type,
+    name: params.name,
+    input: parseJsonOption(params.inputData ?? params.input),
+    output: parseJsonOption(params.outputData ?? params.output),
+    metadata: parseMetadata(params.metadata),
+    startTime: params.startTime,
+    endTime: params.endTime,
+    level: normalizeLevel(params.level),
+    statusMessage: params.statusMessage,
+    model: params.model,
+    modelParameters: params.modelParameters,
+    usageDetails: params.usage,
+    costDetails: params.cost,
+    traceName: params.traceName,
+    userId: params.userId,
+    sessionId: params.sessionId,
+    tags: params.tags,
+    traceMetadata: params.traceMetadata,
+  });
 
   return JSON.stringify({
     success: true,
-    observationId: obsId,
-    traceId: params.traceId,
+    observationId: result.observationId,
+    traceId: result.traceId,
     name: params.name,
-    type: params.type ?? 'EVENT',
+    type,
   }, null, 2);
 }
 
-export async function getObservation(observationId: string): Promise<string> {
-  const client = getClient();
-  const result = await client.request<unknown>('GET', `/api/public/observations/${observationId}`);
+export async function listObservations(filters: ObservationFilters = {}): Promise<string> {
+  const result = await fetchObservationsPage(filters);
   return JSON.stringify(result, null, 2);
+}
+
+export async function fetchObservationsPage(
+  filters: ObservationFilters = {},
+): Promise<{ data: Array<Record<string, unknown>>; meta: { cursor?: string } }> {
+  const client = getClient();
+  const result = await client.api.observations.getMany({
+    fields: filters.fields ?? ALL_OBSERVATION_FIELDS,
+    limit: filters.limit,
+    cursor: filters.cursor,
+    name: filters.name,
+    userId: filters.userId,
+    sessionId: filters.sessionId,
+    type: filters.type,
+    traceId: filters.traceId,
+    level: filters.level,
+    parentObservationId: filters.parentObservationId,
+    isRootObservation: filters.isRootObservation,
+    environment: filters.environment,
+    fromStartTime: filters.fromStartTime,
+    toStartTime: filters.toStartTime,
+    version: filters.version,
+    filter: filters.filter ? JSON.stringify(filters.filter) : undefined,
+  });
+
+  return result as unknown as {
+    data: Array<Record<string, unknown>>;
+    meta: { cursor?: string };
+  };
+}
+
+export async function fetchAllObservations(
+  filters: ObservationFilters = {},
+): Promise<Array<Record<string, unknown>>> {
+  const observations: Array<Record<string, unknown>> = [];
+  let cursor = filters.cursor;
+
+  do {
+    const page = await fetchObservationsPage({ ...filters, cursor });
+    observations.push(...page.data);
+    cursor = page.meta.cursor;
+  } while (cursor);
+
+  return observations;
+}
+
+export async function getObservation(observationId: string): Promise<string> {
+  const result = await fetchObservationsPage({
+    fields: ALL_OBSERVATION_FIELDS,
+    limit: 1,
+    filter: [{
+      type: 'string',
+      column: 'id',
+      operator: '=',
+      value: observationId,
+    }],
+  });
+  const observation = result.data[0];
+  if (!observation) throw new Error(`Observation not found: ${observationId}`);
+  return JSON.stringify(observation, null, 2);
+}
+
+export async function addObservations(params: {
+  traceId?: string;
+  observations?: Array<Record<string, unknown>>;
+}): Promise<string> {
+  const observations = params.observations ?? [];
+  const results: unknown[] = [];
+  for (const observation of observations) {
+    const traceId = String(observation.traceId ?? params.traceId ?? '');
+    const name = String(observation.name ?? 'Observation');
+    if (!traceId) throw new Error('traceId is required for every observation');
+    results.push(JSON.parse(await addObservation({
+      ...observation,
+      traceId,
+      name,
+    })) as unknown);
+  }
+  return JSON.stringify({ success: true, count: results.length, observations: results }, null, 2);
+}
+
+function normalizeObservationType(type?: string): V4ObservationType {
+  const normalized = (type ?? 'EVENT').toUpperCase();
+  if (normalized === 'SPAN' || normalized === 'GENERATION' || normalized === 'EVENT') {
+    return normalized;
+  }
+  throw new Error(`Unsupported observation type '${type}'. Use SPAN, GENERATION, or EVENT.`);
+}
+
+function normalizeLevel(level?: string): V4ObservationInput['level'] {
+  if (!level) return undefined;
+  const normalized = level.toUpperCase();
+  if (normalized === 'DEBUG' || normalized === 'DEFAULT' || normalized === 'WARNING' || normalized === 'ERROR') {
+    return normalized;
+  }
+  throw new Error(`Unsupported observation level '${level}'.`);
 }
 
 function parseJsonOption(value: unknown): unknown {
@@ -77,16 +198,11 @@ function parseJsonOption(value: unknown): unknown {
   }
 }
 
-export async function addObservations(params: { traceId?: string; observations?: Array<Record<string, unknown>> }): Promise<string> {
-  const observations = params.observations ?? [];
-  const results: unknown[] = [];
-  for (const observation of observations) {
-    const traceId = String(observation.traceId ?? params.traceId ?? '');
-    const name = String(observation.name ?? 'Observation');
-    if (!traceId) throw new Error('traceId is required for every observation');
-    results.push(JSON.parse(await addObservation({ ...observation, traceId, name })) as unknown);
-  }
-  return JSON.stringify({ success: true, count: results.length, observations: results }, null, 2);
+function parseMetadata(value: unknown): Record<string, unknown> | undefined {
+  const parsed = parseJsonOption(value);
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    ? parsed as Record<string, unknown>
+    : undefined;
 }
 
 // ─── Formatters ─────────────────────────────────────────────────────
@@ -95,6 +211,13 @@ const TYPE_GLYPHS: Record<string, string> = {
   SPAN: '🔗',
   GENERATION: '🤖',
   EVENT: '⚡',
+  AGENT: '🧠',
+  TOOL: '🛠️',
+  CHAIN: '⛓️',
+  RETRIEVER: '🔎',
+  EVALUATOR: '📊',
+  EMBEDDING: '🧬',
+  GUARDRAIL: '🛡️',
   DEFAULT: '📦',
 };
 
@@ -115,7 +238,7 @@ export function formatObservationDisplay(json: unknown): string {
 
     if (obs.endTime) lines.push(`├── ⏰ End: ${String(obs.endTime).slice(0, 19)}`);
     if (obs.level && obs.level !== 'DEFAULT') lines.push(`├── 📊 Level: ${obs.level}`);
-    if (obs.model) lines.push(`├── 🤖 Model: ${obs.model}`);
+    if (obs.providedModelName) lines.push(`├── 🤖 Model: ${obs.providedModelName}`);
 
     if (obs.parentObservationId) {
       lines.push(`├── 👆 Parent: ${obs.parentObservationId}`);
@@ -132,19 +255,16 @@ export function formatObservationDisplay(json: unknown): string {
 
     const metadata = obs.metadata as Record<string, unknown> | undefined;
     if (metadata && typeof metadata === 'object' && Object.keys(metadata).length) {
-      lines.push(`└── 📋 Metadata:`);
+      lines.push('└── 📋 Metadata:');
       const entries = Object.entries(metadata);
       entries.forEach(([k, v], i) => {
         const pre = i === entries.length - 1 ? '└── ' : '├── ';
         lines.push(`    ${pre}${k}: ${JSON.stringify(v)}`);
       });
-    } else {
-      // Fix last ├── to └──
-      if (lines.length > 0) {
-        const last = lines[lines.length - 1];
-        if (last.startsWith('├── ')) {
-          lines[lines.length - 1] = last.replace('├── ', '└── ');
-        }
+    } else if (lines.length > 0) {
+      const last = lines[lines.length - 1];
+      if (last.startsWith('├── ')) {
+        lines[lines.length - 1] = last.replace('├── ', '└── ');
       }
     }
 

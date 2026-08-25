@@ -74,12 +74,15 @@ coaia env unset <key>                   # Remove env var
 
 ### Langfuse Commands
 ```
-coaia fuse traces [--limit N]           # List traces
-coaia fuse trace <id>                   # Get trace details
-coaia fuse prompts [--name X]           # List prompts
-coaia fuse scores [--trace-id X]        # List scores
-coaia fuse datasets                     # List datasets
+coaia fuse traces list [--from ISO --to ISO --cursor X]  # V4 traces reconstructed from observations
+coaia fuse traces trace-view <id>                        # V4 observation tree
+coaia fuse traces create --name X [--input JSON --output JSON] # OTEL root observation
+coaia fuse prompts get <name> [--md]                     # Markdown by default
+coaia fuse scores list [--trace-id X --cursor X]         # Scores API v3
+coaia fuse sessions view <id>                            # Session reconstructed by sessionId
 ```
+
+Langfuse v4 removes legacy session entities and immutable observation updates, so the CLI does not expose session creation/add-node or trace patch-output commands.
 
 ### Narrative Commands
 ```

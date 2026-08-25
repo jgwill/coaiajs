@@ -1,5 +1,5 @@
 // coaiajs/mcp/tools/coaiapy-tools.ts — Tool definitions for coaiapy-equivalent tools
-// Port of coaiapy-mcp/server.py tool schemas (20 tools)
+// Port of coaiapy-mcp/server.py tool schemas (19 tools)
 
 import type { FeatureConfig } from '../config.js';
 
@@ -89,21 +89,6 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
     });
   }
 
-  if (featureConfig.isToolEnabled('coaia_fuse_trace_patch_output')) {
-    tools.push({
-      name: 'coaia_fuse_trace_patch_output',
-      description: 'Update the output field of an existing trace',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          trace_id: { type: 'string', description: 'Trace ID to update' },
-          output_data: { description: 'New output data' },
-        },
-        required: ['trace_id', 'output_data'],
-      },
-    });
-  }
-
   if (featureConfig.isToolEnabled('coaia_fuse_trace_get')) {
     tools.push({
       name: 'coaia_fuse_trace_get',
@@ -162,9 +147,8 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
           tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags' },
           from_timestamp: { type: 'string', description: 'Filter from timestamp (ISO 8601)' },
           to_timestamp: { type: 'string', description: 'Filter to timestamp (ISO 8601)' },
-          order_by: { type: 'string', description: 'Sort order' },
-          page: { type: 'integer', description: 'Page number', default: 1 },
-          limit: { type: 'integer', description: 'Items per page', default: 50 },
+          cursor: { type: 'string', description: 'Cursor from a prior response' },
+          limit: { type: 'integer', description: 'Items per request', default: 50 },
           json_output: { type: 'boolean', description: 'Return raw JSON instead of markdown table' },
         },
       },

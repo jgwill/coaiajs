@@ -15,7 +15,7 @@ export async function listComments(filters: CommentFilters): Promise<string> {
   const client = getClient();
   const params = new URLSearchParams();
 
-  if (filters.objectType) params.set('objectType', filters.objectType);
+  if (filters.objectType) params.set('objectType', filters.objectType.toUpperCase());
   if (filters.objectId) params.set('objectId', filters.objectId);
   if (filters.authorUserId) params.set('authorUserId', filters.authorUserId);
   params.set('page', String(filters.page ?? 1));
@@ -41,7 +41,7 @@ export async function createComment(params: {
   const client = getClient();
   const data: Record<string, unknown> = {
     content: params.text,
-    objectType: params.objectType,
+    objectType: params.objectType.toUpperCase(),
     objectId: params.objectId,
   };
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // coaiajs/mcp/server.ts — Unified MCP server
-// Consolidates all tools: coaiapy/langfuse (20) + narrative (27) + PDE (10) + planning (6) = 63 tools
+// Consolidates all tools: coaiapy/langfuse (19) + narrative (27) + PDE (10) + planning (6) = 62 tools
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -32,7 +32,7 @@ import { getPackageVersion } from '../src/version.js';
 
 // Langfuse imports
 import {
-  addTrace, patchTraceOutput, listTraces, getTrace, formatTracesMarkdown, formatTraceTree,
+  addTrace, listTraces, getTrace, formatTracesMarkdown, formatTraceTree,
 } from '../src/langfuse/traces.js';
 import { addObservation, getObservation, formatObservationDisplay } from '../src/langfuse/observations.js';
 import { listPrompts, getPrompt, formatPromptsTable, formatPromptDisplay } from '../src/langfuse/prompts.js';
@@ -140,14 +140,6 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
         return textResult(result);
       }
 
-      case 'coaia_fuse_trace_patch_output': {
-        const result = await patchTraceOutput(
-          args.trace_id as string,
-          args.output_data,
-        );
-        return textResult(result);
-      }
-
       case 'coaia_fuse_trace_get':
       case 'coaia_fuse_trace_view': {
         const traceJson = await getTrace(args.trace_id as string);
@@ -174,8 +166,7 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
           tags: args.tags as string[] | undefined,
           fromTimestamp: args.from_timestamp as string | undefined,
           toTimestamp: args.to_timestamp as string | undefined,
-          orderBy: args.order_by as string | undefined,
-          page: args.page as number | undefined,
+          cursor: args.cursor as string | undefined,
           limit: args.limit as number | undefined,
         });
         if (args.json_output) return textResult(result);

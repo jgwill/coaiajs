@@ -162,13 +162,16 @@ MobileTemplateEngine, TemplateLoader, TemplateRenderer
 
 Client and errors: `LangfuseClient`, `LangfuseApiError`, `getClient`, `resetClient`, `nowISO`, `detectContentType`
 
+Langfuse Cloud v4 compatibility: writes use the scoped JS SDK v5 and OpenTelemetry endpoint; trace/observation/session reads use Observations API v2; score reads use Scores API v3. `patchTraceOutput` remains as a compatibility export that throws because v4 observations are immutable.
+
 - **Traces:** `createTrace`, `addTrace`, `getTrace`, `listTraces`, `patchTraceOutput`, `traceView`, `sessionView`
-- **Observations:** `addObservation`, `addObservations`, `getObservation`
+- **Observations:** `addObservation`, `addObservations`, `listObservations`, `getObservation`
 - **Prompts:** `createPrompt`, `getPrompt`, `listPrompts`
 - **Datasets:** `createDataset`, `getDataset`, `listDatasets`, `createDatasetItem`, `listDatasetItems`
 - **Scores:** `createScore`, `listScores`, `createScoreForTarget`, `applyScoreToTrace`, `createScoreConfig`, `getScoreConfig`, `listScoreConfigs`, `applyScoreConfig`, `importScoreConfigs`, `exportScoreConfigs`, `getBuiltInPresets`, `installPreset`
 - **Comments:** `createComment`, `getComment`, `listComments`
 - **Media:** `uploadAndAttachMedia`, `getMedia`
+- **Projects:** `listProjects`
 - **Formatters:** `formatTracesTable`, `formatTracesMarkdown`, `formatTraceTree`, `formatObservationDisplay`, `formatPromptMarkdown`, `formatPromptDisplay`, `formatPromptsTable`, `formatDatasetsTable`, `formatDatasetForFinetuning`, `formatScoresTable`, `formatScoreConfigsTable`, `formatMediaDisplay`
 
 ### Exported types
@@ -191,7 +194,7 @@ PipelineVariable, PipelineStep, PipelineTemplate, CoaiaConfig
 npx coaiajs-mcp
 ```
 
-Transport: **stdio**. Serves **63 tools, 3 prompts, 1 listable resource**.
+Transport: **stdio**. Serves **62 tools, 3 prompts, 1 listable resource**.
 
 Flags: `--memory-path <path>` (JSONL knowledge graph), `--plans-dir <path>`, `--feature-level <level>`.
 
@@ -212,15 +215,15 @@ Claude Code / client registration:
 | Level | Effect |
 |---|---|
 | `MINIMAL` | Core tash/fetch and essential graph tools |
-| `STANDARD` | Default — the 63 tools listed below |
+| `STANDARD` | Default — the 62 tools listed below |
 | `OBSERVABILITY` | Same set as `STANDARD` |
 | `FULL` | Everything, including media tools |
 
-### Tools — coaiapy + Langfuse (20)
+### Tools — coaiapy + Langfuse (19)
 
 ```
 coaia_tash, coaia_fetch,
-coaia_fuse_trace_create, coaia_fuse_add_observation, coaia_fuse_trace_patch_output,
+coaia_fuse_trace_create, coaia_fuse_add_observation,
 coaia_fuse_trace_get, coaia_fuse_trace_view, coaia_fuse_observation_get,
 coaia_fuse_traces_list, coaia_fuse_traces_session_view,
 coaia_fuse_prompts_list, coaia_fuse_prompts_get,

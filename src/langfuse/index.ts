@@ -1,7 +1,9 @@
 // coaiajs/src/langfuse/index.ts — Barrel export
 
 export { LangfuseClient, LangfuseApiError, getClient, resetClient, nowISO } from './client.js';
-export type { IngestionEvent, LangfuseClientConfig } from './client.js';
+export type {
+  LangfuseClientConfig, V4ObservationInput, V4ObservationResult, V4ObservationType,
+} from './client.js';
 
 export {
   addTrace, createTrace, patchTraceOutput,
@@ -10,7 +12,11 @@ export {
 } from './traces.js';
 export type { TraceFilters } from './traces.js';
 
-export { addObservation, addObservations, getObservation, formatObservationDisplay } from './observations.js';
+export {
+  addObservation, addObservations, listObservations, getObservation,
+  formatObservationDisplay,
+} from './observations.js';
+export type { ObservationFilters } from './observations.js';
 
 export {
   listPrompts, getPrompt, createPrompt,
@@ -39,3 +45,5 @@ export type { CommentFilters } from './comments.js';
 export {
   uploadAndAttachMedia, getMedia, detectContentType, formatMediaDisplay,
 } from './media.js';
+
+export { listProjects } from './projects.js';

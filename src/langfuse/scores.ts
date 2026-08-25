@@ -6,12 +6,18 @@ import { getClient, nowISO } from './client.js';
 import type { ScoreConfig } from '../types.js';
 
 export interface ScoreFilters {
-  userId?: string;
+  id?: string;
   name?: string;
   fromTimestamp?: string;
   toTimestamp?: string;
   configId?: string;
-  page?: number;
+  traceId?: string;
+  observationId?: string;
+  sessionId?: string;
+  environment?: string;
+  dataType?: string;
+  cursor?: string;
+  limit?: number;
 }
 
 // ─── Score CRUD ─────────────────────────────────────────────────────
@@ -85,33 +91,46 @@ export async function createScoreForTarget(params: {
   return JSON.stringify(result, null, 2);
 }
 
-export async function listScores(filters: ScoreFilters): Promise<string> {
+export async function listScores(filters: ScoreFilters = {}): Promise<string> {
   const client = getClient();
-  const allScores: unknown[] = [];
-  let page = filters.page ?? 1;
+  const allScores: Array<Record<string, unknown>> = [];
+  let cursor = filters.cursor;
 
-  while (true) {
-    const params = new URLSearchParams({ page: String(page) });
-    if (filters.userId) params.set('userId', filters.userId);
-    if (filters.name) params.set('name', filters.name);
-    if (filters.fromTimestamp) params.set('fromTimestamp', filters.fromTimestamp);
-    if (filters.toTimestamp) params.set('toTimestamp', filters.toTimestamp);
-    if (filters.configId) params.set('configId', filters.configId);
+  do {
+    const data = await client.api.scoresV3.getManyV3({
+      fields: 'details,subject,annotation',
+      id: filters.id,
+      name: filters.name,
+      fromTimestamp: filters.fromTimestamp,
+      toTimestamp: filters.toTimestamp,
+      configId: filters.configId,
+      traceId: filters.traceId,
+      observationId: filters.observationId,
+      sessionId: filters.sessionId,
+      environment: filters.environment,
+      dataType: filters.dataType,
+      cursor,
+      limit: Math.min(filters.limit ?? 100, 100),
+    });
 
-    const data = await client.request<Record<string, unknown>>(
-      'GET',
-      `/api/public/v2/scores?${params.toString()}`,
-    );
-
-    const scores = (data as Record<string, unknown>).data;
-    if (!scores || !Array.isArray(scores) || scores.length === 0) break;
-    allScores.push(...scores);
-
-    if (!shouldContinuePagination(data, page)) break;
-    page++;
-  }
+    const scores = data.data as unknown as Array<Record<string, unknown>>;
+    allScores.push(...scores.map(flattenScoreSubject));
+    cursor = data.meta.cursor;
+  } while (cursor);
 
   return JSON.stringify(allScores, null, 2);
+}
+
+function flattenScoreSubject(score: Record<string, unknown>): Record<string, unknown> {
+  const subject = score.subject as Record<string, unknown> | undefined;
+  if (!subject) return score;
+  return {
+    ...score,
+    traceId: subject.kind === 'trace' ? subject.id : subject.traceId,
+    observationId: subject.kind === 'observation' ? subject.id : undefined,
+    sessionId: subject.kind === 'session' ? subject.id : undefined,
+    experimentId: subject.kind === 'experiment' ? subject.id : undefined,
+  };
 }
 
 // ─── Score Configs ──────────────────────────────────────────────────

@@ -11,7 +11,6 @@ const ALL_TOOLS = new Set([
   // Langfuse traces (coaiapy-mcp)
   'coaia_fuse_trace_create',
   'coaia_fuse_add_observation',
-  'coaia_fuse_trace_patch_output',
   'coaia_fuse_trace_get',
   'coaia_fuse_trace_view',
   'coaia_fuse_observation_get',
@@ -87,7 +86,6 @@ const MINIMAL_TOOLS = new Set([
   'coaia_fetch',
   'coaia_fuse_trace_create',
   'coaia_fuse_add_observation',
-  'coaia_fuse_trace_patch_output',
   'coaia_fuse_trace_get',
   'coaia_fuse_trace_view',
   'coaia_fuse_observation_get',

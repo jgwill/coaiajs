@@ -50,7 +50,7 @@ Import from the root, or from a subpath to pull in only what you need. Every ent
 | `coaiajs/github` | `listIssues`, `getIssue`, `getIssueComments`, `resetClient` |
 | `coaiajs/environment` | `EnvironmentManager`, `createEnvironment`, `findEnvironment` |
 | `coaiajs/version` | `getPackageVersion` |
-| `coaiajs/langfuse` | `LangfuseClient`, `LangfuseApiError`, traces/observations/prompts/datasets/scores/comments/media operations and formatters (53 exports) |
+| `coaiajs/langfuse` | Langfuse JS SDK v5/OpenTelemetry tracing plus v4 observations, prompts, datasets, scores, comments, media, projects, and formatters (55 exports) |
 | `coaiajs/narrative` | `KnowledgeGraphManager`, chart operations, markdown export, tool definitions (29 exports) |
 | `coaiajs/pde` | `SessionManager`, `StcMapper`, `handlePdeTool`, `PDE_MCP_TOOLS` (10 exports) |
 | `coaiajs/planning` | `parsePlan`, `planToSTC`, `syncToChart`, `syncToPlan`, `handlePlanningTool` (10 exports) |
@@ -132,6 +132,12 @@ npx coaia <command>          # or: npm i -g coaiajs && coaia <command>
 
 `coaia fuse prompts get <name>` outputs Markdown by default (`--md` is available explicitly); use the global `--json` option for JSON.
 
+### Langfuse v4 compatibility
+
+`coaia fuse` uses the current scoped Langfuse JS SDK v5. Trace writes are exported as immutable OpenTelemetry spans to `POST /api/public/otel/v1/traces` with ingestion version 4. Trace, observation, and session reads use Observations API v2; score reads use Scores API v3. The removed v4 concepts are reflected in the CLI: sessions are reconstructed from observations, and legacy trace-output patching is no longer exposed. Langfuse Cloud sunsets the legacy APIs on **November 16, 2026**.
+
+Migration references: [Langfuse v4](https://langfuse.com/docs/v4) · [versions and compatibility](https://langfuse.com/docs/compatibility) · [deprecated API mapping](https://langfuse.com/faq/all/deprecated-api-migration) · [custom ingestion migration](https://langfuse.com/integrations/native/opentelemetry/migration-to-v4) · [current OpenAPI reference](https://cloud.langfuse.com/generated/api/openapi.yml).
+
 ---
 
 ## 3. MCP Server
@@ -140,11 +146,11 @@ npx coaia <command>          # or: npm i -g coaiajs && coaia <command>
 npx coaiajs-mcp
 ```
 
-Serves **63 tools, 3 prompts, and 1 listable resource** over stdio.
+Serves **62 tools, 3 prompts, and 1 listable resource** over stdio.
 
 | Group | Count | Examples |
 |---|---|---|
-| coaiapy + Langfuse | 20 | `coaia_tash`, `coaia_fetch`, `coaia_fuse_trace_create`, `coaia_fuse_traces_list` |
+| coaiapy + Langfuse | 19 | `coaia_tash`, `coaia_fetch`, `coaia_fuse_trace_create`, `coaia_fuse_traces_list` |
 | Narrative / knowledge graph | 27 | `create_entities`, `read_graph`, `create_structural_tension_chart`, `perform_mmot_evaluation` |
 | PDE | 10 | `import_pde_decomposition`, `create_stc_from_pde`, `complete_session` |
 | Planning | 6 | `parse_plan_structural`, `plan_to_stc`, `sync_plan_to_chart`, `pde_to_plan` |
@@ -162,7 +168,7 @@ Set `COAIAJS_FEATURES` to control the exposed tool set (default `STANDARD`):
 | Level | Effect |
 |---|---|
 | `MINIMAL` | Core tash/fetch and essential graph tools |
-| `STANDARD` | Default — the 63 tools above |
+| `STANDARD` | Default — the 62 tools above |
 | `OBSERVABILITY` | Same set as `STANDARD` |
 | `FULL` | Everything, including media tools |
 

@@ -1,6 +1,6 @@
 # coaiajs
 
-> TypeScript package consolidating the CoAIA (Creative Orientation AI Architecture) ecosystem into one installable unit: a **library**, a **CLI** (`coaia`), and an **MCP server** (`coaiajs-mcp`, 63 tools). Its core data model is the *structural tension chart* — desired outcome, current reality, and telescoping action steps — backed by a JSONL knowledge graph.
+> TypeScript package consolidating the CoAIA (Creative Orientation AI Architecture) ecosystem into one installable unit: a **library**, a **CLI** (`coaia`), and an **MCP server** (`coaiajs-mcp`, 62 tools). Its core data model is the *structural tension chart* — desired outcome, current reality, and telescoping action steps — backed by a JSONL knowledge graph.
 
 Install with `npm install coaiajs`. Requires Node.js >= 20. **ESM only** — there is no CommonJS build, so `require('coaiajs')` will not work. Ships `.d.ts` for every entry point.
 
@@ -9,7 +9,7 @@ Key facts an agent usually needs first:
 - Import from `coaiajs` (root) or a subpath such as `coaiajs/narrative`. **Do not** import `coaiajs/src/*.js` — `src/` is not shipped in the published package.
 - Clients (Redis, OpenAI, Polly, Octokit) are lazy: importing a module opens no connection and reads no file. Call `disconnect()` when finished.
 - Config precedence: environment variables > `.env` files > `coaia.json` > defaults.
-- The MCP server serves 63 tools, 3 prompts, and 1 listable resource over stdio. `COAIAJS_FEATURES` (`MINIMAL`/`STANDARD`/`OBSERVABILITY`/`FULL`) controls the tool set; default is `STANDARD`.
+- The MCP server serves 62 tools, 3 prompts, and 1 listable resource over stdio. `COAIAJS_FEATURES` (`MINIMAL`/`STANDARD`/`OBSERVABILITY`/`FULL`) controls the tool set; default is `STANDARD`.
 
 ## Documentation
 
@@ -28,7 +28,7 @@ Key facts an agent usually needs first:
 - `coaiajs/github`: `listIssues`, `getIssue`, `getIssueComments`
 - `coaiajs/environment`: `EnvironmentManager`, `createEnvironment`, `findEnvironment`
 - `coaiajs/version`: `getPackageVersion`
-- `coaiajs/langfuse`: tracing, observations, prompts, datasets, scores, comments, media
+- `coaiajs/langfuse`: Langfuse v4-compatible OpenTelemetry tracing, Observations API v2, Scores API v3, prompts, datasets, comments, media, projects
 - `coaiajs/narrative`: `KnowledgeGraphManager`, structural tension charts, markdown export
 - `coaiajs/pde`: Prompt Decomposition Engine — sessions, STC mapping
 - `coaiajs/planning`: `parsePlan`, `planToSTC`, `syncToChart`, `syncToPlan`

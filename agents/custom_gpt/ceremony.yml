@@ -1,18 +1,20 @@
 openapi: 3.1.0
 info:
   title: winter_solstice_ceremony_langfuse
-  version: "0.9.2608231857"
-  description: "This is the ceremony tracing. "
-  summary: "This is where we trace, get prompts, store prompts versions, and get scores. and various things for the ceremony."
-
+  version: 0.4.0
+  description: >-
+    Langfuse v4-compatible ceremony actions using observations-first reads, Scores API v3, and OpenTelemetry trace
+    ingestion.
+  summary: This is where we trace, get prompts, store prompts versions, and get scores. and various things for the ceremony.
 servers:
   - url: https://cloud.langfuse.com
 paths:
   /api/public/dataset-items:
     get:
-      description: Get dataset items
+      description: |-
+        Get dataset items. Optionally specify a version to get the items as they existed at that point in time.
+        Note: If version parameter is provided, datasetName must also be provided.
       operationId: datasetItems_list
-      x-openai-isConsequential: false
       tags:
         - DatasetItems
       parameters:
@@ -20,71 +22,90 @@ paths:
           in: query
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
         - name: sourceTraceId
           in: query
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
         - name: sourceObservationId
           in: query
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
+        - name: version
+          in: query
+          description: |-
+            ISO 8601 timestamp (RFC 3339, Section 5.6) in UTC (e.g., "2026-01-21T14:35:42Z").
+            If provided, returns state of dataset at this timestamp.
+            If not provided, returns the latest version. Requires datasetName to be specified.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+            format: date-time
         - name: page
           in: query
           description: page number, starts at 1
           required: false
           schema:
-            type: integer
-            nullable: true
+            type:
+              - integer
+              - "null"
         - name: limit
           in: query
           description: limit of items per page
           required: false
           schema:
-            type: integer
-            nullable: true
+            type:
+              - integer
+              - "null"
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedDatasetItems'
-        '400':
-          description: ''
+                $ref: "#/components/schemas/PaginatedDatasetItems"
+        "400":
+          description: ""
           content:
             application/json:
               schema: {}
-        '401':
-          description: ''
+        "401":
+          description: ""
           content:
             application/json:
               schema: {}
-        '403':
-          description: ''
+        "403":
+          description: ""
           content:
             application/json:
               schema: {}
-        '404':
-          description: ''
+        "404":
+          description: ""
           content:
             application/json:
               schema: {}
-        '405':
-          description: ''
+        "405":
+          description: ""
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
+      x-openai-isConsequential: false
   /api/public/dataset-items/{id}:
     get:
       description: Get a dataset item
       operationId: datasetItems_get
-      x-openai-isConsequential: false
       tags:
         - DatasetItems
       parameters:
@@ -94,40 +115,46 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: ''
+        "200":
+          description: ""
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DatasetItem'
-        '400':
-          description: ''
+                $ref: "#/components/schemas/DatasetItem"
+        "400":
+          description: ""
           content:
             application/json:
               schema: {}
-        '401':
-          description: ''
+        "401":
+          description: ""
           content:
             application/json:
               schema: {}
-        '403':
-          description: ''
+        "403":
+          description: ""
           content:
             application/json:
               schema: {}
-        '404':
-          description: ''
+        "404":
+          description: ""
           content:
             application/json:
               schema: {}
-        '405':
-          description: ''
+        "405":
+          description: ""
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
+      x-openai-isConsequential: false
   /api/public/comments:
     post:
-      description: Create a comment. Comments may be attached to different object types (trace, prompt).
+      description: Create a comment. Comments may be attached to different object types (trace, observation, session, prompt).
+      operationId: comments_create
+      tags:
+        - Comments
       parameters: []
       responses:
         "200":
@@ -161,52 +188,61 @@ paths:
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateCommentRequest"
-      operationId: comments_create
       x-openai-isConsequential: false
     get:
       description: Get all comments
+      operationId: comments_get
+      tags:
+        - Comments
       parameters:
         - name: page
           in: query
           description: Page number, starts at 1.
           required: false
           schema:
-            type: integer
-            nullable: true
+            type:
+              - integer
+              - "null"
         - name: limit
           in: query
           description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit
           required: false
           schema:
-            type: integer
-            nullable: true
+            type:
+              - integer
+              - "null"
         - name: objectType
           in: query
-          description: Filter comments by object type (trace, prompt).
+          description: Filter comments by object type (trace, observation, session, prompt).
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
         - name: objectId
           in: query
           description: Filter comments by object id. If objectType is not provided, an error will be thrown.
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
         - name: authorUserId
           in: query
           description: Filter comments by author user id.
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
       responses:
         "200":
           description: ""
@@ -239,187 +275,408 @@ paths:
           content:
             application/json:
               schema: {}
-
-      operationId: comments_get
+      security:
+        - BasicAuth: []
       x-openai-isConsequential: false
-  /api/public/traces:
-    post:
-      description: "Create a new trace. Provide a sessionId to group multiple traces under one session."
-      parameters: []
-      responses:
-        "200":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Trace"
-        "400":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "401":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "403":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "404":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "405":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TraceBody"
-      operationId: trace_create
-      x-openai-isConsequential: false
+  /api/public/v2/observations:
     get:
-      description: Get list of traces
+      description: >-
+        Get a list of observations with cursor-based pagination and flexible field selection.
+
+
+        ## Cursor-based Pagination
+
+        This endpoint uses cursor-based pagination for efficient traversal of large datasets.
+
+        The cursor is returned in the response metadata and should be passed in subsequent requests
+
+        to retrieve the next page of results.
+
+
+        ## Field Selection
+
+        Use the `fields` parameter to control which observation fields are returned:
+
+        - `core` - Always included: id, traceId, startTime, endTime, projectId, parentObservationId, type
+
+        - `basic` - name, level, statusMessage, version, environment, bookmarked, public, userId, sessionId,
+        isRootObservation
+
+        - `time` - completionStartTime, createdAt, updatedAt
+
+        - `io` - input, output
+
+        - `metadata` - metadata (truncated to 200 chars by default, use `expandMetadata` to get full values)
+
+        - `model` - providedModelName, internalModelId, modelParameters
+
+        - `usage` - usageDetails, costDetails, totalCost, usagePricingTierName
+
+        - `prompt` - promptId, promptName, promptVersion
+
+        - `metrics` - latency, timeToFirstToken
+
+        - `trace_context` - tags, release, traceName
+
+
+        If not specified, `core` and `basic` field groups are returned.
+
+
+        ## Filters
+
+        Multiple filtering options are available via query parameters or the structured `filter` parameter.
+
+        When using the `filter` parameter, it takes precedence over individual query parameter filters.
+      operationId: observations_getMany
+      tags:
+        - Observations
       parameters:
-        - name: page
+        - name: fields
           in: query
-          description: Page number, starts at 1
+          description: |-
+            Comma-separated list of field groups to include in the response.
+            Available groups: core, basic, time, io, metadata, model, usage, prompt, metrics, trace_context.
+            If not specified, `core` and `basic` field groups are returned.
+            Example: "basic,usage,model"
           required: false
           schema:
-            type: integer
-            nullable: true
+            type:
+              - string
+              - "null"
+        - name: expandMetadata
+          in: query
+          description: |-
+            Comma-separated list of metadata keys to return non-truncated.
+            By default, metadata values over 200 characters are truncated.
+            Use this parameter to retrieve full values for specific keys.
+            Example: "key1,key2"
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
         - name: limit
           in: query
-          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit.
+          description: Number of items to return per page. Maximum 1000, default 50.
           required: false
           schema:
-            type: integer
-            nullable: true
-        - name: userId
+            type:
+              - integer
+              - "null"
+        - name: cursor
           in: query
+          description: Base64-encoded cursor for pagination. Use the cursor from the previous response to get the next page.
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
+        - name: parseIoAsJson
+          in: query
+          description: |-
+            **Deprecated.** Setting this to `true` will return a 400 error.
+            Input/output fields are always returned as raw strings.
+            Remove this parameter or set it to `false`.
+          required: false
+          schema:
+            type:
+              - boolean
+              - "null"
         - name: name
           in: query
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
         - name: sessionId
           in: query
+          description: Filter by session ID.
           required: false
           schema:
-            type: string
-            nullable: true
-        - name: fromTimestamp
+            type:
+              - string
+              - "null"
+        - name: type
           in: query
-          description: Optional filter to only include traces with a trace.timestamp on or after a certain datetime (ISO 8601)
+          description: >-
+            Filter by observation type (e.g., "GENERATION", "SPAN", "EVENT", "AGENT", "TOOL", "CHAIN", "RETRIEVER",
+            "EVALUATOR", "EMBEDDING", "GUARDRAIL")
           required: false
           schema:
-            type: string
-            format: date-time
-            nullable: true
-        - name: toTimestamp
+            type:
+              - string
+              - "null"
+        - name: traceId
           in: query
-          description: Optional filter to only include traces with a trace.timestamp before a certain datetime (ISO 8601)
           required: false
           schema:
-            type: string
-            format: date-time
-            nullable: true
-        - name: orderBy
+            type:
+              - string
+              - "null"
+        - name: level
           in: query
-          description:
-            "Format of the string [field].[asc/desc]. Fields: id, timestamp, name, userId, release, version, public,
-            bookmarked, sessionId. Example: timestamp.asc"
+          description: Optional filter for observations with a specific level (e.g. "DEBUG", "DEFAULT", "WARNING", "ERROR").
           required: false
           schema:
-            type: string
-            nullable: true
-        - name: tags
+            anyOf:
+              - $ref: "#/components/schemas/ObservationLevel"
+              - type: "null"
+        - name: parentObservationId
           in: query
-          description: Only traces that include all of these tags will be returned.
+          description: >-
+            Filter by the physical parent observation ID.
+
+            An empty value matches only observations without a physical parent. Use `isRootObservation` to include
+            observations marked as app roots by the SDK, which may retain a non-null `parentObservationId`.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: isRootObservation
+          in: query
+          description: >-
+            Filter by whether an observation is a logical root.
+
+            Root observations include observations without a physical parent and observations marked as app roots by the
+            SDK.
+
+            An app-root observation may have `isRootObservation=true` and a non-null `parentObservationId`.
+          required: false
+          schema:
+            type:
+              - boolean
+              - "null"
+        - name: environment
+          in: query
+          description: Optional filter for observations where the environment is one of the provided values.
           required: false
           schema:
             type: array
             items:
-              type: string
-              nullable: true
+              type:
+                - string
+                - "null"
+        - name: fromStartTime
+          in: query
+          description: Retrieve only observations with a start_time on or after this datetime (ISO 8601).
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+            format: date-time
+        - name: toStartTime
+          in: query
+          description: Retrieve only observations with a start_time before this datetime (ISO 8601).
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+            format: date-time
         - name: version
           in: query
-          description: Optional filter to only include traces with a certain version.
+          description: Optional filter to only include observations with a certain version.
           required: false
           schema:
-            type: string
-            nullable: true
-        - name: release
+            type:
+              - string
+              - "null"
+        - name: filter
           in: query
-          description: Optional filter to only include traces with a certain release.
+          description: >-
+            JSON string containing an array of filter conditions. When provided, this takes precedence over query
+            parameter filters (userId, name, type, level, environment, fromStartTime, ...).
+
+
+            ## Filter Structure
+
+            Each filter condition has the following structure:
+
+            ```json
+
+            [
+              {
+                "type": string,           // Required. One of: "datetime", "string", "number", "stringOptions", "categoryOptions", "arrayOptions", "stringObject", "numberObject", "boolean", "null"
+                "column": string,         // Required. Column to filter on (see available columns below)
+                "operator": string,       // Required. Operator based on type:
+                                          // - datetime: ">", "<", ">=", "<="
+                                          // - string: "=", "contains", "does not contain", "starts with", "ends with", "matches"
+                                          // - stringOptions: "any of", "none of"
+                                          // - categoryOptions: "any of", "none of"
+                                          // - arrayOptions: "any of", "none of", "all of"
+                                          // - number: "=", ">", "<", ">=", "<="
+                                          // - stringObject: "=", "contains", "does not contain", "starts with", "ends with", "matches"
+                                          // - numberObject: "=", ">", "<", ">=", "<="
+                                          // - boolean: "=", "<>"
+                                          // - null: "is null", "is not null"
+                "value": any,             // Required (except for null type). Value to compare against. Type depends on filter type
+                "key": string             // Required only for stringObject, numberObject, and categoryOptions types when filtering on nested fields like metadata
+              }
+            ]
+
+            ```
+
+
+            ## Available Columns
+
+
+            ### Core Observation Fields
+
+            - `id` (string) - Observation ID
+
+            - `type` (string) - Observation type (SPAN, GENERATION, EVENT)
+
+            - `name` (string) - Observation name
+
+            - `traceId` (string) - Associated trace ID
+
+            - `startTime` (datetime) - Observation start time
+
+            - `endTime` (datetime) - Observation end time
+
+            - `environment` (string) - Environment tag
+
+            - `level` (string) - Log level (DEBUG, DEFAULT, WARNING, ERROR)
+
+            - `statusMessage` (string) - Status message
+
+            - `version` (string) - Version tag
+
+            - `userId` (string) - User ID
+
+            - `sessionId` (string) - Session ID
+
+            - `isRootObservation` (boolean) - Whether the observation is a logical root. Observations marked as app
+            roots by the SDK may retain a non-null parentObservationId.
+
+
+            ### Trace-Related Fields
+
+            - `traceName` (string) - Name of the parent trace
+
+            - `traceTags` (arrayOptions) - Tags from the parent trace
+
+            - `tags` (arrayOptions) - Alias for traceTags
+
+
+            ### Performance Metrics
+
+            - `latency` (number) - Latency in seconds (calculated: end_time - start_time)
+
+            - `timeToFirstToken` (number) - Time to first token in seconds
+
+            - `tokensPerSecond` (number) - Output tokens per second
+
+
+            ### Token Usage
+
+            - `inputTokens` (number) - Number of input tokens
+
+            - `outputTokens` (number) - Number of output tokens
+
+            - `totalTokens` (number) - Total tokens (alias: `tokens`)
+
+
+            ### Cost Metrics
+
+            - `inputCost` (number) - Input cost in USD
+
+            - `outputCost` (number) - Output cost in USD
+
+            - `totalCost` (number) - Total cost in USD
+
+
+            ### Model Information
+
+            - `model` (string) - Provided model name (alias: `providedModelName`)
+
+            - `promptName` (string) - Associated prompt name
+
+            - `promptVersion` (number) - Associated prompt version
+
+
+            ### Structured Data
+
+            - `input` (string) - Observation input. Supports accelerated indexed literal search with the `matches`
+            operator.
+
+            - `output` (string) - Observation output. Supports accelerated indexed literal search with the `matches`
+            operator.
+
+            - `metadata` (stringObject/numberObject/categoryOptions) - Metadata key-value pairs. Use `key` parameter to
+            filter on specific metadata keys.
+
+
+            The `matches` operator is only supported for `input`, `output`, and stringObject `metadata` filters. It
+            performs indexed literal search with token-boundary pruning using the events table text indexes. Case
+            sensitivity differs by target: `input` and `output` matches are case-insensitive, while metadata value
+            matches are case-sensitive. Unlike SQL `LIKE`, `%` and `_` are treated as literal characters. Use `contains`
+            for legacy substring semantics where the API allows it. Any v2 `input` or `output` filter must be
+            accompanied by at least one `=` or `matches` filter on `input` or `output`; standalone `contains`, `starts
+            with`, `ends with`, and `does not contain` filters on these columns are rejected.
+
+
+            ## Filter Examples
+
+            ```json
+
+            [
+              {
+                "type": "string",
+                "column": "type",
+                "operator": "=",
+                "value": "GENERATION"
+              },
+              {
+                "type": "number",
+                "column": "latency",
+                "operator": ">=",
+                "value": 2.5
+              },
+              {
+                "type": "stringObject",
+                "column": "metadata",
+                "key": "environment",
+                "operator": "=",
+                "value": "production"
+              },
+              {
+                "type": "string",
+                "column": "output",
+                "operator": "matches",
+                "value": "needle"
+              },
+              {
+                "type": "boolean",
+                "column": "isRootObservation",
+                "operator": "=",
+                "value": true
+              }
+            ]
+
+            ```
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
       responses:
         "200":
           description: ""
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Traces"
-        "400":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "401":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "403":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "404":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "405":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-      operationId: trace_list
-      x-openai-isConsequential: false
-  /api/public/traces/{traceId}:
-    get:
-      description: "Get a trace by ID."
-      parameters:
-        - name: traceId
-          in: path
-          description: The unique id of a trace
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Trace"
+                $ref: "#/components/schemas/ObservationsV2Response"
         "400":
           description: ""
           content:
@@ -447,27 +704,49 @@ paths:
               schema: {}
       security:
         - BasicAuth: []
-      operationId: trace_get
       x-openai-isConsequential: false
-  /api/public/sessions/{sessionId}:
-    get:
-      description:
-        Get a session. Please note that `traces` on this endpoint are not paginated, if you plan to fetch large
-        sessions, consider `GET /api/public/traces?sessionId=<sessionId>`
-      parameters:
-        - name: sessionId
-          in: path
-          description: The unique id of a session
-          required: true
-          schema:
-            type: string
+  /api/public/otel/v1/traces:
+    post:
+      description: >-
+        **OpenTelemetry Traces Ingestion Endpoint**
+
+
+        This endpoint implements the OTLP/HTTP specification for trace ingestion, providing native OpenTelemetry
+        integration for Langfuse Observability.
+
+
+        **Supported Formats:**
+
+        - Binary Protobuf: `Content-Type: application/x-protobuf`
+
+        - JSON Protobuf: `Content-Type: application/json`
+
+        - Supports gzip compression via `Content-Encoding: gzip` header
+
+
+        **Specification Compliance:**
+
+        - Conforms to [OTLP/HTTP Trace Export](https://opentelemetry.io/docs/specs/otlp/#otlphttp)
+
+        - Implements `ExportTraceServiceRequest` message format
+
+
+        **Documentation:**
+
+        - Integration guide: https://langfuse.com/integrations/native/opentelemetry
+
+        - Data model: https://langfuse.com/docs/observability/data-model
+      operationId: opentelemetry_exportTraces
+      tags:
+        - Opentelemetry
+      parameters: []
       responses:
         "200":
           description: ""
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SessionWithTraces"
+                $ref: "#/components/schemas/OtelTraceResponse"
         "400":
           description: ""
           content:
@@ -493,60 +772,85 @@ paths:
           content:
             application/json:
               schema: {}
-      operationId: sessions_get
+      security:
+        - BasicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resourceSpans:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/OtelResourceSpan"
+                  description: Array of resource spans containing trace data as defined in the OTLP specification
+              required:
+                - resourceSpans
       x-openai-isConsequential: false
   /api/public/v2/prompts:
     get:
-      description: "Get a list of prompts with versions, labels, and optional filtering by name, label, tag."
+      description: Get a list of prompt names with versions and labels
+      operationId: prompts_list
+      tags:
+        - Prompts
       parameters:
-        - name: page
-          in: query
-          description: Page number, starts at 1
-          required: false
-          schema:
-            type: integer
-            nullable: true
-        - name: limit
-          in: query
-          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit.
-          required: false
-          schema:
-            type: integer
-            nullable: true
         - name: name
           in: query
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
         - name: label
           in: query
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
         - name: tag
           in: query
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
+        - name: page
+          in: query
+          description: page number, starts at 1
+          required: false
+          schema:
+            type:
+              - integer
+              - "null"
+        - name: limit
+          in: query
+          description: limit of items per page
+          required: false
+          schema:
+            type:
+              - integer
+              - "null"
         - name: fromUpdatedAt
           in: query
           description: Optional filter to only include prompt versions created/updated on or after a certain datetime (ISO 8601)
           required: false
           schema:
-            type: string
+            type:
+              - string
+              - "null"
             format: date-time
-            nullable: true
         - name: toUpdatedAt
           in: query
           description: Optional filter to only include prompt versions created/updated before a certain datetime (ISO 8601)
           required: false
           schema:
-            type: string
+            type:
+              - string
+              - "null"
             format: date-time
-            nullable: true
       responses:
         "200":
           description: ""
@@ -579,10 +883,14 @@ paths:
           content:
             application/json:
               schema: {}
-      operationId: prompts_list
+      security:
+        - BasicAuth: []
       x-openai-isConsequential: false
     post:
       description: Create a new version for the prompt with the given `name`
+      operationId: prompts_create
+      tags:
+        - Prompts
       parameters: []
       responses:
         "200":
@@ -616,21 +924,27 @@ paths:
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePromptRequest"
-      operationId: prompts_create
       x-openai-isConsequential: false
   /api/public/v2/prompts/{promptName}:
     get:
-      description: Get a prompt by name
+      description: Get a prompt
+      operationId: prompts_get
+      tags:
+        - Prompts
       parameters:
         - name: promptName
           in: path
-          description: The unique name of a prompt
+          description: |-
+            The name of the prompt. If the prompt is in a folder (e.g., "folder/subfolder/prompt-name"),
+            the folder path must be URL encoded.
           required: true
           schema:
             type: string
@@ -639,15 +953,28 @@ paths:
           description: Version of the prompt to be retrieved.
           required: false
           schema:
-            type: integer
-            nullable: true
+            type:
+              - integer
+              - "null"
         - name: label
           in: query
           description: Label of the prompt to be retrieved. Defaults to "production" if no label or version is set.
           required: false
           schema:
-            type: string
-            nullable: true
+            type:
+              - string
+              - "null"
+        - name: resolve
+          in: query
+          description: >-
+            Resolve prompt dependencies before returning the prompt. Defaults to `true`. Set to `false` to return the
+            raw stored prompt with dependency tags intact. This bypasses prompt caching and is intended for debugging or
+            one-off jobs, not production runtime fetches.
+          required: false
+          schema:
+            type:
+              - boolean
+              - "null"
       responses:
         "200":
           description: ""
@@ -680,15 +1007,21 @@ paths:
           content:
             application/json:
               schema: {}
-      operationId: prompts_get
+      security:
+        - BasicAuth: []
       x-openai-isConsequential: false
-  /api/public/v2/prompts/{promptName}/version/{version}:
+  /api/public/v2/prompts/{name}/versions/{version}:
     patch:
       description: Update labels for a specific prompt version
+      operationId: promptVersion_update
+      tags:
+        - PromptVersion
       parameters:
-        - name: promptName
+        - name: name
           in: path
-          description: The name of the prompt
+          description: |-
+            The name of the prompt. If the prompt is in a folder (e.g., "folder/subfolder/prompt-name"),
+            the folder path must be URL encoded.
           required: true
           schema:
             type: string
@@ -730,6 +1063,8 @@ paths:
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
       requestBody:
         required: true
         content:
@@ -741,16 +1076,18 @@ paths:
                   type: array
                   items:
                     type: string
-                  description:
-                    New labels for the prompt version. Labels are unique across versions. The "latest" label is reserved and
-                    managed by Langfuse.
+                  description: >-
+                    New labels for the prompt version. Labels are unique across versions. The "latest" label is reserved
+                    and managed by Langfuse.
               required:
                 - newLabels
-      operationId: promptVersion_update
       x-openai-isConsequential: false
   /api/public/scores:
     post:
-      description: "Create a new score. Add feedback to a trace or event."
+      description: Create a score (supports trace, observation, session, and dataset run scores)
+      operationId: scores_create
+      tags:
+        - Scores
       parameters: []
       responses:
         "200":
@@ -784,82 +1121,239 @@ paths:
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateScoreRequest"
-      operationId: score_create
       x-openai-isConsequential: false
+  /api/public/v3/scores:
     get:
-      description: "Get a list of scores."
+      description: |-
+        Get a list of scores with a polymorphic `value` field (v3).
+
+        The `value` field type depends on `dataType`:
+        - `NUMERIC` → number
+        - `BOOLEAN` → boolean
+        - `CATEGORICAL`, `TEXT`, `CORRECTION` → string
+
+        The response always includes the core fields: id, projectId, name,
+        value, dataType, source, timestamp, environment, createdAt, updatedAt.
+
+        Additional field groups can be requested via the `fields` parameter:
+        - `details` — adds comment, configId, metadata
+        - `subject` — adds the subject object describing the entity the score
+          is attached to: kind (trace, observation, session, or experiment),
+          id, and traceId for observation-level scores
+        - `annotation` — adds authorUserId, queueId
+
+        Unknown group names return HTTP 400.
+      operationId: scoresV3_getManyV3
+      tags:
+        - ScoresV3
       parameters:
-        - name: page
-          in: query
-          description: Page number, starts at 1
-          required: false
-          schema:
-            type: integer
-            nullable: true
         - name: limit
           in: query
-          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit.
+          description: Number of items per page. Maximum 100, default 50. Requests with a limit greater than 100 return HTTP 400.
           required: false
           schema:
-            type: integer
-            nullable: true
-      responses:
-        "200":
-          description: ""
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GetScoresResponse"
-        "400":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "401":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "403":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "404":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-        "405":
-          description: ""
-          content:
-            application/json:
-              schema: {}
-      operationId: score_get
-      x-openai-isConsequential: false
-  /api/public/scores/{scoreId}:
-    get:
-      description: Get a score by id
-      parameters:
-        - name: scoreId
-          in: path
-          description: The unique id of a score
-          required: true
+            type:
+              - integer
+              - "null"
+        - name: cursor
+          in: query
+          description: >-
+            URL-safe base64 (base64url) cursor for pagination. Use the cursor from the previous response to get the next
+            page. Absent on the final page.
+          required: false
           schema:
-            type: string
+            type:
+              - string
+              - "null"
+        - name: fields
+          in: query
+          description: >-
+            Comma-separated field groups to include in addition to the always-returned core fields. Allowed: details,
+            subject, annotation — see the endpoint description for the fields each group adds. Unknown names return HTTP
+            400.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: id
+          in: query
+          description: Comma-separated list of score IDs to filter by (OR within, AND across filters).
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: name
+          in: query
+          description: Comma-separated list of score names to filter by.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: source
+          in: query
+          description: >-
+            Comma-separated list of score sources to filter by (e.g. API, ANNOTATION, EVAL). Case-insensitive — `api`
+            and `API` are equivalent.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: dataType
+          in: query
+          description: >-
+            Comma-separated list of data types to filter by (NUMERIC, BOOLEAN, CATEGORICAL, TEXT, CORRECTION).
+            Case-insensitive — `numeric` and `NUMERIC` are equivalent. Must be a single value when used with value,
+            valueMin, or valueMax; otherwise the request returns HTTP 400. Must be NUMERIC when used with valueMin or
+            valueMax.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: environment
+          in: query
+          description: Comma-separated list of environments to filter by.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: configId
+          in: query
+          description: Comma-separated list of score config IDs to filter by.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: queueId
+          in: query
+          description: Comma-separated list of annotation queue IDs to filter by.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: authorUserId
+          in: query
+          description: Comma-separated list of author user IDs to filter by.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: value
+          in: query
+          description: >-
+            Comma-separated list of exact values to filter by. Requires a single dataType from NUMERIC, BOOLEAN, or
+            CATEGORICAL; any other dataType, multiple dataTypes, or omitting dataType returns HTTP 400. For BOOLEAN,
+            each value must be "true" or "false"; for NUMERIC, each value must be a finite number. Otherwise the request
+            returns HTTP 400.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: valueMin
+          in: query
+          description: >-
+            Inclusive lower bound on the numeric value. Requires dataType=NUMERIC as a single value; otherwise the
+            request returns HTTP 400.
+          required: false
+          schema:
+            type:
+              - number
+              - "null"
+            format: double
+        - name: valueMax
+          in: query
+          description: >-
+            Inclusive upper bound on the numeric value. Requires dataType=NUMERIC as a single value; otherwise the
+            request returns HTTP 400.
+          required: false
+          schema:
+            type:
+              - number
+              - "null"
+            format: double
+        - name: traceId
+          in: query
+          description: >-
+            Comma-separated list of trace IDs to filter by. Mutually exclusive with sessionId, experimentId. May be
+            combined with observationId to scope the observation lookup to a specific trace.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: sessionId
+          in: query
+          description: >-
+            Comma-separated list of session IDs to filter by. Mutually exclusive with traceId, observationId,
+            experimentId.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: observationId
+          in: query
+          description: >-
+            Comma-separated list of observation IDs to filter by. Requires traceId to be specified, because observation
+            IDs are scoped to a trace. Mutually exclusive with sessionId, experimentId. Returns HTTP 400 when used
+            without traceId.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: experimentId
+          in: query
+          description: >-
+            Comma-separated list of dataset run IDs (experiment IDs) to filter by. Mutually exclusive with traceId,
+            sessionId, observationId.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+        - name: fromTimestamp
+          in: query
+          description: Inclusive lower bound on the score timestamp.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+            format: date-time
+        - name: toTimestamp
+          in: query
+          description: Exclusive upper bound on the score timestamp.
+          required: false
+          schema:
+            type:
+              - string
+              - "null"
+            format: date-time
       responses:
         "200":
           description: ""
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Score"
+                $ref: "#/components/schemas/GetScoresV3Response"
         "400":
           description: ""
           content:
@@ -885,10 +1379,15 @@ paths:
           content:
             application/json:
               schema: {}
-      operationId: score_get-by-id
+      security:
+        - BasicAuth: []
+      x-openai-isConsequential: false
   /api/public/score-configs:
     post:
-      description: "Create a score configuration (config). Score configs are used to define the structure of scores"
+      description: Create a score configuration (config). Score configs are used to define the structure of scores
+      operationId: scoreConfigs_create
+      tags:
+        - ScoreConfigs
       parameters: []
       responses:
         "200":
@@ -922,26 +1421,44 @@ paths:
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ScoreConfig"
-      operationId: scoreConfigs_create
+              $ref: "#/components/schemas/CreateScoreConfigRequest"
       x-openai-isConsequential: false
     get:
-      description: "Get all score configs"
-      parameters: []
+      description: Get all score configs
+      operationId: scoreConfigs_get
+      tags:
+        - ScoreConfigs
+      parameters:
+        - name: page
+          in: query
+          description: Page number, starts at 1.
+          required: false
+          schema:
+            type:
+              - integer
+              - "null"
+        - name: limit
+          in: query
+          description: Limit of items per page. If you encounter api issues due to too large page sizes, try to reduce the limit
+          required: false
+          schema:
+            type:
+              - integer
+              - "null"
       responses:
         "200":
           description: ""
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ScoreConfig"
+                $ref: "#/components/schemas/ScoreConfigs"
         "400":
           description: ""
           content:
@@ -967,15 +1484,19 @@ paths:
           content:
             application/json:
               schema: {}
-      operationId: scoreConfigs_get
+      security:
+        - BasicAuth: []
       x-openai-isConsequential: false
   /api/public/score-configs/{configId}:
     get:
-      description: "Get a score config"
+      description: Get a score config
+      operationId: scoreConfigs_get-by-id
+      tags:
+        - ScoreConfigs
       parameters:
         - name: configId
           in: path
-          description: The unique id of the score config
+          description: The unique langfuse identifier of a score config
           required: true
           schema:
             type: string
@@ -1011,12 +1532,13 @@ paths:
           content:
             application/json:
               schema: {}
-      operationId: scoreConfigs_get-by-id
+      security:
+        - BasicAuth: []
+      x-openai-isConsequential: false
   /api/public/media:
     post:
       description: Get a presigned upload URL for a media record
       operationId: media_getUploadUrl
-      x-openai-isConsequential: false
       tags:
         - Media
       parameters: []
@@ -1052,23 +1574,19 @@ paths:
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/GetMediaUploadUrlRequest"
-      operationId: media_getUploadUrl
       x-openai-isConsequential: false
-      tags:
-        - Media
-      security:
-        - BasicAuth: []
   /api/public/media/{mediaId}:
     get:
       description: Get a media record
       operationId: media_get
-      x-openai-isConsequential: false
       tags:
         - Media
       parameters:
@@ -1110,16 +1628,12 @@ paths:
           content:
             application/json:
               schema: {}
-      operationId: media_get
-      x-openai-isConsequential: false
-      tags:
-        - Media
       security:
         - BasicAuth: []
+      x-openai-isConsequential: false
     patch:
       description: Patch a media record
       operationId: media_patch
-      x-openai-isConsequential: false
       tags:
         - Media
       parameters:
@@ -1132,9 +1646,6 @@ paths:
       responses:
         "204":
           description: ""
-          content:
-            application/json:
-              schema: {}
         "400":
           description: ""
           content:
@@ -1160,20 +1671,91 @@ paths:
           content:
             application/json:
               schema: {}
+      security:
+        - BasicAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/PatchMediaBody"
-      operationId: media_patch
       x-openai-isConsequential: false
-      tags:
-        - Media
-      security:
-        - BasicAuth: []
 components:
   schemas:
+    PaginatedDatasetItems:
+      title: PaginatedDatasetItems
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DatasetItem"
+        meta:
+          $ref: "#/components/schemas/utilsMetaResponse"
+      required:
+        - data
+        - meta
+    DatasetItem:
+      title: DatasetItem
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: "#/components/schemas/DatasetStatus"
+        input:
+          description: Input data for the dataset item
+        expectedOutput:
+          description: Expected output for the dataset item
+        metadata:
+          description: Metadata associated with the dataset item
+        sourceTraceId:
+          type:
+            - string
+            - "null"
+          description: The trace ID that sourced this dataset item
+        sourceObservationId:
+          type:
+            - string
+            - "null"
+          description: The observation ID that sourced this dataset item
+        datasetId:
+          type: string
+        datasetName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        mediaReferences:
+          type: array
+          items:
+            $ref: "#/components/schemas/DatasetItemMediaReference"
+          description: Resolved Langfuse media references found in input, expectedOutput, and metadata.
+      required:
+        - id
+        - status
+        - input
+        - expectedOutput
+        - metadata
+        - sourceTraceId
+        - sourceObservationId
+        - datasetId
+        - datasetName
+        - createdAt
+        - updatedAt
+        - mediaReferences
+    CreateCommentResponse:
+      title: CreateCommentResponse
+      type: object
+      properties:
+        id:
+          type: string
+          description: The id of the created object in Langfuse
+      required:
+        - id
     CreateCommentRequest:
       title: CreateCommentRequest
       type: object
@@ -1186,30 +1768,24 @@ components:
           description: The type of the object to attach the comment to (trace, observation, session, prompt).
         objectId:
           type: string
-          description:
+          description: >-
             The id of the object to attach the comment to. If this does not reference a valid existing object, an error
             will be thrown.
         content:
           type: string
-          description: The content of the comment. May include markdown. Currently limited to 3000 characters.
+          description: The content of the comment. May include markdown. Currently limited to 5000 characters.
         authorUserId:
-          type: string
-          nullable: true
-          description: The id of the user who created the comment.
+          type:
+            - string
+            - "null"
+          description: >-
+            The id of the user who created the comment. Must be a member of the organization that owns the project,
+            otherwise an error will be thrown.
       required:
         - projectId
         - objectType
         - objectId
         - content
-    CreateCommentResponse:
-      title: CreateCommentResponse
-      type: object
-      properties:
-        id:
-          type: string
-          description: The id of the created object in Langfuse
-      required:
-        - id
     GetCommentsResponse:
       title: GetCommentsResponse
       type: object
@@ -1223,931 +1799,6 @@ components:
       required:
         - data
         - meta
-    Trace:
-      title: Trace
-      type: object
-      properties:
-        id:
-          type: string
-          description: The unique identifier of a trace
-        timestamp:
-          type: string
-          format: date-time
-          description: The timestamp when the trace was created
-        name:
-          type: string
-          nullable: true
-          description: The name of the trace
-        input:
-          nullable: true
-          description: The input data of the trace. Can be any JSON.
-        output:
-          nullable: true
-          description: The output data of the trace. Can be any JSON.
-        sessionId:
-          type: string
-          nullable: true
-          description: The session identifier associated with the trace
-        release:
-          type: string
-          nullable: true
-          description: The release version of the application when the trace was created
-        version:
-          type: string
-          nullable: true
-          description: The version of the trace
-        userId:
-          type: string
-          nullable: true
-          description: The user identifier associated with the trace
-        metadata:
-          nullable: true
-          description: The metadata associated with the trace. Can be any JSON.
-        tags:
-          type: array
-          items:
-            type: string
-          nullable: true
-          description: The tags associated with the trace. Can be an array of strings or null.
-        public:
-          type: boolean
-          nullable: true
-          description: Public traces are accessible via url without login
-      required:
-        - id
-        - timestamp
-    TraceBody:
-      title: TraceBody
-      type: object
-      properties:
-        id:
-          type: string
-          nullable: true
-        timestamp:
-          type: string
-          format: date-time
-          nullable: true
-        name:
-          type: string
-          nullable: true
-        userId:
-          type: string
-          nullable: true
-        input:
-          nullable: true
-        output:
-          nullable: true
-        sessionId:
-          type: string
-          nullable: true
-        release:
-          type: string
-          nullable: true
-        version:
-          type: string
-          nullable: true
-        metadata:
-          nullable: true
-        tags:
-          type: array
-          items:
-            type: string
-          nullable: true
-        public:
-          type: boolean
-          nullable: true
-          description: Make trace publicly accessible via url
-    Comment:
-      title: Comment
-      type: object
-      properties:
-        id:
-          type: string
-        projectId:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        objectType:
-          $ref: "#/components/schemas/CommentObjectType"
-        objectId:
-          type: string
-        content:
-          type: string
-        authorUserId:
-          type: string
-          nullable: true
-      required:
-        - id
-        - projectId
-        - createdAt
-        - updatedAt
-        - objectType
-        - objectId
-        - content
-    Traces:
-      title: Traces
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/Trace"
-        meta:
-          $ref: "#/components/schemas/utilsMetaResponse"
-      required:
-        - data
-        - meta
-    utilsMetaResponse:
-      title: utilsMetaResponse
-      type: object
-      properties:
-        page:
-          type: integer
-          description: current page number
-        limit:
-          type: integer
-          description: number of items per page
-        totalItems:
-          type: integer
-          description: number of total items given the current filters/selection (if any)
-        totalPages:
-          type: integer
-          description: number of total pages given the current limit
-      required:
-        - page
-        - limit
-        - totalItems
-        - totalPages
-    CommentObjectType:
-      title: CommentObjectType
-      type: string
-      enum:
-        - TRACE
-        - OBSERVATION
-        - SESSION
-        - PROMPT
-    Session:
-      title: Session
-      type: object
-      properties:
-        id:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        projectId:
-          type: string
-      required:
-        - id
-        - createdAt
-        - projectId
-    SessionWithTraces:
-      title: SessionWithTraces
-      type: object
-      properties:
-        traces:
-          type: array
-          items:
-            $ref: "#/components/schemas/Trace"
-      required:
-        - traces
-      allOf:
-        - $ref: "#/components/schemas/Session"
-    PaginatedSessions:
-      title: PaginatedSessions
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/Session"
-        meta:
-          $ref: "#/components/schemas/utilsMetaResponse"
-      required:
-        - data
-        - meta
-    IngestionEvent:
-      title: IngestionEvent
-      oneOf:
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - trace-create
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/TraceBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - score-create
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/ScoreBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - span-create
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/CreateSpanBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - span-update
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/UpdateSpanBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - generation-create
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/CreateGenerationBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - generation-update
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/UpdateGenerationBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - event-create
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/CreateEventBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - sdk-log
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/SDKLogBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - observation-create
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/ObservationBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-        - type: object
-          properties:
-            type:
-              type: string
-              enum:
-                - observation-update
-            id:
-              type: string
-            timestamp:
-              type: string
-            metadata:
-              nullable: true
-            body:
-              $ref: "#/components/schemas/ObservationBody"
-          required:
-            - type
-            - id
-            - timestamp
-            - body
-    BaseEvent:
-      title: BaseEvent
-      type: object
-      properties:
-        id:
-          type: string
-          description: UUID v4 that identifies the event
-        timestamp:
-          type: string
-          description: "Datetime (ISO 8601) of event creation in client. Should be as close to actual event creation in client as possible, this timestamp will be used for ordering of events in future release. Resolution: milliseconds (required), microseconds (optimal)."
-        metadata:
-          nullable: true
-          description: Optional. Metadata field used by the Langfuse SDKs for debugging.
-      required:
-        - id
-        - timestamp
-
-    TraceEvent:
-      title: TraceEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/TraceBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    ScoreEvent:
-      title: ScoreEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/ScoreBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    CreateSpanEvent:
-      title: CreateSpanEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/CreateSpanBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    UpdateSpanEvent:
-      title: UpdateSpanEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/UpdateSpanBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    CreateGenerationEvent:
-      title: CreateGenerationEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/CreateGenerationBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    UpdateGenerationEvent:
-      title: UpdateGenerationEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/UpdateGenerationBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    CreateEventEvent:
-      title: CreateEventEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/CreateEventBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    SDKLogEvent:
-      title: SDKLogEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/SDKLogBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    CreateObservationEvent:
-      title: CreateObservationEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/ObservationBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    UpdateObservationEvent:
-      title: UpdateObservationEvent
-      type: object
-      properties:
-        body:
-          $ref: "#/components/schemas/ObservationBody"
-      required:
-        - body
-      allOf:
-        - $ref: "#/components/schemas/BaseEvent"
-
-    ScoreBody:
-      title: ScoreBody
-      type: object
-      properties:
-        id:
-          type: string
-          nullable: true
-        traceId:
-          type: string
-        name:
-          type: string
-        value:
-          type: number
-          format: double
-        comment:
-          type: string
-          nullable: true
-      required:
-        - traceId
-        - name
-        - value
-
-    CreateSpanBody:
-      title: CreateSpanBody
-      type: object
-      properties:
-        endTime:
-          type: string
-          format: date-time
-          nullable: true
-      allOf:
-        - $ref: "#/components/schemas/CreateEventBody"
-
-    UpdateSpanBody:
-      title: UpdateSpanBody
-      type: object
-      properties:
-        endTime:
-          type: string
-          format: date-time
-          nullable: true
-      allOf:
-        - $ref: "#/components/schemas/UpdateEventBody"
-
-    CreateGenerationBody:
-      title: CreateGenerationBody
-      type: object
-      properties:
-        completionStartTime:
-          type: string
-          format: date-time
-          nullable: true
-        model:
-          type: string
-          nullable: true
-        modelParameters:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/MapValue"
-          nullable: true
-        usage:
-          $ref: "#/components/schemas/IngestionUsage"
-          nullable: true
-        usageDetails:
-          $ref: "#/components/schemas/UsageDetails"
-          nullable: true
-        costDetails:
-          type: object
-          additionalProperties:
-            type: number
-            format: double
-          nullable: true
-        promptName:
-          type: string
-          nullable: true
-        promptVersion:
-          type: integer
-          nullable: true
-      allOf:
-        - $ref: "#/components/schemas/CreateSpanBody"
-
-    UpdateGenerationBody:
-      title: UpdateGenerationBody
-      type: object
-      properties:
-        completionStartTime:
-          type: string
-          format: date-time
-          nullable: true
-        model:
-          type: string
-          nullable: true
-        modelParameters:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/MapValue"
-          nullable: true
-        usage:
-          $ref: "#/components/schemas/IngestionUsage"
-          nullable: true
-        promptName:
-          type: string
-          nullable: true
-        usageDetails:
-          $ref: "#/components/schemas/UsageDetails"
-          nullable: true
-        costDetails:
-          type: object
-          additionalProperties:
-            type: number
-            format: double
-          nullable: true
-        promptVersion:
-          type: integer
-          nullable: true
-      allOf:
-        - $ref: "#/components/schemas/UpdateSpanBody"
-
-    UsageDetails:
-      title: UsageDetails
-      oneOf:
-        - type: object
-          properties:
-            input:
-              type: integer
-            output:
-              type: integer
-            total:
-              type: integer
-          additionalProperties:
-            type: integer
-        - $ref: "#/components/schemas/OpenAIUsageSchema"
-
-    OpenAIUsageSchema:
-      title: OpenAIUsageSchema
-      type: object
-      properties:
-        prompt_tokens:
-          type: integer
-        completion_tokens:
-          type: integer
-        total_tokens:
-          type: integer
-        prompt_tokens_details:
-          type: object
-          additionalProperties:
-            type: integer
-          nullable: true
-        completion_tokens_details:
-          type: object
-          additionalProperties:
-            type: integer
-          nullable: true
-      required:
-        - prompt_tokens
-        - completion_tokens
-        - total_tokens
-
-    MapValue:
-      title: MapValue
-      oneOf:
-        - type: string
-          nullable: true
-        - type: integer
-          nullable: true
-        - type: boolean
-          nullable: true
-        - type: array
-          items:
-            type: string
-          nullable: true
-
-    ObservationType:
-      title: ObservationType
-      type: string
-      enum:
-        - SPAN
-        - GENERATION
-        - EVENT
-
-    IngestionUsage:
-      title: IngestionUsage
-      oneOf:
-        - $ref: "#/components/schemas/Usage"
-        - $ref: "#/components/schemas/OpenAIUsage"
-
-    OpenAIUsage:
-      title: OpenAIUsage
-      type: object
-      description: Usage interface of OpenAI for improved compatibility.
-      properties:
-        promptTokens:
-          type: integer
-          nullable: true
-        completionTokens:
-          type: integer
-          nullable: true
-        totalTokens:
-          type: integer
-          nullable: true
-
-    IngestionSuccess:
-      title: IngestionSuccess
-      type: object
-      properties:
-        id:
-          type: string
-        status:
-          type: integer
-      required:
-        - id
-        - status
-
-    IngestionError:
-      title: IngestionError
-      type: object
-      properties:
-        id:
-          type: string
-        status:
-          type: integer
-        message:
-          type: string
-          nullable: true
-        error:
-          nullable: true
-      required:
-        - id
-        - status
-
-    IngestionResponse:
-      title: IngestionResponse
-      type: object
-      properties:
-        successes:
-          type: array
-          items:
-            $ref: "#/components/schemas/IngestionSuccess"
-        errors:
-          type: array
-          items:
-            $ref: "#/components/schemas/IngestionError"
-      required:
-        - successes
-        - errors
-
-    CreateEventBody:
-      title: CreateEventBody
-      type: object
-      properties:
-        id:
-          type: string
-          nullable: true
-      allOf:
-        - $ref: "#/components/schemas/OptionalObservationBody"
-
-    SDKLogBody:
-      title: SDKLogBody
-      type: object
-      properties:
-        log:
-          type: object
-          additionalProperties: true
-      required:
-        - log
-
-    ObservationBody:
-      title: ObservationBody
-      type: object
-      properties:
-        traceId:
-          type: string
-          nullable: true
-        name:
-          type: string
-          nullable: true
-        startTime:
-          type: string
-          format: date-time
-          nullable: true
-        metadata:
-          type: object
-          additionalProperties: true
-          nullable: true
-        input:
-          type: object
-          additionalProperties: true
-          nullable: true
-        output:
-          type: object
-          additionalProperties: true
-          nullable: true
-        level:
-          type: string
-          enum: [DEBUG, DEFAULT, WARNING, ERROR]
-          nullable: true
-        statusMessage:
-          type: string
-          nullable: true
-        parentObservationId:
-          type: string
-          nullable: true
-        version:
-          type: string
-          nullable: true
-
-    OptionalObservationBody:
-      title: OptionalObservationBody
-      type: object
-      properties:
-        traceId:
-          type: string
-          nullable: true
-        name:
-          type: string
-          nullable: true
-        startTime:
-          type: string
-          format: date-time
-          nullable: true
-        metadata:
-          nullable: true
-        input:
-          nullable: true
-        output:
-          nullable: true
-        level:
-          $ref: "#/components/schemas/ObservationLevel"
-          nullable: true
-        statusMessage:
-          type: string
-          nullable: true
-        parentObservationId:
-          type: string
-          nullable: true
-        version:
-          type: string
-          nullable: true
-
-    UpdateEventBody:
-      title: UpdateEventBody
-      type: object
-      properties:
-        id:
-          type: string
-      required:
-        - id
-      allOf:
-        - $ref: "#/components/schemas/OptionalObservationBody"
-
-    Usage:
-      title: Usage
-      type: object
-      description: Standard interface for usage and cost
-      properties:
-        input:
-          type: integer
-          nullable: true
-          description: Number of input units (e.g. tokens)
-        output:
-          type: integer
-          nullable: true
-          description: Number of output units (e.g. tokens)
-        total:
-          type: integer
-          nullable: true
-          description: Defaults to input+output if not set
-        unit:
-          $ref: "#/components/schemas/ModelUsageUnit"
-          nullable: true
-        inputCost:
-          type: number
-          format: double
-          nullable: true
-          description: USD input cost
-        outputCost:
-          type: number
-          format: double
-          nullable: true
-          description: USD output cost
-        totalCost:
-          type: number
-          format: double
-          nullable: true
-          description: Defaults to input+output if not set
-
-    ModelUsageUnit:
-      title: ModelUsageUnit
-      type: string
-      enum:
-        - CHARACTERS
-        - TOKENS
-        - MILLISECONDS
-        - SECONDS
-        - IMAGES
-        - REQUESTS
-      description: Unit of usage in Langfuse
-
     ObservationLevel:
       title: ObservationLevel
       type: string
@@ -2156,143 +1807,47 @@ components:
         - DEFAULT
         - WARNING
         - ERROR
-
-    CreateScoreRequest:
-      title: CreateScoreRequest
+    ObservationsV2Response:
+      title: ObservationsV2Response
       type: object
-      properties:
-        id:
-          type: string
-          nullable: true
-        traceId:
-          type: string
-        name:
-          type: string
-        value:
-          type: number
-          format: double
-        comment:
-          type: string
-          nullable: true
-      required:
-        - traceId
-        - name
-        - value
+      description: |-
+        Response containing observations with field-group-based filtering and cursor-based pagination.
 
-    CreateScoreResponse:
-      title: CreateScoreResponse
-      type: object
-      properties:
-        id:
-          type: string
-      required:
-        - id
-
-    GetScoresResponse:
-      title: GetScoresResponse
-      type: object
+        The `data` array contains observation objects with only the requested field groups included.
+        Use the `cursor` in `meta` to retrieve the next page of results.
       properties:
         data:
           type: array
           items:
-            $ref: "#/components/schemas/Score"
+            $ref: "#/components/schemas/ObservationV2"
+          description: Array of observation objects. Fields included depend on the `fields` parameter in the request.
         meta:
-          $ref: "#/components/schemas/utilsMetaResponse"
+          $ref: "#/components/schemas/ObservationsV2Meta"
       required:
         - data
         - meta
-
-    Score:
-      title: Score
-      oneOf:
-        - type: object
-          properties:
-            id:
-              type: string
-
-    ScoreConfig:
-      title: ScoreConfig
+    OtelTraceResponse:
+      title: OtelTraceResponse
       type: object
-      properties:
-        id:
-          type: string
-          nullable: true
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        category:
-          $ref: "#/components/schemas/ConfigCategory"
-        dataType:
-          $ref: "#/components/schemas/ScoreDataType"
-        source:
-          $ref: "#/components/schemas/ScoreSource"
-      required:
-        - name
-        - category
-        - dataType
-        - source
-
-    ConfigCategory:
-      title: ConfigCategory
-      type: string
-      enum:
-        - SYSTEM
-        - USER
-
-    BaseScore:
-      title: BaseScore
+      description: Response from trace export request. Empty object indicates success.
+      properties: {}
+    OtelResourceSpan:
+      title: OtelResourceSpan
       type: object
+      description: Represents a collection of spans from a single resource as per OTLP specification
       properties:
-        name:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-
-    NumericScore:
-      title: NumericScore
-      allOf:
-        - $ref: "#/components/schemas/BaseScore"
-      type: object
-      properties:
-        value:
-          type: number
-
-    BooleanScore:
-      title: BooleanScore
-      allOf:
-        - $ref: "#/components/schemas/BaseScore"
-      type: object
-      properties:
-        state:
-          type: boolean
-
-    CategoricalScore:
-      title: CategoricalScore
-      allOf:
-        - $ref: "#/components/schemas/BaseScore"
-      type: object
-      properties:
-        category:
-          type: string
-
-    ScoreSource:
-      title: ScoreSource
-      type: string
-      enum:
-        - MANUAL
-        - AUTO
-
-    ScoreDataType:
-      title: ScoreDataType
-      type: string
-      enum:
-        - NUMERIC
-        - BOOLEAN
-        - CATEGORICAL
-
+        resource:
+          description: Resource information
+          anyOf:
+            - $ref: "#/components/schemas/OtelResource"
+            - type: "null"
+        scopeSpans:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/OtelScopeSpan"
+          description: Array of scope spans
     PromptMetaListResponse:
       title: PromptMetaListResponse
       type: object
@@ -2306,296 +1861,310 @@ components:
       required:
         - data
         - meta
-
-    PromptMeta:
-      title: PromptMeta
-      type: object
-      properties:
-        name:
-          type: string
-        versions:
-          type: array
-          items:
-            type: integer
-        labels:
-          type: array
-          items:
-            type: string
-        tags:
-          type: array
-          items:
-            type: string
-        lastUpdatedAt:
-          type: string
-          format: date-time
-        lastConfig:
-          description: Config object of the most recent prompt version
-          type: object
-          additionalProperties: true
-      required:
-        - name
-        - versions
-        - labels
-        - tags
-        - lastUpdatedAt
-        - lastConfig
     Prompt:
       title: Prompt
-      type: object
-      required:
-        - type
-        - name
-        - version
-        - config
-        - labels
-        - tags
-      properties:
-        type:
-          type: string
-          enum:
-            - chat
-            - text
-        name:
-          type: string
-        version:
-          type: integer
-        config:
-          type: object
-        labels:
-          type: array
-          items:
-            type: string
-        tags:
-          type: array
-          items:
-            type: string
-        prompt:
-          oneOf:
-            - type: string
-            - type: array
-              items:
-                $ref: "#/components/schemas/ChatMessage"
+      oneOf:
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - chat
+            - $ref: "#/components/schemas/ChatPrompt"
+          required:
+            - type
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - text
+            - $ref: "#/components/schemas/TextPrompt"
+          required:
+            - type
     CreatePromptRequest:
       title: CreatePromptRequest
-      type: object
-      required:
-        - type
-        - name
-        - prompt
-      properties:
-        type:
-          type: string
-          enum:
-            - chat
-            - text
-        name:
-          type: string
-        prompt:
-          oneOf:
-            - type: string
-            - type: array
-              items:
-                $ref: "#/components/schemas/ChatMessage"
-        config:
-          type: object
-          nullable: true
-        labels:
-          type: array
-          items:
-            type: string
-          nullable: true
-        tags:
-          type: array
-          items:
-            type: string
-          nullable: true
-    CreateChatPromptRequest:
-      title: CreateChatPromptRequest
-      type: object
-      properties:
-        name:
-          type: string
-        prompt:
-          type: array
-          items:
-            $ref: "#/components/schemas/ChatMessage"
-        config:
-          nullable: true
-        labels:
-          type: array
-          items:
-            type: string
-          nullable: true
-        tags:
-          type: array
-          items:
-            type: string
-          nullable: true
-      required:
-        - name
-        - prompt
-    CreateTextPromptRequest:
-      title: CreateTextPromptRequest
-      type: object
-      properties:
-        name:
-          type: string
-        prompt:
-          type: string
-        config:
-          nullable: true
-        labels:
-          type: array
-          items:
-            type: string
-          nullable: true
-        tags:
-          type: array
-          items:
-            type: string
-          nullable: true
-      required:
-        - name
-        - prompt
-    BasePrompt:
-      title: BasePrompt
-      type: object
-      properties:
-        name:
-          type: string
-        version:
-          type: integer
-        config: {}
-        labels:
-          type: array
-          items:
-            type: string
-        tags:
-          type: array
-          items:
-            type: string
-      required:
-        - name
-        - version
-        - config
-        - labels
-        - tags
-    ChatMessage:
-      title: ChatMessage
-      type: object
-      properties:
-        role:
-          type: string
-        content:
-          type: string
-      required:
-        - role
-        - content
-    TextPrompt:
-      title: TextPrompt
-      type: object
-      properties:
-        prompt:
-          type: string
-      required:
-        - prompt
-      allOf:
-        - $ref: "#/components/schemas/BasePrompt"
-    ChatPrompt:
-      title: ChatPrompt
-      type: object
-      properties:
-        prompt:
-          type: array
-          items:
-            $ref: "#/components/schemas/ChatMessage"
-      required:
-        - prompt
-      allOf:
-        - $ref: "#/components/schemas/BasePrompt"
-    Dataset:
-      title: Dataset
+      oneOf:
+        - $ref: "#/components/schemas/CreateChatPromptRequest"
+        - $ref: "#/components/schemas/CreateTextPromptRequest"
+    CreateScoreResponse:
+      title: CreateScoreResponse
       type: object
       properties:
         id:
           type: string
-        name:
-          type: string
-        description:
-          type: string
-          nullable: true
-        metadata:
-          nullable: true
-        projectId:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+          description: The id of the created object in Langfuse
       required:
         - id
-        - name
-        - projectId
-        - createdAt
-        - updatedAt
-    DatasetItem:
-      title: DatasetItem
+    CreateScoreRequest:
+      title: CreateScoreRequest
       type: object
       properties:
         id:
+          type:
+            - string
+            - "null"
+        traceId:
+          type:
+            - string
+            - "null"
+        sessionId:
+          type:
+            - string
+            - "null"
+        observationId:
+          type:
+            - string
+            - "null"
+        datasetRunId:
+          type:
+            - string
+            - "null"
+        name:
           type: string
-        status:
-          $ref: '#/components/schemas/DatasetStatus'
-        input:
-          nullable: true
-        expectedOutput:
-          nullable: true
+        value:
+          $ref: "#/components/schemas/CreateScoreValue"
+          description: >-
+            The value of the score. Must be passed as string for categorical and text scores, and numeric for boolean
+            and numeric scores. Boolean score values must equal either 1 or 0 (true or false). Text score values must be
+            between 1 and 500 characters.
+        comment:
+          type:
+            - string
+            - "null"
         metadata:
-          nullable: true
-        sourceTraceId:
-          type: string
-          nullable: true
-        sourceObservationId:
-          type: string
-          nullable: true
-        datasetId:
-          type: string
-        datasetName:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+        environment:
+          type:
+            - string
+            - "null"
+          description: >-
+            The environment of the score. Can be any lowercase alphanumeric string with hyphens and underscores that
+            does not start with 'langfuse'.
+        queueId:
+          type:
+            - string
+            - "null"
+          description: >-
+            The annotation queue referenced by the score. Indicates if score was initially created while processing
+            annotation queue.
+        dataType:
+          description: >-
+            The data type of the score. When passing a configId this field is inferred. Otherwise, this field must be
+            passed or will default to numeric.
+          anyOf:
+            - $ref: "#/components/schemas/ScoreDataType"
+            - type: "null"
+        configId:
+          type:
+            - string
+            - "null"
+          description: >-
+            Reference a score config on a score. The unique langfuse identifier of a score config. When passing this
+            field, the dataType and stringValue fields are automatically populated.
+        source:
+          description: >-
+            The source of the score. Defaults to API. Set to ANNOTATION to prefill scores (e.g. from an LLM) for a human
+            reviewer to verify in an annotation queue. When source is ANNOTATION, a configId is required unless dataType
+            is CORRECTION. EVAL is reserved for internal evaluator outputs and is not accepted on this endpoint.
+          anyOf:
+            - $ref: "#/components/schemas/CreateScoreSource"
+            - type: "null"
       required:
-        - id
-        - status
-        - datasetId
-        - datasetName
-        - createdAt
-        - updatedAt
-    DatasetStatus:
-      title: DatasetStatus
-      type: string
-      enum:
-        - ACTIVE
-        - ARCHIVED
-    PaginatedDatasetItems:
-      title: PaginatedDatasetItems
+        - name
+        - value
+    GetScoresV3Response:
+      title: GetScoresV3Response
       type: object
       properties:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/DatasetItem'
+            $ref: "#/components/schemas/ScoreV3"
         meta:
-          $ref: '#/components/schemas/utilsMetaResponse'
+          $ref: "#/components/schemas/GetScoresV3Meta"
       required:
         - data
         - meta
+    ScoreConfig:
+      title: ScoreConfig
+      type: object
+      description: Configuration for a score
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        projectId:
+          type: string
+        dataType:
+          $ref: "#/components/schemas/ScoreConfigDataType"
+        isArchived:
+          type: boolean
+          description: Whether the score config is archived. Defaults to false
+        minValue:
+          type:
+            - number
+            - "null"
+          format: double
+          description: Sets minimum value for numerical scores. If not set, the minimum value defaults to -∞
+        maxValue:
+          type:
+            - number
+            - "null"
+          format: double
+          description: Sets maximum value for numerical scores. If not set, the maximum value defaults to +∞
+        categories:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/ConfigCategory"
+          description: Configures custom categories for categorical scores
+        description:
+          type:
+            - string
+            - "null"
+          description: Description of the score config
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+        - projectId
+        - dataType
+        - isArchived
+    CreateScoreConfigRequest:
+      title: CreateScoreConfigRequest
+      type: object
+      properties:
+        name:
+          type: string
+          description: >-
+            Name of the score config. Max 35 characters. Only letters, numbers, underscores, spaces, periods,
+            parentheses, and hyphens are allowed.
+        dataType:
+          $ref: "#/components/schemas/ScoreConfigDataType"
+        categories:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/ConfigCategory"
+          description: >-
+            Configure custom categories for categorical scores. Pass a list of objects with `label` and `value`
+            properties. Categories are autogenerated for boolean configs and cannot be passed
+        minValue:
+          type:
+            - number
+            - "null"
+          format: double
+          description: Configure a minimum value for numerical scores. If not set, the minimum value defaults to -∞
+        maxValue:
+          type:
+            - number
+            - "null"
+          format: double
+          description: Configure a maximum value for numerical scores. If not set, the maximum value defaults to +∞
+        description:
+          type:
+            - string
+            - "null"
+          description: >-
+            Description is shown across the Langfuse UI and can be used to e.g. explain the config categories in detail,
+            why a numeric range was set, or provide additional context on config name or usage
+      required:
+        - name
+        - dataType
+    ScoreConfigs:
+      title: ScoreConfigs
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreConfig"
+        meta:
+          $ref: "#/components/schemas/utilsMetaResponse"
+      required:
+        - data
+        - meta
+    GetMediaUploadUrlResponse:
+      title: GetMediaUploadUrlResponse
+      type: object
+      properties:
+        uploadUrl:
+          type:
+            - string
+            - "null"
+          description: The presigned upload URL. If the asset is already uploaded, this will be null
+        mediaId:
+          type: string
+          description: The unique langfuse identifier of a media record
+      required:
+        - mediaId
+    GetMediaUploadUrlRequest:
+      title: GetMediaUploadUrlRequest
+      type: object
+      description: >-
+        Request a presigned media upload URL. Provide exactly one context: a trace (traceId, optionally observationId)
+        or a dataset item (datasetId + datasetItemId). field is required and must match the chosen context.
+      properties:
+        traceId:
+          type:
+            - string
+            - "null"
+          description: The trace the media is associated with. Null for dataset item media uploads.
+        observationId:
+          type:
+            - string
+            - "null"
+          description: >-
+            The observation ID associated with the media record. If the media record is associated directly with a
+            trace, this will be null.
+        datasetId:
+          type:
+            - string
+            - "null"
+          description: The dataset the media belongs to. Null for trace/observation media uploads.
+        datasetItemId:
+          type:
+            - string
+            - "null"
+          description: >-
+            The dataset item the media is associated with (need not exist yet). Null for trace/observation media
+            uploads.
+        contentType:
+          $ref: "#/components/schemas/MediaContentType"
+        contentLength:
+          type: integer
+          description: The size of the media record in bytes
+        sha256Hash:
+          type: string
+          description: The SHA-256 hash of the media record
+        field:
+          type: string
+          description: >-
+            The item field the media is in: `input`/`output`/`metadata` (trace) or `input`/`expectedOutput`/`metadata`
+            (dataset item).
+      required:
+        - contentType
+        - contentLength
+        - sha256Hash
+        - field
     GetMediaResponse:
       title: GetMediaResponse
       type: object
@@ -2618,7 +2187,6 @@ components:
           description: The download URL of the media record
         urlExpiry:
           type: string
-          format: date-time
           description: The expiry date and time of the media record download URL
       required:
         - mediaId
@@ -2639,56 +2207,618 @@ components:
           type: integer
           description: The HTTP status code of the upload
         uploadHttpError:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           description: The HTTP error message of the upload
         uploadTimeMs:
-          type: integer
+          type:
+            - integer
+            - "null"
           description: The time in milliseconds it took to upload the media record
       required:
         - uploadedAt
         - uploadHttpStatus
-    GetMediaUploadUrlRequest:
-      title: GetMediaUploadUrlRequest
+    utilsMetaResponse:
+      title: utilsMetaResponse
       type: object
       properties:
-        traceId:
-          type: string
-          description: The trace ID associated with the media record
-        observationId:
-          type: string
-          nullable: true
-          description: The observation ID associated with the media record
-        contentType:
-          $ref: "#/components/schemas/MediaContentType"
-        contentLength:
+        page:
           type: integer
-          description: The size of the media record in bytes
-        sha256Hash:
-          type: string
-          description: The SHA-256 hash of the media record
-        field:
-          type: string
-          description: The field name for the media record
+          description: current page number
+        limit:
+          type: integer
+          description: number of items per page
+        totalItems:
+          type: integer
+          description: number of total items given the current filters/selection (if any)
+        totalPages:
+          type: integer
+          description: number of total pages given the current limit
       required:
-        - traceId
-        - contentType
-        - contentLength
-        - sha256Hash
-        - field
-    GetMediaUploadUrlResponse:
-      title: GetMediaUploadUrlResponse
+        - page
+        - limit
+        - totalItems
+        - totalPages
+    DatasetStatus:
+      title: DatasetStatus
+      type: string
+      enum:
+        - ACTIVE
+        - ARCHIVED
+    DatasetItemMediaReference:
+      title: DatasetItemMediaReference
       type: object
       properties:
-        uploadUrl:
+        field:
+          $ref: "#/components/schemas/DatasetItemMediaReferenceField"
+          description: The dataset item field containing the reference
+        referenceString:
           type: string
-          description: The presigned upload URL for the media record
-        mediaId:
+          description: The Langfuse media reference string, e.g. `@@@langfuseMedia:type=image/png|id=...|source=bytes@@@`
+        jsonPath:
           type: string
-          description: The unique langfuse identifier of a media record
+          description: JSONPath of the string holding the reference within the field, e.g. `$['image']`
+        media:
+          $ref: "#/components/schemas/DatasetItemMediaReferenceMedia"
+          description: The resolved media record.
       required:
-        - uploadUrl
-        - mediaId
+        - field
+        - referenceString
+        - jsonPath
+        - media
+    Comment:
+      title: Comment
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        objectType:
+          $ref: "#/components/schemas/CommentObjectType"
+        objectId:
+          type: string
+        content:
+          type: string
+        authorUserId:
+          type:
+            - string
+            - "null"
+          description: The user ID of the comment author
+      required:
+        - id
+        - projectId
+        - createdAt
+        - updatedAt
+        - objectType
+        - objectId
+        - content
+    ObservationV2:
+      title: ObservationV2
+      type: object
+      description: |-
+        An observation from the v2 API with field-group-based selection.
+        Core fields are always present. Other fields are included only when their field group is requested.
+      properties:
+        id:
+          type: string
+          description: The unique identifier of the observation
+        traceId:
+          type:
+            - string
+            - "null"
+          description: The trace ID associated with the observation
+        startTime:
+          type: string
+          format: date-time
+          description: The start time of the observation
+        endTime:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: The end time of the observation
+        projectId:
+          type: string
+          description: The project ID this observation belongs to
+        parentObservationId:
+          type:
+            - string
+            - "null"
+          description: |-
+            The physical parent observation ID, if present.
+            Observations marked as app roots by the SDK may retain a non-null parent ID.
+        type:
+          type: string
+          description: The type of the observation (e.g. GENERATION, SPAN, EVENT)
+        isRootObservation:
+          type:
+            - boolean
+            - "null"
+          description: |-
+            Whether this observation is a logical root.
+            This is true for observations without a physical parent and observations marked as app roots by the SDK.
+        name:
+          type:
+            - string
+            - "null"
+          description: The name of the observation
+        level:
+          description: The level of the observation
+          anyOf:
+            - $ref: "#/components/schemas/ObservationLevel"
+            - type: "null"
+        statusMessage:
+          type:
+            - string
+            - "null"
+          description: The status message of the observation
+        version:
+          type:
+            - string
+            - "null"
+          description: The version of the observation
+        environment:
+          type:
+            - string
+            - "null"
+          description: The environment from which this observation originated
+        bookmarked:
+          type:
+            - boolean
+            - "null"
+          description: Whether the observation is bookmarked
+        public:
+          type:
+            - boolean
+            - "null"
+          description: Whether the observation is public
+        userId:
+          type:
+            - string
+            - "null"
+          description: The user ID associated with the observation
+        sessionId:
+          type:
+            - string
+            - "null"
+          description: The session ID associated with the observation
+        completionStartTime:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: The completion start time of the observation
+        createdAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: The creation timestamp of the observation
+        updatedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          description: The last update timestamp of the observation
+        input:
+          description: The input data of the observation
+        output:
+          description: The output data of the observation
+        metadata:
+          description: Additional metadata of the observation
+        providedModelName:
+          type:
+            - string
+            - "null"
+          description: The model name as provided by the user
+        internalModelId:
+          type:
+            - string
+            - "null"
+          description: The internal model ID matched by Langfuse
+        modelParameters:
+          description: The parameters of the model used for the observation
+        usageDetails:
+          type:
+            - object
+            - "null"
+          additionalProperties:
+            type: integer
+          description: The usage details of the observation. Key is the usage metric name, value is the number of units consumed.
+        costDetails:
+          type:
+            - object
+            - "null"
+          additionalProperties:
+            type: number
+            format: double
+          description: The cost details of the observation. Key is the cost metric name, value is the cost in USD.
+        totalCost:
+          type:
+            - number
+            - "null"
+          format: double
+          description: The total cost of the observation in USD
+        usagePricingTierName:
+          type:
+            - string
+            - "null"
+          description: The name of the pricing tier applied to this observation's usage costs
+        promptId:
+          type:
+            - string
+            - "null"
+          description: The prompt ID associated with the observation
+        promptName:
+          type:
+            - string
+            - "null"
+          description: The prompt name associated with the observation
+        promptVersion:
+          type:
+            - integer
+            - "null"
+          description: The prompt version associated with the observation
+        latency:
+          type:
+            - number
+            - "null"
+          format: double
+          description: The latency in seconds
+        timeToFirstToken:
+          type:
+            - number
+            - "null"
+          format: double
+          description: The time to first token in seconds
+        modelId:
+          type:
+            - string
+            - "null"
+          description: The matched model ID. Null when the `model` field group is not requested.
+        inputPrice:
+          type:
+            - string
+            - "null"
+          description: >-
+            The input token price (USD per unit) from the matched model, serialized as a decimal string (e.g. "0.0001").
+            Null when the `model` field group is not requested.
+        outputPrice:
+          type:
+            - string
+            - "null"
+          description: >-
+            The output token price (USD per unit) from the matched model, serialized as a decimal string (e.g.
+            "0.0001"). Null when the `model` field group is not requested.
+        totalPrice:
+          type:
+            - string
+            - "null"
+          description: >-
+            The total token price (USD per unit) from the matched model, serialized as a decimal string (e.g. "0.0001").
+            Null when the `model` field group is not requested.
+        traceName:
+          type:
+            - string
+            - "null"
+          description: The name of the parent trace
+        tags:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+          description: Tags from the parent trace (denormalized onto the observation)
+        release:
+          type:
+            - string
+            - "null"
+          description: The release version of the parent trace
+      required:
+        - id
+        - traceId
+        - startTime
+        - endTime
+        - projectId
+        - parentObservationId
+        - type
+        - modelId
+        - inputPrice
+        - outputPrice
+        - totalPrice
+    ObservationsV2Meta:
+      title: ObservationsV2Meta
+      type: object
+      description: Metadata for cursor-based pagination
+      properties:
+        cursor:
+          type:
+            - string
+            - "null"
+          description: Base64-encoded cursor to use for retrieving the next page. If not present, there are no more results.
+    OtelResource:
+      title: OtelResource
+      type: object
+      description: Resource attributes identifying the source of telemetry
+      properties:
+        attributes:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/OtelAttribute"
+          description: Resource attributes like service.name, service.version, etc.
+    OtelScopeSpan:
+      title: OtelScopeSpan
+      type: object
+      description: Collection of spans from a single instrumentation scope
+      properties:
+        scope:
+          description: Instrumentation scope information
+          anyOf:
+            - $ref: "#/components/schemas/OtelScope"
+            - type: "null"
+        spans:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/OtelSpan"
+          description: Array of spans
+    PromptMeta:
+      title: PromptMeta
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/PromptType"
+          description: Indicates whether the prompt is a text or chat prompt.
+        versions:
+          type: array
+          items:
+            type: integer
+        labels:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        lastConfig:
+          description: Config object of the most recent prompt version that matches the filters (if any are provided)
+      required:
+        - name
+        - type
+        - versions
+        - labels
+        - tags
+        - lastUpdatedAt
+        - lastConfig
+    ChatPrompt:
+      title: ChatPrompt
+      type: object
+      properties:
+        prompt:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageWithPlaceholders"
+      required:
+        - prompt
+      allOf:
+        - $ref: "#/components/schemas/BasePrompt"
+    TextPrompt:
+      title: TextPrompt
+      type: object
+      properties:
+        prompt:
+          type: string
+      required:
+        - prompt
+      allOf:
+        - $ref: "#/components/schemas/BasePrompt"
+    CreateChatPromptRequest:
+      title: CreateChatPromptRequest
+      type: object
+      properties:
+        name:
+          type: string
+        prompt:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageWithPlaceholders"
+        config: {}
+        type:
+          $ref: "#/components/schemas/CreateChatPromptType"
+        labels:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+          description: List of deployment labels of this prompt version.
+        tags:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+          description: List of tags to apply to all versions of this prompt.
+        commitMessage:
+          type:
+            - string
+            - "null"
+          description: Commit message for this prompt version.
+      required:
+        - name
+        - prompt
+        - type
+    CreateTextPromptRequest:
+      title: CreateTextPromptRequest
+      type: object
+      properties:
+        name:
+          type: string
+        prompt:
+          type: string
+        config: {}
+        type:
+          anyOf:
+            - $ref: "#/components/schemas/CreateTextPromptType"
+            - type: "null"
+        labels:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+          description: List of deployment labels of this prompt version.
+        tags:
+          type:
+            - array
+            - "null"
+          items:
+            type: string
+          description: List of tags to apply to all versions of this prompt.
+        commitMessage:
+          type:
+            - string
+            - "null"
+          description: Commit message for this prompt version.
+      required:
+        - name
+        - prompt
+    CreateScoreValue:
+      title: CreateScoreValue
+      oneOf:
+        - type: number
+          format: double
+        - type: string
+      description: >-
+        The value of the score. Must be passed as string for categorical and text scores, and numeric for boolean and
+        numeric scores
+    ScoreDataType:
+      title: ScoreDataType
+      type: string
+      enum:
+        - NUMERIC
+        - BOOLEAN
+        - CATEGORICAL
+        - CORRECTION
+        - TEXT
+    CreateScoreSource:
+      title: CreateScoreSource
+      type: string
+      enum:
+        - API
+        - ANNOTATION
+      description: |-
+        Source values accepted when creating a score via the public REST API.
+        EVAL is reserved for internal evaluator outputs and is intentionally not
+        exposed here — use commons.ScoreSource when reading scores.
+    ScoreV3:
+      title: ScoreV3
+      oneOf:
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                dataType:
+                  type: string
+                  enum:
+                    - NUMERIC
+            - $ref: "#/components/schemas/NumericScoreV3"
+          required:
+            - dataType
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                dataType:
+                  type: string
+                  enum:
+                    - BOOLEAN
+            - $ref: "#/components/schemas/BooleanScoreV3"
+          required:
+            - dataType
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                dataType:
+                  type: string
+                  enum:
+                    - CATEGORICAL
+            - $ref: "#/components/schemas/CategoricalScoreV3"
+          required:
+            - dataType
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                dataType:
+                  type: string
+                  enum:
+                    - TEXT
+            - $ref: "#/components/schemas/TextScoreV3"
+          required:
+            - dataType
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                dataType:
+                  type: string
+                  enum:
+                    - CORRECTION
+            - $ref: "#/components/schemas/CorrectionScoreV3"
+          required:
+            - dataType
+    GetScoresV3Meta:
+      title: GetScoresV3Meta
+      type: object
+      properties:
+        limit:
+          type: integer
+        cursor:
+          type:
+            - string
+            - "null"
+          description: URL-safe base64 (base64url) cursor for the next page. Absent when there are no more results.
+      required:
+        - limit
+    ScoreConfigDataType:
+      title: ScoreConfigDataType
+      type: string
+      enum:
+        - NUMERIC
+        - BOOLEAN
+        - CATEGORICAL
+        - TEXT
+    ConfigCategory:
+      title: ConfigCategory
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+        label:
+          type: string
+      required:
+        - value
+        - label
     MediaContentType:
       title: MediaContentType
       type: string
@@ -2701,6 +2831,8 @@ components:
         - image/svg+xml
         - image/tiff
         - image/bmp
+        - image/avif
+        - image/heic
         - audio/mpeg
         - audio/mp3
         - audio/wav
@@ -2709,17 +2841,501 @@ components:
         - audio/aac
         - audio/mp4
         - audio/flac
+        - audio/opus
+        - audio/webm
         - video/mp4
         - video/webm
+        - video/ogg
+        - video/mpeg
+        - video/quicktime
+        - video/x-msvideo
+        - video/x-matroska
         - text/plain
         - text/html
         - text/css
         - text/csv
+        - text/markdown
+        - text/x-python
+        - application/javascript
+        - text/x-typescript
+        - application/x-yaml
         - application/pdf
         - application/msword
         - application/vnd.ms-excel
+        - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
         - application/zip
         - application/json
         - application/xml
         - application/octet-stream
+        - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        - application/vnd.openxmlformats-officedocument.presentationml.presentation
+        - application/rtf
+        - application/x-ndjson
+        - application/vnd.apache.parquet
+        - application/gzip
+        - application/x-tar
+        - application/x-7z-compressed
       description: The MIME type of the media record
+    DatasetItemMediaReferenceField:
+      title: DatasetItemMediaReferenceField
+      type: string
+      enum:
+        - input
+        - expectedOutput
+        - metadata
+    DatasetItemMediaReferenceMedia:
+      title: DatasetItemMediaReferenceMedia
+      type: object
+      properties:
+        mediaId:
+          type: string
+          description: The unique langfuse identifier of the media record
+        contentType:
+          type: string
+          description: The MIME type of the media record
+        contentLength:
+          type: integer
+          description: The size of the media record in bytes
+        url:
+          type: string
+          description: The signed download URL of the media record
+        urlExpiry:
+          type: string
+          description: The expiry date and time of the download URL
+      required:
+        - mediaId
+        - contentType
+        - contentLength
+        - url
+        - urlExpiry
+    CommentObjectType:
+      title: CommentObjectType
+      type: string
+      enum:
+        - TRACE
+        - OBSERVATION
+        - SESSION
+        - PROMPT
+    OtelAttribute:
+      title: OtelAttribute
+      type: object
+      description: Key-value attribute pair for resources, scopes, or spans
+      properties:
+        key:
+          type:
+            - string
+            - "null"
+          description: Attribute key (e.g., "service.name", "langfuse.observation.type")
+        value:
+          description: Attribute value
+          anyOf:
+            - $ref: "#/components/schemas/OtelAttributeValue"
+            - type: "null"
+    OtelScope:
+      title: OtelScope
+      type: object
+      description: Instrumentation scope information
+      properties:
+        name:
+          type:
+            - string
+            - "null"
+          description: Instrumentation scope name
+        version:
+          type:
+            - string
+            - "null"
+          description: Instrumentation scope version
+        attributes:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/OtelAttribute"
+          description: Additional scope attributes
+    OtelSpan:
+      title: OtelSpan
+      type: object
+      description: Individual span representing a unit of work or operation
+      properties:
+        traceId:
+          description: Trace ID (16 bytes, hex-encoded string in JSON or Buffer in binary)
+        spanId:
+          description: Span ID (8 bytes, hex-encoded string in JSON or Buffer in binary)
+        parentSpanId:
+          description: Parent span ID if this is a child span
+        name:
+          type:
+            - string
+            - "null"
+          description: Span name describing the operation
+        kind:
+          type:
+            - integer
+            - "null"
+          description: Span kind (1=INTERNAL, 2=SERVER, 3=CLIENT, 4=PRODUCER, 5=CONSUMER)
+        startTimeUnixNano:
+          description: Start time in nanoseconds since Unix epoch
+        endTimeUnixNano:
+          description: End time in nanoseconds since Unix epoch
+        attributes:
+          type:
+            - array
+            - "null"
+          items:
+            $ref: "#/components/schemas/OtelAttribute"
+          description: Span attributes including Langfuse-specific attributes (langfuse.observation.*)
+        status:
+          description: Span status object
+    PromptType:
+      title: PromptType
+      type: string
+      enum:
+        - chat
+        - text
+    ChatMessageWithPlaceholders:
+      title: ChatMessageWithPlaceholders
+      oneOf:
+        - $ref: "#/components/schemas/ChatMessage"
+        - $ref: "#/components/schemas/PlaceholderMessage"
+    BasePrompt:
+      title: BasePrompt
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: integer
+        config: {}
+        labels:
+          type: array
+          items:
+            type: string
+          description: List of deployment labels of this prompt version.
+        tags:
+          type: array
+          items:
+            type: string
+          description: List of tags. Used to filter via UI and API. The same across versions of a prompt.
+        commitMessage:
+          type:
+            - string
+            - "null"
+          description: Commit message for this prompt version.
+        resolutionGraph:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+          description: >-
+            The dependency resolution graph for the current prompt. Null if the prompt has no dependencies or if
+            `resolve=false` was used.
+      required:
+        - name
+        - version
+        - config
+        - labels
+        - tags
+    CreateChatPromptType:
+      title: CreateChatPromptType
+      type: string
+      enum:
+        - chat
+    CreateTextPromptType:
+      title: CreateTextPromptType
+      type: string
+      enum:
+        - text
+    NumericScoreV3:
+      title: NumericScoreV3
+      type: object
+      properties:
+        value:
+          type: number
+          format: double
+          description: The numeric value of the score.
+      required:
+        - value
+      allOf:
+        - $ref: "#/components/schemas/BaseScoreV3"
+    BooleanScoreV3:
+      title: BooleanScoreV3
+      type: object
+      properties:
+        value:
+          type: boolean
+          description: The boolean value of the score.
+      required:
+        - value
+      allOf:
+        - $ref: "#/components/schemas/BaseScoreV3"
+    CategoricalScoreV3:
+      title: CategoricalScoreV3
+      type: object
+      properties:
+        value:
+          type: string
+          description: The string category value of the score.
+      required:
+        - value
+      allOf:
+        - $ref: "#/components/schemas/BaseScoreV3"
+    TextScoreV3:
+      title: TextScoreV3
+      type: object
+      properties:
+        value:
+          type: string
+          description: The text content of the score.
+      required:
+        - value
+      allOf:
+        - $ref: "#/components/schemas/BaseScoreV3"
+    CorrectionScoreV3:
+      title: CorrectionScoreV3
+      type: object
+      properties:
+        value:
+          type: string
+          description: The correction content of the score. Empty string if not set.
+      required:
+        - value
+      allOf:
+        - $ref: "#/components/schemas/BaseScoreV3"
+    OtelAttributeValue:
+      title: OtelAttributeValue
+      type: object
+      description: Attribute value wrapper supporting different value types
+      properties:
+        stringValue:
+          type:
+            - string
+            - "null"
+          description: String value
+        intValue:
+          type:
+            - integer
+            - "null"
+          description: Integer value
+        doubleValue:
+          type:
+            - number
+            - "null"
+          format: double
+          description: Double value
+        boolValue:
+          type:
+            - boolean
+            - "null"
+          description: Boolean value
+    ChatMessage:
+      title: ChatMessage
+      type: object
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+        type:
+          anyOf:
+            - $ref: "#/components/schemas/ChatMessageType"
+            - type: "null"
+      required:
+        - role
+        - content
+    PlaceholderMessage:
+      title: PlaceholderMessage
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          anyOf:
+            - $ref: "#/components/schemas/PlaceholderMessageType"
+            - type: "null"
+      required:
+        - name
+    BaseScoreV3:
+      title: BaseScoreV3
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        name:
+          type: string
+        source:
+          $ref: "#/components/schemas/ScoreSource"
+        timestamp:
+          type: string
+          format: date-time
+        environment:
+          type: string
+          description: The environment from which this score originated.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        comment:
+          type:
+            - string
+            - "null"
+          description: Optional comment attached to the score. Present when "details" is included in the fields parameter.
+        configId:
+          type:
+            - string
+            - "null"
+          description: >-
+            The score config ID, if this score was created from a config. Present when "details" is included in the
+            fields parameter.
+        metadata:
+          type:
+            - object
+            - "null"
+          additionalProperties: true
+          description: Arbitrary metadata attached to the score. Present when "details" is included in the fields parameter.
+        authorUserId:
+          type:
+            - string
+            - "null"
+          description: >-
+            The user who created this score, if available. Present when "annotation" is included in the fields
+            parameter.
+        queueId:
+          type:
+            - string
+            - "null"
+          description: >-
+            The annotation queue this score belongs to, if any. Present when "annotation" is included in the fields
+            parameter.
+        subject:
+          description: >-
+            The entity this score is attached to (trace, observation, session, or experiment). Present when "subject" is
+            included in the fields parameter.
+          anyOf:
+            - $ref: "#/components/schemas/ScoreSubjectV3"
+            - type: "null"
+      required:
+        - id
+        - projectId
+        - name
+        - source
+        - timestamp
+        - environment
+        - createdAt
+        - updatedAt
+    ChatMessageType:
+      title: ChatMessageType
+      type: string
+      enum:
+        - chatmessage
+    PlaceholderMessageType:
+      title: PlaceholderMessageType
+      type: string
+      enum:
+        - placeholder
+    ScoreSource:
+      title: ScoreSource
+      type: string
+      enum:
+        - ANNOTATION
+        - API
+        - EVAL
+    ScoreSubjectV3:
+      title: ScoreSubjectV3
+      oneOf:
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - trace
+            - $ref: "#/components/schemas/ScoreSubjectTraceV3"
+          required:
+            - kind
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - observation
+            - $ref: "#/components/schemas/ScoreSubjectObservationV3"
+          required:
+            - kind
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - session
+            - $ref: "#/components/schemas/ScoreSubjectSessionV3"
+          required:
+            - kind
+        - type: object
+          allOf:
+            - type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - experiment
+            - $ref: "#/components/schemas/ScoreSubjectExperimentV3"
+          required:
+            - kind
+      description: >-
+        A reference to the entity this score is attached to. Discriminated by "kind" — one of trace, observation,
+        session, or experiment.
+    ScoreSubjectTraceV3:
+      title: ScoreSubjectTraceV3
+      type: object
+      properties:
+        id:
+          type: string
+          description: The trace ID.
+      required:
+        - id
+    ScoreSubjectObservationV3:
+      title: ScoreSubjectObservationV3
+      type: object
+      properties:
+        id:
+          type: string
+          description: The observation ID.
+        traceId:
+          type:
+            - string
+            - "null"
+          description: The parent trace ID, if available.
+      required:
+        - id
+    ScoreSubjectSessionV3:
+      title: ScoreSubjectSessionV3
+      type: object
+      properties:
+        id:
+          type: string
+          description: The session ID.
+      required:
+        - id
+    ScoreSubjectExperimentV3:
+      title: ScoreSubjectExperimentV3
+      type: object
+      properties:
+        id:
+          type: string
+          description: The dataset run ID (experiment ID).
+      required:
+        - id
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic

@@ -4,7 +4,7 @@
 
 ## Desired Outcome
 
-A single MCP server (`coaiajs-mcp`) that consolidates the 44 tools from coaia-narrative (27), coaia-pde (12), and coaia-planning (5) into one server, adds 20 new tools for Redis, Langfuse, pipeline, and audio, and supports feature gating so resource-constrained environments can load only what they need.
+A single MCP server (`coaiajs-mcp`) that consolidates the 44 tools from coaia-narrative (27), coaia-pde (12), and coaia-planning (5) into one server, adds 19 new tools for Redis, Langfuse, pipeline, and audio, and supports feature gating so resource-constrained environments can load only what they need.
 
 ## Structural Tension
 
@@ -94,7 +94,7 @@ MMOT: `perform_mmot_evaluation`, `init_llm_guidance`
 
 ### Langfuse
 
-`coaia_fuse_trace_create`, `coaia_fuse_add_observation`, `coaia_fuse_trace_patch_output`, `coaia_fuse_trace_get`, `coaia_fuse_trace_view`, `coaia_fuse_observation_get`, `coaia_fuse_traces_list`, `coaia_fuse_traces_session_view`, comments, prompts, datasets, score configs, score application, and media tools.
+`coaia_fuse_trace_create`, `coaia_fuse_add_observation`, `coaia_fuse_trace_get`, `coaia_fuse_trace_view`, `coaia_fuse_observation_get`, `coaia_fuse_traces_list`, `coaia_fuse_traces_session_view`, comments, prompts, datasets, score configs, score application, and media tools.
 
 ### Resources
 
