@@ -13,6 +13,7 @@ export type { TraceFilters } from './traces.js';
 export { addObservation, addObservations, getObservation, formatObservationDisplay } from './observations.js';
 
 export { listPrompts, getPrompt, createPrompt, formatPromptsTable, formatPromptDisplay } from './prompts.js';
+export type { PromptSelector } from './prompts.js';
 
 export {
   listDatasets, getDataset, createDataset, listDatasetItems, createDatasetItem,

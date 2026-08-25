@@ -323,7 +323,12 @@ function registerFuseCommands(program: Command): void {
     .description('Get a prompt')
     .argument('<name>', 'Prompt name')
     .option('--version <n>', 'Prompt version', parseInt)
-    .action(actionHandler(async (name: string, opts: Record<string, unknown>, cmd: Command) => {
+    .option('--label <label>', 'Prompt deployment label')
+    .action(actionHandler(async (
+      name: string,
+      opts: { version?: number; label?: string },
+      cmd: Command,
+    ) => {
       const result = await callModule('langfuse', 'getPrompt', name, opts);
       output(result, cmd);
     }));

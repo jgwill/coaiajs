@@ -27,12 +27,31 @@ export async function listPrompts(): Promise<string> {
   return JSON.stringify(allPrompts, null, 2);
 }
 
-export async function getPrompt(name: string, label?: string): Promise<string> {
+export interface PromptSelector {
+  label?: string;
+  version?: number;
+}
+
+export async function getPrompt(
+  name: string,
+  selector?: string | number | PromptSelector,
+): Promise<string> {
   const client = getClient();
-  const params = label ? `?label=${encodeURIComponent(label)}` : '';
+  const params = new URLSearchParams();
+
+  if (typeof selector === 'string') {
+    params.set('label', selector);
+  } else if (typeof selector === 'number') {
+    params.set('version', String(selector));
+  } else if (selector) {
+    if (selector.label) params.set('label', selector.label);
+    if (selector.version !== undefined) params.set('version', String(selector.version));
+  }
+
+  const query = params.size ? `?${params.toString()}` : '';
   const result = await client.request<unknown>(
     'GET',
-    `/api/public/v2/prompts/${encodeURIComponent(name)}${params}`,
+    `/api/public/v2/prompts/${encodeURIComponent(name)}${query}`,
   );
   return JSON.stringify(result, null, 2);
 }
