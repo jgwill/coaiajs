@@ -324,13 +324,22 @@ function registerFuseCommands(program: Command): void {
     .argument('<name>', 'Prompt name')
     .option('--version <n>', 'Prompt version', parseInt)
     .option('--label <label>', 'Prompt deployment label')
+    .option('--md', 'Markdown output (default)')
     .action(actionHandler(async (
       name: string,
-      opts: { version?: number; label?: string },
+      opts: { version?: number; label?: string; md?: boolean },
       cmd: Command,
     ) => {
-      const result = await callModule('langfuse', 'getPrompt', name, opts);
-      output(result, cmd);
+      const result = await callModule('langfuse', 'getPrompt', name, {
+        version: opts.version,
+        label: opts.label,
+      });
+      if (globals(cmd).json) {
+        console.log(formatJson(typeof result === 'string' ? JSON.parse(result) : result));
+      } else {
+        const markdown = await callModule('langfuse', 'formatPromptMarkdown', result);
+        console.log(markdown);
+      }
     }));
 
   prompts

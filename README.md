@@ -50,7 +50,7 @@ Import from the root, or from a subpath to pull in only what you need. Every ent
 | `coaiajs/github` | `listIssues`, `getIssue`, `getIssueComments`, `resetClient` |
 | `coaiajs/environment` | `EnvironmentManager`, `createEnvironment`, `findEnvironment` |
 | `coaiajs/version` | `getPackageVersion` |
-| `coaiajs/langfuse` | `LangfuseClient`, `LangfuseApiError`, traces/observations/prompts/datasets/scores/comments/media operations and formatters (52 exports) |
+| `coaiajs/langfuse` | `LangfuseClient`, `LangfuseApiError`, traces/observations/prompts/datasets/scores/comments/media operations and formatters (53 exports) |
 | `coaiajs/narrative` | `KnowledgeGraphManager`, chart operations, markdown export, tool definitions (29 exports) |
 | `coaiajs/pde` | `SessionManager`, `StcMapper`, `handlePdeTool`, `PDE_MCP_TOOLS` (10 exports) |
 | `coaiajs/planning` | `parsePlan`, `planToSTC`, `syncToChart`, `syncToPlan`, `handlePlanningTool` (10 exports) |
@@ -129,6 +129,8 @@ npx coaia <command>          # or: npm i -g coaiajs && coaia <command>
 | `gh` | `issues` |
 
 `coaia tash` follows coaiapy semantics: `-F/--file` reads the value from a file, `-T/--ttl` is in **minutes**, default TTL `5555`.
+
+`coaia fuse prompts get <name>` outputs Markdown by default (`--md` is available explicitly); use the global `--json` option for JSON.
 
 ---
 

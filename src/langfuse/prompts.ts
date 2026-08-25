@@ -107,6 +107,57 @@ export function formatPromptsTable(json: unknown): string {
   }
 }
 
+export function formatPromptMarkdown(json: unknown): string {
+  try {
+    const prompt = (typeof json === 'string' ? JSON.parse(json) : json) as Record<string, unknown>;
+    if ('error' in prompt) return `> Error: ${prompt.error}`;
+
+    const name = String(prompt.name ?? 'Unnamed prompt');
+    const version = prompt.version === undefined ? undefined : String(prompt.version);
+    const type = String(prompt.type ?? 'text');
+    const labels = (prompt.labels as string[] | undefined) ?? [];
+    const tags = (prompt.tags as string[] | undefined) ?? [];
+    const lines = [`# ${name}${version ? ` (v${version})` : ''}`, ''];
+
+    lines.push(`- **Type:** ${type}`);
+    if (labels.length) lines.push(`- **Labels:** ${labels.join(', ')}`);
+    if (tags.length) lines.push(`- **Tags:** ${tags.join(', ')}`);
+    lines.push('', '## Prompt', '');
+
+    const content = prompt.prompt;
+    if (typeof content === 'string') {
+      lines.push(content);
+    } else if (Array.isArray(content)) {
+      for (const message of content) {
+        if (message && typeof message === 'object' && !Array.isArray(message)) {
+          const record = message as Record<string, unknown>;
+          const role = String(record.role ?? 'message');
+          lines.push(`### ${role.charAt(0).toUpperCase()}${role.slice(1)}`, '');
+          lines.push(typeof record.content === 'string'
+            ? record.content
+            : `\`\`\`json\n${JSON.stringify(record.content, null, 2)}\n\`\`\``);
+          lines.push('');
+        } else {
+          lines.push(String(message), '');
+        }
+      }
+    } else if (content !== undefined) {
+      lines.push(`\`\`\`json\n${JSON.stringify(content, null, 2)}\n\`\`\``);
+    } else {
+      lines.push('*(No prompt content)*');
+    }
+
+    const config = prompt.config;
+    if (config && typeof config === 'object' && Object.keys(config).length) {
+      lines.push('', '## Configuration', '', '```json', JSON.stringify(config, null, 2), '```');
+    }
+
+    return lines.join('\n').trimEnd();
+  } catch (e) {
+    return `> Error formatting prompt as Markdown: ${e}`;
+  }
+}
+
 export function formatPromptDisplay(json: unknown): string {
   try {
     const prompt = (typeof json === 'string' ? JSON.parse(json) : json) as Record<string, unknown>;

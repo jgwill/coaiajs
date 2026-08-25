@@ -169,7 +169,7 @@ Client and errors: `LangfuseClient`, `LangfuseApiError`, `getClient`, `resetClie
 - **Scores:** `createScore`, `listScores`, `createScoreForTarget`, `applyScoreToTrace`, `createScoreConfig`, `getScoreConfig`, `listScoreConfigs`, `applyScoreConfig`, `importScoreConfigs`, `exportScoreConfigs`, `getBuiltInPresets`, `installPreset`
 - **Comments:** `createComment`, `getComment`, `listComments`
 - **Media:** `uploadAndAttachMedia`, `getMedia`
-- **Formatters:** `formatTracesTable`, `formatTracesMarkdown`, `formatTraceTree`, `formatObservationDisplay`, `formatPromptDisplay`, `formatPromptsTable`, `formatDatasetsTable`, `formatDatasetForFinetuning`, `formatScoresTable`, `formatScoreConfigsTable`, `formatMediaDisplay`
+- **Formatters:** `formatTracesTable`, `formatTracesMarkdown`, `formatTraceTree`, `formatObservationDisplay`, `formatPromptMarkdown`, `formatPromptDisplay`, `formatPromptsTable`, `formatDatasetsTable`, `formatDatasetForFinetuning`, `formatScoresTable`, `formatScoreConfigsTable`, `formatMediaDisplay`
 
 ### Exported types
 
