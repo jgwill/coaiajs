@@ -1,6 +1,6 @@
 {
   "name": "coaiajs",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "type": "module",
   "description": "CoAIA unified TypeScript monorepo — CLI, MCP server, and library consolidating coaia-narrative, coaia-pde, coaia-planning, and coaiapy patterns into one package.",
   "main": "./dist/src/index.js",
