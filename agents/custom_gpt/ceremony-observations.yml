@@ -1,0 +1,1201 @@
+openapi: 3.1.0
+info:
+  title: Langfuse Ceremony Observations
+  version: 0.4.0
+  description: >-
+    Focused Langfuse v4 action surface for a Custom GPT. It can create a trace,
+    append nested observations to an existing trace through OTLP/HTTP JSON,
+    inspect observations, and perform the ceremony's core prompt, dataset,
+    score, comment, and project operations. A trace is created by exporting a
+    root observation; append a child by reusing the 32-character traceId,
+    generating a fresh 16-character spanId, and setting parentSpanId to the
+    parent observation's ID. Spans are immutable.
+  license:
+    name: MIT
+    identifier: MIT
+  x-documentation:
+    langfuseOtel: https://langfuse.com/integrations/native/opentelemetry
+    langfuseDataModel: https://langfuse.com/docs/observability/data-model
+    otlpJson: https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding
+    gptActions: https://developers.openai.com/api/docs/actions/introduction
+servers:
+  - url: https://cloud.langfuse.com
+    description: Langfuse Cloud EU. Replace this URL before import for another region or a self-hosted deployment.
+security:
+  - LangfuseAuthorization: []
+tags:
+  - name: Observations
+    description: Create and inspect Langfuse v4 observations and traces.
+  - name: Projects
+    description: Discover Langfuse project IDs.
+  - name: Prompts
+    description: Read and version managed prompts.
+  - name: Datasets
+    description: Manage ceremony datasets and their items.
+  - name: Scores
+    description: Apply and inspect evaluations and score configurations.
+  - name: Comments
+    description: Attach and inspect comments on Langfuse objects.
+paths:
+  /api/public/otel/v1/traces:
+    post:
+      operationId: observations_export
+      summary: Create a trace or append observations
+      description: |-
+        Export one or more complete, immutable OTLP spans to Langfuse.
+
+        To create a trace, export a root span with a new 32-hex traceId, a new
+        16-hex spanId, and no parentSpanId. The root span is the trace's root
+        observation.
+
+        To append an observation, reuse the traceId, generate a new spanId,
+        and set parentSpanId to the 16-hex ID of its parent observation. Use
+        the same traceId on every span in a trace. Never reuse a spanId.
+
+        Include trace attributes such as langfuse.trace.name,
+        langfuse.user.id, langfuse.session.id, and langfuse.trace.tags on every
+        appended span because Langfuse v4 stores trace context on observations.
+        Serialize observation input/output JSON into stringValue. Use current
+        Unix epoch nanoseconds encoded as decimal strings; endTimeUnixNano must
+        be greater than or equal to startTimeUnixNano.
+      tags: [Observations]
+      parameters:
+        - name: x-langfuse-ingestion-version
+          in: header
+          required: true
+          description: Always send the literal value 4 for real-time Langfuse v4 ingestion.
+          schema:
+            type: string
+            enum: ["4"]
+            default: "4"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OtlpTraceExportRequest"
+            examples:
+              createRootAndChild:
+                summary: Create a trace containing a root span and one child observation
+                value:
+                  resourceSpans:
+                    - resource:
+                        attributes:
+                          - key: service.name
+                            value:
+                              stringValue: custom-gpt-ceremony
+                      scopeSpans:
+                        - scope:
+                            name: custom-gpt-ceremony
+                            version: "0.4.0"
+                          spans:
+                            - traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+                              spanId: 00f067aa0ba902b7
+                              name: ceremony-trace
+                              kind: 1
+                              startTimeUnixNano: "1735689600000000000"
+                              endTimeUnixNano: "1735689601000000000"
+                              attributes:
+                                - key: langfuse.observation.type
+                                  value:
+                                    stringValue: span
+                                - key: langfuse.trace.name
+                                  value:
+                                    stringValue: ceremony-trace
+                                - key: langfuse.observation.input
+                                  value:
+                                    stringValue: '{"request":"begin ceremony"}'
+                                - key: langfuse.observation.output
+                                  value:
+                                    stringValue: '{"status":"started"}'
+                                - key: langfuse.trace.tags
+                                  value:
+                                    arrayValue:
+                                      values:
+                                        - stringValue: ceremony
+                              status:
+                                code: 1
+                            - traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+                              spanId: b7ad6b7169203331
+                              parentSpanId: 00f067aa0ba902b7
+                              name: invoke-model
+                              kind: 1
+                              startTimeUnixNano: "1735689600200000000"
+                              endTimeUnixNano: "1735689600900000000"
+                              attributes:
+                                - key: langfuse.observation.type
+                                  value:
+                                    stringValue: generation
+                                - key: langfuse.trace.name
+                                  value:
+                                    stringValue: ceremony-trace
+                                - key: langfuse.observation.model.name
+                                  value:
+                                    stringValue: gpt-4.1
+                                - key: langfuse.observation.input
+                                  value:
+                                    stringValue: '{"prompt":"Reflect"}'
+                                - key: langfuse.observation.output
+                                  value:
+                                    stringValue: '{"answer":"Reflection complete"}'
+                              status:
+                                code: 1
+              appendChild:
+                summary: Append one child observation to an existing trace
+                value:
+                  resourceSpans:
+                    - resource:
+                        attributes:
+                          - key: service.name
+                            value:
+                              stringValue: custom-gpt-ceremony
+                      scopeSpans:
+                        - scope:
+                            name: custom-gpt-ceremony
+                            version: "0.4.0"
+                          spans:
+                            - traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+                              spanId: 3c16a3e45742d4c7
+                              parentSpanId: 00f067aa0ba902b7
+                              name: ceremony-step
+                              kind: 1
+                              startTimeUnixNano: "1735689602000000000"
+                              endTimeUnixNano: "1735689602500000000"
+                              attributes:
+                                - key: langfuse.observation.type
+                                  value:
+                                    stringValue: span
+                                - key: langfuse.trace.name
+                                  value:
+                                    stringValue: ceremony-trace
+                                - key: langfuse.observation.input
+                                  value:
+                                    stringValue: '{"step":"continue"}'
+                                - key: langfuse.observation.output
+                                  value:
+                                    stringValue: '{"status":"complete"}'
+                              status:
+                                code: 1
+      responses:
+        "200":
+          description: OTLP export accepted. The response is normally an empty JSON object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtlpTraceExportResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+  /api/public/v2/observations:
+    get:
+      operationId: observations_list
+      summary: List observations or inspect a trace
+      description: >-
+        Query observations with cursor pagination. To inspect a trace after an
+        export, pass its traceId and request fields
+        core,basic,time,io,metadata,model,usage,trace_context. The returned id
+        is the observation/span ID and parentObservationId is its physical
+        parent. Input and output are raw JSON strings and may need parsing.
+      tags: [Observations]
+      parameters:
+        - $ref: "#/components/parameters/ObservationFields"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/ObservationLimit"
+        - name: traceId
+          in: query
+          schema: { type: string }
+          description: Exact 32-hex trace ID.
+        - name: parentObservationId
+          in: query
+          schema: { type: string }
+          description: Return direct children of this 16-hex observation ID.
+        - name: isRootObservation
+          in: query
+          schema: { type: boolean }
+          description: Set true to return logical root observations only.
+        - name: name
+          in: query
+          schema: { type: string }
+        - name: userId
+          in: query
+          schema: { type: string }
+        - name: sessionId
+          in: query
+          schema: { type: string }
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [SPAN, GENERATION, EVENT, AGENT, TOOL, CHAIN, RETRIEVER, EVALUATOR, EMBEDDING, GUARDRAIL]
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [DEBUG, DEFAULT, WARNING, ERROR]
+        - name: fromStartTime
+          in: query
+          schema: { type: string, format: date-time }
+        - name: toStartTime
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Observations and an optional next-page cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObservationListResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+
+  /api/public/projects:
+    get:
+      operationId: projects_list
+      summary: List projects
+      description: List projects accessible to the configured Langfuse API credentials. Use project IDs when creating comments.
+      tags: [Projects]
+      responses:
+        "200":
+          description: Project list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+
+  /api/public/v2/prompts:
+    get:
+      operationId: prompts_list
+      summary: List managed prompts
+      tags: [Prompts]
+      parameters:
+        - name: name
+          in: query
+          schema: { type: string }
+        - name: label
+          in: query
+          schema: { type: string }
+        - name: tag
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageLimit"
+      responses:
+        "200":
+          description: Prompt summaries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+    post:
+      operationId: prompts_create
+      summary: Create a managed prompt version
+      description: Create a text or chat prompt. Reusing a prompt name creates another version.
+      tags: [Prompts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePromptRequest"
+      responses:
+        "200":
+          description: Created prompt version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+  /api/public/v2/prompts/{promptName}:
+    get:
+      operationId: prompts_get
+      summary: Get a managed prompt
+      tags: [Prompts]
+      parameters:
+        - name: promptName
+          in: path
+          required: true
+          schema: { type: string }
+          description: Prompt name, including folder prefixes when present.
+        - name: version
+          in: query
+          schema: { type: integer }
+          description: Exact version. Do not combine with label.
+        - name: label
+          in: query
+          schema: { type: string }
+          description: Label selector. Do not combine with version. Defaults to production.
+        - name: resolve
+          in: query
+          schema: { type: boolean, default: true }
+      responses:
+        "200":
+          description: Selected prompt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+
+  /api/public/v2/prompts/{name}/versions/{version}:
+    patch:
+      operationId: prompt_versions_setLabels
+      summary: Replace labels on a prompt version
+      tags: [Prompts]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+        - name: version
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                newLabels:
+                  type: array
+                  items: { type: string }
+                  description: Complete replacement label set. The latest label is reserved.
+              required: [newLabels]
+      responses:
+        "200":
+          description: Updated prompt version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+  /api/public/v2/datasets:
+    get:
+      operationId: datasets_list
+      summary: List datasets
+      tags: [Datasets]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageLimit"
+      responses:
+        "200":
+          description: Paginated datasets.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+    post:
+      operationId: datasets_create
+      summary: Create a dataset
+      tags: [Datasets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDatasetRequest"
+      responses:
+        "200":
+          description: Created dataset.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+  /api/public/v2/datasets/{datasetName}:
+    get:
+      operationId: datasets_get
+      summary: Get a dataset
+      tags: [Datasets]
+      parameters:
+        - name: datasetName
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Dataset details.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+
+  /api/public/dataset-items:
+    get:
+      operationId: dataset_items_list
+      summary: List dataset items
+      tags: [Datasets]
+      parameters:
+        - name: datasetName
+          in: query
+          schema: { type: string }
+        - name: sourceTraceId
+          in: query
+          schema: { type: string }
+        - name: sourceObservationId
+          in: query
+          schema: { type: string }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageLimit"
+      responses:
+        "200":
+          description: Paginated dataset items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+    post:
+      operationId: dataset_items_upsert
+      summary: Create or upsert a dataset item
+      tags: [Datasets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDatasetItemRequest"
+      responses:
+        "200":
+          description: Created or updated dataset item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+  /api/public/dataset-items/{id}:
+    get:
+      operationId: dataset_items_get
+      summary: Get a dataset item
+      tags: [Datasets]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Dataset item.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+
+  /api/public/scores:
+    post:
+      operationId: scores_create
+      summary: Apply a score
+      description: Apply a numeric, boolean, categorical, text, or correction score to a trace, observation, session, or dataset run.
+      tags: [Scores]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScoreRequest"
+      responses:
+        "200":
+          description: Created score.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+  /api/public/v3/scores:
+    get:
+      operationId: scores_list
+      summary: List scores using Scores API v3
+      tags: [Scores]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: fields
+          in: query
+          schema: { type: string, default: "details,subject" }
+          description: Comma-separated optional groups; use details,subject for ceremony work.
+        - name: id
+          in: query
+          schema: { type: string }
+        - name: name
+          in: query
+          schema: { type: string }
+        - name: source
+          in: query
+          schema: { type: string }
+        - name: dataType
+          in: query
+          schema: { type: string }
+        - name: configId
+          in: query
+          schema: { type: string }
+        - name: traceId
+          in: query
+          schema: { type: string }
+        - name: observationId
+          in: query
+          schema: { type: string }
+          description: Requires traceId.
+        - name: sessionId
+          in: query
+          schema: { type: string }
+        - name: experimentId
+          in: query
+          schema: { type: string }
+        - name: fromTimestamp
+          in: query
+          schema: { type: string, format: date-time }
+        - name: toTimestamp
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Cursor-paginated polymorphic scores.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CursorPaginatedResponse" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+
+  /api/public/score-configs:
+    get:
+      operationId: score_configs_list
+      summary: List score configurations
+      tags: [Scores]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageLimit"
+      responses:
+        "200":
+          description: Score configurations.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+    post:
+      operationId: score_configs_create
+      summary: Create a score configuration
+      tags: [Scores]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateScoreConfigRequest" }
+      responses:
+        "200":
+          description: Created score configuration.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+  /api/public/score-configs/{configId}:
+    get:
+      operationId: score_configs_get
+      summary: Get a score configuration
+      tags: [Scores]
+      parameters:
+        - name: configId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Score configuration.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+
+  /api/public/comments:
+    get:
+      operationId: comments_list
+      summary: List comments
+      tags: [Comments]
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageLimit"
+        - name: objectType
+          in: query
+          schema:
+            type: string
+            enum: [TRACE, OBSERVATION, SESSION, PROMPT]
+        - name: objectId
+          in: query
+          schema: { type: string }
+          description: objectType is required whenever objectId is used.
+        - name: authorUserId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Comments.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResponse" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+    post:
+      operationId: comments_create
+      summary: Create a comment
+      tags: [Comments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCommentRequest" }
+      responses:
+        "200":
+          description: Created comment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GenericObject" }
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: true
+
+components:
+  securitySchemes:
+    LangfuseAuthorization:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: >-
+        In the GPT Action authentication UI choose API Key with a custom
+        Authorization header. Enter the complete value "Basic BASE64", where
+        BASE64 is the base64 encoding of LANGFUSE_PUBLIC_KEY:LANGFUSE_SECRET_KEY.
+        Do not expose either key in GPT instructions or conversation text.
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+      description: Cursor returned by the preceding response.
+    ObservationLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 1000, default: 50 }
+    ObservationFields:
+      name: fields
+      in: query
+      schema:
+        type: string
+        default: core,basic,time,io,metadata,model,usage,trace_context
+      description: Comma-separated v2 observation field groups.
+  responses:
+    ApiError:
+      description: Langfuse rejected the request or authentication failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+  schemas:
+    OtlpTraceExportRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        resourceSpans:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            $ref: "#/components/schemas/OtlpResourceSpans"
+      required: [resourceSpans]
+    OtlpResourceSpans:
+      type: object
+      additionalProperties: false
+      properties:
+        resource:
+          $ref: "#/components/schemas/OtlpResource"
+        scopeSpans:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            $ref: "#/components/schemas/OtlpScopeSpans"
+      required: [resource, scopeSpans]
+    OtlpResource:
+      type: object
+      additionalProperties: false
+      properties:
+        attributes:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OtlpAttribute"
+      required: [attributes]
+    OtlpScopeSpans:
+      type: object
+      additionalProperties: false
+      properties:
+        scope:
+          $ref: "#/components/schemas/OtlpScope"
+        spans:
+          type: array
+          minItems: 1
+          maxItems: 25
+          items:
+            $ref: "#/components/schemas/OtlpSpan"
+      required: [scope, spans]
+    OtlpScope:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          default: custom-gpt-ceremony
+        version:
+          type: string
+          default: "0.4.0"
+      required: [name]
+    OtlpSpan:
+      type: object
+      additionalProperties: false
+      description: >-
+        One complete immutable observation. Omit parentSpanId only for the root.
+        For every child, traceId must match the root and parentSpanId must be an
+        existing observation/span ID in that trace.
+      properties:
+        traceId:
+          type: string
+          minLength: 32
+          maxLength: 32
+          pattern: "^[0-9a-fA-F]{32}$"
+          description: Reuse for every observation in one trace.
+        spanId:
+          type: string
+          minLength: 16
+          maxLength: 16
+          pattern: "^[0-9a-fA-F]{16}$"
+          description: Generate a fresh non-zero random ID for every new observation.
+        parentSpanId:
+          type: string
+          minLength: 16
+          maxLength: 16
+          pattern: "^[0-9a-fA-F]{16}$"
+          description: Parent observation ID. Omit for a root span.
+        name:
+          type: string
+          minLength: 1
+        kind:
+          type: integer
+          enum: [1]
+          default: 1
+          description: OTLP SPAN_KIND_INTERNAL.
+        startTimeUnixNano:
+          type: string
+          pattern: "^[0-9]{16,20}$"
+          description: Unix epoch nanoseconds represented as a decimal string.
+        endTimeUnixNano:
+          type: string
+          pattern: "^[0-9]{16,20}$"
+          description: Unix epoch nanoseconds represented as a decimal string; must not precede start time.
+        attributes:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OtlpAttribute"
+          description: >-
+            Always include langfuse.observation.type. Include trace context on
+            every span. Observation input/output and model parameter/usage
+            objects must be JSON-serialized strings in stringValue.
+        status:
+          $ref: "#/components/schemas/OtlpStatus"
+      required: [traceId, spanId, name, kind, startTimeUnixNano, endTimeUnixNano, attributes]
+    OtlpAttribute:
+      type: object
+      additionalProperties: false
+      properties:
+        key:
+          type: string
+          description: >-
+            Common keys include langfuse.observation.type,
+            langfuse.observation.input, langfuse.observation.output,
+            langfuse.observation.model.name, langfuse.observation.usage_details,
+            langfuse.observation.metadata.KEY, langfuse.trace.name,
+            langfuse.user.id, langfuse.session.id, langfuse.trace.tags,
+            langfuse.release, langfuse.version, and langfuse.environment.
+        value:
+          $ref: "#/components/schemas/OtlpAnyValue"
+      required: [key, value]
+    OtlpAnyValue:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      maxProperties: 1
+      properties:
+        stringValue:
+          type: string
+        boolValue:
+          type: boolean
+        intValue:
+          oneOf:
+            - type: integer
+            - type: string
+              pattern: "^-?[0-9]+$"
+        doubleValue:
+          type: number
+        arrayValue:
+          type: object
+          additionalProperties: false
+          properties:
+            values:
+              type: array
+              items:
+                $ref: "#/components/schemas/OtlpPrimitiveValue"
+          required: [values]
+    OtlpPrimitiveValue:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      maxProperties: 1
+      properties:
+        stringValue: { type: string }
+        boolValue: { type: boolean }
+        intValue:
+          oneOf:
+            - type: integer
+            - type: string
+              pattern: "^-?[0-9]+$"
+        doubleValue: { type: number }
+    OtlpStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: integer
+          enum: [0, 1, 2]
+          description: 0 unset, 1 OK, 2 error.
+        message:
+          type: string
+      required: [code]
+    OtlpTraceExportResponse:
+      type: object
+      additionalProperties: true
+      description: Empty on complete success; may contain partialSuccess for partial acceptance.
+    ObservationListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Observation"
+        meta:
+          type: object
+          properties:
+            cursor:
+              type: [string, "null"]
+      required: [data, meta]
+    Observation:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        traceId: { type: string }
+        parentObservationId: { type: [string, "null"] }
+        isRootObservation: { type: boolean }
+        type: { type: string }
+        name: { type: [string, "null"] }
+        startTime: { type: string, format: date-time }
+        endTime: { type: [string, "null"], format: date-time }
+        traceName: { type: [string, "null"] }
+        userId: { type: [string, "null"] }
+        sessionId: { type: [string, "null"] }
+        input: {}
+        output: {}
+        metadata: {}
+    ProjectListResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenericObject"
+    PaginatedResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenericObject"
+        meta:
+          $ref: "#/components/schemas/GenericObject"
+    CursorPaginatedResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenericObject"
+        meta:
+          type: object
+          additionalProperties: true
+          properties:
+            cursor:
+              type: [string, "null"]
+    CreatePromptRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        prompt:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  role: { type: string }
+                  content: { type: string }
+                required: [role, content]
+        type:
+          type: string
+          enum: [text, chat]
+          description: Use chat when prompt is an array; text may be omitted for a string prompt.
+        config:
+          type: object
+          additionalProperties: true
+        labels:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        commitMessage: { type: string }
+      required: [name, prompt]
+    CreateDatasetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        description: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+        inputSchema:
+          type: object
+          additionalProperties: true
+        expectedOutputSchema:
+          type: object
+          additionalProperties: true
+      required: [name]
+    CreateDatasetItemRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        datasetName: { type: string }
+        input: {}
+        expectedOutput: {}
+        metadata:
+          type: object
+          additionalProperties: true
+        sourceTraceId: { type: string }
+        sourceObservationId: { type: string }
+        id:
+          type: string
+          maxLength: 255
+          description: Stable project-unique ID. Providing it makes this an upsert.
+        status:
+          type: string
+          enum: [ACTIVE, ARCHIVED]
+      required: [datasetName]
+    CreateScoreRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        traceId: { type: string }
+        observationId:
+          type: string
+          description: Observation ID; include its traceId as well.
+        sessionId: { type: string }
+        datasetRunId: { type: string }
+        name: { type: string }
+        value:
+          oneOf:
+            - type: number
+            - type: string
+          description: Number for numeric/boolean scores; string for categorical/text/correction scores.
+        comment: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+        environment: { type: string }
+        dataType:
+          type: string
+          enum: [NUMERIC, BOOLEAN, CATEGORICAL, TEXT, CORRECTION]
+        configId: { type: string }
+        source:
+          type: string
+          enum: [API, ANNOTATION]
+      required: [name, value]
+    CreateScoreConfigRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 35 }
+        dataType:
+          type: string
+          enum: [NUMERIC, BOOLEAN, CATEGORICAL, TEXT]
+        categories:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              label: { type: string }
+              value: { type: number }
+            required: [label, value]
+        minValue: { type: number }
+        maxValue: { type: number }
+        description: { type: string }
+      required: [name, dataType]
+    CreateCommentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        projectId: { type: string }
+        objectType:
+          type: string
+          enum: [TRACE, OBSERVATION, SESSION, PROMPT]
+        objectId: { type: string }
+        content: { type: string, maxLength: 5000 }
+        authorUserId: { type: string }
+      required: [projectId, objectType, objectId, content]
+    GenericObject:
+      type: object
+      additionalProperties: true
+    ApiError:
+      type: object
+      additionalProperties: true
+      properties:
+        message: { type: string }
