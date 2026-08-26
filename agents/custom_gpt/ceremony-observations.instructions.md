@@ -10,7 +10,6 @@ Langfuse v4 does not provide mutable REST trace and observation creation endpoin
 POST /api/public/otel/v1/traces
 Content-Type: application/json
 Authorization: Basic <base64(public-key:secret-key)>
-x-langfuse-ingestion-version: 4
 ```
 
 The `observations_export` action exposes that endpoint with a constrained OTLP schema and examples. It supports both:
@@ -44,7 +43,7 @@ The file has **20 actions**, below the stated 30-action limit. Scores remain in 
    end_ns = max(time.time_ns(), start_ns)
    ```
 
-The ingestion operation also declares the required `x-langfuse-ingestion-version` action header with the only allowed value `4`. If a GPT Actions client omits this non-auth header, Langfuse documents that direct OTLP ingestion still works but may take up to ten minutes to appear in v4 reads. A proxy is required if the client cannot send the header and real-time visibility is mandatory.
+Custom GPT currently ignores ordinary OpenAPI header parameters, so this direct specification intentionally does not declare `x-langfuse-ingestion-version`. Langfuse documents that OTLP ingestion without that header still works, but data may take up to ten minutes to appear in v4 reads. If real-time visibility is mandatory, use a trusted proxy that adds `x-langfuse-ingestion-version: 4` before forwarding the request to Langfuse.
 
 ## Recommended GPT instructions
 
