@@ -138,6 +138,10 @@ npx coaia <command>          # or: npm i -g coaiajs && coaia <command>
 
 Migration references: [Langfuse v4](https://langfuse.com/docs/v4) · [versions and compatibility](https://langfuse.com/docs/compatibility) · [deprecated API mapping](https://langfuse.com/faq/all/deprecated-api-migration) · [custom ingestion migration](https://langfuse.com/integrations/native/opentelemetry/migration-to-v4) · [current OpenAPI reference](https://cloud.langfuse.com/generated/api/openapi.yml).
 
+### Custom GPT observation actions
+
+[`agents/custom_gpt/ceremony-observations.yml`](./agents/custom_gpt/ceremony-observations.yml) is a focused OpenAPI 3.1 action specification for creating a root observation and appending child observations to the same Langfuse trace through OTLP/HTTP JSON. It contains 20 core actions—below the 30-action limit—and omits media and destructive operations. Setup, authentication, ID/timestamp rules, and ready-to-paste GPT instructions are in [`ceremony-observations.instructions.md`](./agents/custom_gpt/ceremony-observations.instructions.md). The broader imported API surface remains available in [`ceremony.yml`](./agents/custom_gpt/ceremony.yml).
+
 ---
 
 ## 3. MCP Server

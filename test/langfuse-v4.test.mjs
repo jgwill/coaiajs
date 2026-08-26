@@ -192,6 +192,60 @@ test('Custom GPT spec is OpenAPI 3.1 and contains only supported Langfuse v4 rea
   assert.equal(new Set(operationIds).size, operationIds.length);
 });
 
+test('focused Custom GPT spec can append nested observations within the action limit', async () => {
+  const specUrl = new URL('../agents/custom_gpt/ceremony-observations.yml', import.meta.url);
+  const source = await readFile(specUrl, 'utf8');
+  const spec = yaml.load(source);
+
+  assert.equal(spec.openapi, '3.1.0');
+  const auth = spec.components.securitySchemes.LangfuseAuthorization;
+  assert.equal(auth.type, 'apiKey');
+  assert.equal(auth.in, 'header');
+  assert.equal(auth.name, 'Authorization');
+  assert.match(auth.description, /Basic BASE64/);
+
+  const operations = Object.entries(spec.paths).flatMap(([path, pathItem]) =>
+    Object.entries(pathItem)
+      .filter(([method]) => ['get', 'post', 'put', 'patch', 'delete'].includes(method))
+      .map(([, operation]) => ({ path, operation })));
+  const operationIds = operations.map(({ operation }) => operation.operationId);
+  assert.equal(operations.length, 20);
+  assert.ok(operations.length < 30);
+  assert.equal(new Set(operationIds).size, operationIds.length);
+
+  const exportOperation = spec.paths['/api/public/otel/v1/traces'].post;
+  const ingestionHeader = exportOperation.parameters.find((parameter) =>
+    parameter.name === 'x-langfuse-ingestion-version');
+  assert.equal(ingestionHeader.required, true);
+  assert.deepEqual(ingestionHeader.schema.enum, ['4']);
+
+  const example = exportOperation.requestBody.content['application/json']
+    .examples.createRootAndChild.value;
+  const [root, child] = example.resourceSpans[0].scopeSpans[0].spans;
+  assert.match(root.traceId, /^[0-9a-f]{32}$/);
+  assert.match(root.spanId, /^[0-9a-f]{16}$/);
+  assert.equal(root.parentSpanId, undefined);
+  assert.equal(child.traceId, root.traceId);
+  assert.equal(child.parentSpanId, root.spanId);
+  assert.notEqual(child.spanId, root.spanId);
+
+  assert.ok(spec.paths['/api/public/v2/observations']?.get);
+  assert.ok(spec.paths['/api/public/v3/scores']?.get);
+  assert.ok(spec.paths['/api/public/scores']?.post);
+  assert.equal(spec.paths['/api/public/ingestion'], undefined);
+  assert.equal(spec.paths['/api/public/traces'], undefined);
+  assert.equal(spec.paths['/api/public/sessions'], undefined);
+  assert.doesNotMatch(source, /\bnullable:/);
+
+  const instructions = await readFile(
+    new URL('../agents/custom_gpt/ceremony-observations.instructions.md', import.meta.url),
+    'utf8',
+  );
+  assert.match(instructions, /parentSpanId/);
+  assert.match(instructions, /x-langfuse-ingestion-version/);
+  assert.match(instructions, /20 actions/);
+});
+
 test('package uses the current scoped Langfuse JS SDK instead of legacy v3', async () => {
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(packageJson.dependencies.langfuse, undefined);

@@ -16,7 +16,8 @@ A comprehensive Langfuse client covering traces, observations, prompts, datasets
 - [`mcp/server.ts`](../mcp/server.ts) wires coaiapy-compatible Langfuse MCP tools such as `coaia_fuse_trace_create`, `coaia_fuse_add_observation`, `coaia_fuse_score_apply`, comments, prompts, datasets, and media.
 - Langfuse v4 migration is implemented: trace writes use the scoped JS SDK v5 and `POST /api/public/otel/v1/traces`; trace, observation, and session reads use Observations API v2; score reads use Scores API v3.
 - V4 observations are immutable: root input/output must be complete before export, sessions are reconstructed by `sessionId`, and the legacy patch-output MCP/CLI operation is removed.
-- The Custom GPT action spec at [`agents/custom_gpt/ceremony.yml`](../agents/custom_gpt/ceremony.yml) remains OpenAPI 3.1.0 and uses the supported v4 endpoints.
+- The broad Custom GPT action spec at [`agents/custom_gpt/ceremony.yml`](../agents/custom_gpt/ceremony.yml) remains OpenAPI 3.1.0 and uses the supported v4 endpoints.
+- The focused [`agents/custom_gpt/ceremony-observations.yml`](../agents/custom_gpt/ceremony-observations.yml) spec provides 20 GPT Actions for root-trace creation, nested observation append through OTLP/HTTP JSON, observations-first reads, and the ceremony's core prompt, dataset, score, comment, and project operations. Its companion instructions document Basic authorization, v4 ingestion headers, immutable-span rules, and parent context.
 - Types defined in [`src/types.ts`](../src/types.ts): `ScoreCategory`, `ScoreConfig`.
 - Remaining gap: not every Langfuse formatting and cache helper from `cofuse.py` has a TypeScript equivalent; the core trace/observation/prompt/dataset/score/comment/media path is present.
 
