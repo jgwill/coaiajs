@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import http from 'node:http';
 import test from 'node:test';
@@ -198,6 +199,7 @@ test('focused Custom GPT spec can append nested observations within the action l
   const spec = yaml.load(source);
 
   assert.equal(spec.openapi, '3.1.0');
+  assert.equal(spec.info.version, '0.4.2');
   const auth = spec.components.securitySchemes.LangfuseAuthorization;
   assert.equal(auth.type, 'apiKey');
   assert.equal(auth.in, 'header');
@@ -249,6 +251,15 @@ test('focused Custom GPT spec can append nested observations within the action l
   assert.ok(spec.paths['/api/public/media/{mediaId}']?.get);
   assert.ok(spec.paths['/api/public/media/{mediaId}']?.patch);
 
+  const hashSchema = spec.components.schemas.MediaUploadUrlRequest.properties.sha256Hash;
+  const testDigest = createHash('sha256').update(Buffer.from('test')).digest('base64');
+  assert.equal(testDigest, 'n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=');
+  assert.equal(hashSchema.minLength, 44);
+  assert.equal(hashSchema.maxLength, 44);
+  assert.match(testDigest, new RegExp(hashSchema.pattern));
+  assert.equal(hashSchema.example, testDigest);
+  assert.doesNotMatch(createHash('sha256').update(Buffer.from('test')).digest('hex'), new RegExp(hashSchema.pattern));
+
   const broadSource = await readFile(new URL('../agents/custom_gpt/ceremony.yml', import.meta.url), 'utf8');
   const broadSpec = yaml.load(broadSource);
   for (const [path, pathItem] of Object.entries(broadSpec.paths)) {
@@ -271,6 +282,8 @@ test('focused Custom GPT spec can append nested observations within the action l
   assert.match(instructions, /parentSpanId/);
   assert.match(instructions, /intentionally does not declare `x-langfuse-ingestion-version`/);
   assert.match(instructions, /23 actions/);
+  assert.match(instructions, /does \*\*not\*\* upload the bytes/);
+  assert.match(instructions, /never send the 64-character hexadecimal digest/);
 });
 
 test('package uses the current scoped Langfuse JS SDK instead of legacy v3', async () => {
