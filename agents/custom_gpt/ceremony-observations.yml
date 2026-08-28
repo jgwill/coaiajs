@@ -4,8 +4,8 @@ info:
   version: 0.4.1
   description: >-
     Focused Langfuse v4 Custom GPT actions for creating root observations, appending nested child observations through
-    OTLP/HTTP JSON, reading observations, and managing projects, prompts, datasets, scores, and comments. Spans are
-    immutable.
+    OTLP/HTTP JSON, reading observations, and managing projects, prompts, datasets, scores, comments, and media. Spans
+    are immutable.
   license:
     name: MIT
     identifier: MIT
@@ -32,6 +32,8 @@ tags:
     description: Apply and inspect evaluations and score configurations.
   - name: Comments
     description: Attach and inspect comments on Langfuse objects.
+  - name: Media
+    description: Create upload records and inspect or finalize uploaded media.
 paths:
   /api/public/otel/v1/traces:
     post:
@@ -908,6 +910,92 @@ paths:
         default:
           $ref: "#/components/responses/ApiError"
       x-openai-isConsequential: false
+  /api/public/media:
+    post:
+      operationId: media_getUploadUrl
+      summary: Create a media upload record
+      description: >-
+        Create a Langfuse media record and receive its presigned upload URL. Provide either trace context or
+        dataset-item context, plus file metadata and SHA-256 hash.
+      tags:
+        - Media
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaUploadUrlRequest"
+      responses:
+        "200":
+          description: Media ID and presigned upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaUploadUrlResponse"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+  /api/public/media/{mediaId}:
+    get:
+      operationId: media_get
+      summary: Get a media record
+      description: Get metadata and a temporary download URL for a Langfuse media record.
+      tags:
+        - Media
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          description: Langfuse media record ID.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Media metadata and download URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaRecord"
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
+    patch:
+      operationId: media_patch
+      summary: Finalize a media upload record
+      description: Report the result of uploading bytes to the presigned URL so Langfuse can finalize the media record.
+      tags:
+        - Media
+      parameters:
+        - name: mediaId
+          in: path
+          required: true
+          description: Langfuse media record ID.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaPatchRequest"
+      responses:
+        "204":
+          description: Media record updated.
+        "400":
+          $ref: "#/components/responses/ApiError"
+        "401":
+          $ref: "#/components/responses/ApiError"
+        default:
+          $ref: "#/components/responses/ApiError"
+      x-openai-isConsequential: false
 components:
   securitySchemes:
     LangfuseAuthorization:
@@ -1453,3 +1541,103 @@ components:
       properties:
         message:
           type: string
+    MediaUploadUrlRequest:
+      type: object
+      additionalProperties: false
+      description: Request a presigned upload URL. Provide traceId (optionally observationId) or both datasetId and datasetItemId.
+      properties:
+        traceId:
+          type: string
+          description: Trace context for trace or observation media.
+        observationId:
+          type: string
+          description: Optional observation context; requires traceId.
+        datasetId:
+          type: string
+          description: Dataset context; use with datasetItemId.
+        datasetItemId:
+          type: string
+          description: Dataset-item context; use with datasetId.
+        contentType:
+          type: string
+          description: MIME type such as image/png, audio/mpeg, application/pdf, or text/plain.
+        contentLength:
+          type: integer
+          minimum: 1
+          description: File size in bytes.
+        sha256Hash:
+          type: string
+          pattern: ^[0-9a-fA-F]{64}$
+          description: Hex-encoded SHA-256 digest of the exact upload bytes.
+        field:
+          type: string
+          enum:
+            - input
+            - output
+            - expectedOutput
+            - metadata
+          description: Field containing the media reference.
+      required:
+        - contentType
+        - contentLength
+        - sha256Hash
+        - field
+    MediaUploadUrlResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        uploadUrl:
+          type:
+            - string
+            - "null"
+          description: Presigned URL, or null when the asset already exists.
+        mediaId:
+          type: string
+          description: Langfuse media record ID.
+      required:
+        - mediaId
+    MediaRecord:
+      type: object
+      additionalProperties: true
+      properties:
+        mediaId:
+          type: string
+        contentType:
+          type: string
+        contentLength:
+          type: integer
+        uploadedAt:
+          type: string
+          format: date-time
+        url:
+          type: string
+        urlExpiry:
+          type: string
+      required:
+        - mediaId
+        - contentType
+        - contentLength
+        - uploadedAt
+        - url
+        - urlExpiry
+    MediaPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        uploadedAt:
+          type: string
+          format: date-time
+          description: Time the upload attempt completed.
+        uploadHttpStatus:
+          type: integer
+          description: HTTP status returned by the presigned upload.
+        uploadHttpError:
+          type: string
+          description: Upload error message, when present.
+        uploadTimeMs:
+          type: integer
+          minimum: 0
+          description: Upload duration in milliseconds.
+      required:
+        - uploadedAt
+        - uploadHttpStatus

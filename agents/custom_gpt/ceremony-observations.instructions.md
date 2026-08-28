@@ -17,7 +17,7 @@ The `observations_export` action exposes that endpoint with a constrained OTLP s
 1. Creating a trace by sending a root span without `parentSpanId`.
 2. Appending an observation by reusing the trace ID and setting `parentSpanId` to an existing observation/span ID.
 
-The file has **20 actions**, below the stated 30-action limit. Scores remain in this specification because the complete focused surface still fits. Media and destructive delete actions are omitted.
+The file has **23 actions**, below the stated 30-action limit. Scores and the original media operations remain in this specification because the complete focused surface still fits. Destructive delete actions are omitted.
 
 ## Configure the Custom GPT
 
@@ -150,7 +150,17 @@ The parent trace and root observation must already exist. Replace every example 
 | Datasets and dataset items | 6 |
 | Scores and score configurations | 5 |
 | Comments | 2 |
-| **Total** | **20** |
+| Media | 3 |
+| **Total** | **23** |
+
+## Media workflow
+
+1. Call `media_getUploadUrl` with the trace/observation or dataset-item context, MIME type, byte length, SHA-256 hash, and field.
+2. Upload the exact bytes to the returned presigned `uploadUrl`.
+3. Call `media_patch` with the upload completion time and HTTP result.
+4. Call `media_get` when a temporary download URL or media metadata is needed.
+
+The upload itself is an HTTP request to the returned storage URL, not a Langfuse API action. The three restored actions match the media capabilities in `ceremony.yml`.
 
 ## Why there are not separate create-trace and append-observation actions
 

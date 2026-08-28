@@ -209,15 +209,28 @@ test('focused Custom GPT spec can append nested observations within the action l
       .filter(([method]) => ['get', 'post', 'put', 'patch', 'delete'].includes(method))
       .map(([, operation]) => ({ path, operation })));
   const operationIds = operations.map(({ operation }) => operation.operationId);
-  assert.equal(operations.length, 20);
+  assert.equal(operations.length, 23);
   assert.ok(operations.length < 30);
   assert.equal(new Set(operationIds).size, operationIds.length);
 
+  for (const { path, operation } of operations) {
+    assert.equal(operation['x-openai-isConsequential'], false, `${operation.operationId} prompts for confirmation`);
+    assert.ok((operation.description?.length ?? 0) <= 300, `${operation.operationId} description exceeds 300 chars`);
+    for (const parameter of operation.parameters ?? []) {
+      assert.equal(parameter.$ref, undefined, `${operation.operationId} contains a parameter reference`);
+      assert.equal(typeof parameter.name, 'string', `${operation.operationId} has a nameless parameter`);
+      assert.notEqual(parameter.in, 'header', `${operation.operationId} contains an ignored header parameter`);
+    }
+    assert.ok(path.startsWith('/api/public/'));
+  }
+  for (const [name, schema] of Object.entries(spec.components.schemas)) {
+    if (schema.type === 'object') {
+      assert.ok(schema.properties, `${name} is an object component without properties`);
+    }
+  }
+
   const exportOperation = spec.paths['/api/public/otel/v1/traces'].post;
-  const ingestionHeader = exportOperation.parameters.find((parameter) =>
-    parameter.name === 'x-langfuse-ingestion-version');
-  assert.equal(ingestionHeader.required, true);
-  assert.deepEqual(ingestionHeader.schema.enum, ['4']);
+  assert.equal(exportOperation.parameters, undefined);
 
   const example = exportOperation.requestBody.content['application/json']
     .examples.createRootAndChild.value;
@@ -232,6 +245,20 @@ test('focused Custom GPT spec can append nested observations within the action l
   assert.ok(spec.paths['/api/public/v2/observations']?.get);
   assert.ok(spec.paths['/api/public/v3/scores']?.get);
   assert.ok(spec.paths['/api/public/scores']?.post);
+  assert.ok(spec.paths['/api/public/media']?.post);
+  assert.ok(spec.paths['/api/public/media/{mediaId}']?.get);
+  assert.ok(spec.paths['/api/public/media/{mediaId}']?.patch);
+
+  const broadSource = await readFile(new URL('../agents/custom_gpt/ceremony.yml', import.meta.url), 'utf8');
+  const broadSpec = yaml.load(broadSource);
+  for (const [path, pathItem] of Object.entries(broadSpec.paths)) {
+    for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
+      if (pathItem[method]) {
+        assert.ok(spec.paths[path]?.[method], `focused spec removed ${method.toUpperCase()} ${path}`);
+      }
+    }
+  }
+
   assert.equal(spec.paths['/api/public/ingestion'], undefined);
   assert.equal(spec.paths['/api/public/traces'], undefined);
   assert.equal(spec.paths['/api/public/sessions'], undefined);
@@ -242,8 +269,8 @@ test('focused Custom GPT spec can append nested observations within the action l
     'utf8',
   );
   assert.match(instructions, /parentSpanId/);
-  assert.match(instructions, /x-langfuse-ingestion-version/);
-  assert.match(instructions, /20 actions/);
+  assert.match(instructions, /intentionally does not declare `x-langfuse-ingestion-version`/);
+  assert.match(instructions, /23 actions/);
 });
 
 test('package uses the current scoped Langfuse JS SDK instead of legacy v3', async () => {
