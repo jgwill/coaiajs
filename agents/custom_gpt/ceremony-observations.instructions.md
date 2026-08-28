@@ -86,10 +86,12 @@ When the user supplies media, use the actual file bytes—never placeholder text
 Compute contentLength from those bytes. Compute SHA-256 over those bytes and
 send the standard padded Base64 digest, not hexadecimal, as sha256Hash.
 
-media_getUploadUrl only creates a record and returns a presigned URL. Do not
-claim an upload succeeded until the exact bytes were PUT to that URL and
-media_patch recorded the PUT result. If an arbitrary PUT is unavailable,
-report that the media upload is pending instead of claiming completion.
+Prefer media_uploadConversationFile from the companion proxy Action; pass the
+user's actual conversation file in openaiFileIdRefs. It performs record
+creation, the exact-byte PUT, and finalization and returns a mediaToken.
+
+media_getUploadUrl alone only creates a record. Never claim success without a
+completed PUT and media_patch, or success=true from the proxy bridge.
 ```
 
 ## Minimal append example
@@ -182,7 +184,7 @@ Example for the four UTF-8 bytes `test`:
 sha256Hash: n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=
 ```
 
-Receiving `uploadUrl` creates a Langfuse media record but does **not** upload the bytes. Never report that media was uploaded after `media_getUploadUrl` alone. The current OpenAPI document cannot describe a PUT to a dynamically returned storage host. If the Custom GPT runtime cannot issue that arbitrary PUT, it must report the upload as pending; full autonomy requires a trusted repository-controlled `media_upload` proxy, which is not currently implemented.
+Receiving `uploadUrl` creates a Langfuse media record but does **not** upload the bytes. Never report that media was uploaded after `media_getUploadUrl` alone. The direct OpenAPI document cannot describe a PUT to a dynamically returned storage host. For autonomous uploads, deploy the included `coaiajs-media-proxy`, import `ceremony-media-proxy.yml` as a second GPT Action, and use `media_uploadConversationFile`. The bridge consumes the user's actual `openaiFileIdRefs` file, performs the complete upload flow, and returns the media token.
 
 ## Why there are not separate create-trace and append-observation actions
 

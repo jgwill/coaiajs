@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: Coaia Langfuse Media Upload Bridge
+  version: 0.4.2
+  description: >-
+    Companion Custom GPT action that transfers one conversation file into Langfuse object storage, finalizes the media
+    record, and returns a renderable Langfuse media token. Deploy coaiajs-media-proxy and replace the example server URL.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: https://replace-with-your-proxy.invalid
+    description: Replace with the public HTTPS URL of the deployed coaiajs media proxy.
+security:
+  - ProxyApiKey: []
+paths:
+  /media/upload:
+    post:
+      operationId: media_uploadConversationFile
+      summary: Upload a conversation file to Langfuse
+      description: >-
+        Upload exactly one user, DALL-E, or Code Interpreter file. The bridge downloads its exact bytes, computes the
+        padded Base64 SHA-256 digest and length, creates the Langfuse record, performs the presigned PUT, finalizes it,
+        and returns a media token. Never substitute placeholder bytes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadConversationFileRequest'
+      responses:
+        '200':
+          description: Uploaded media and its renderable Langfuse token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadConversationFileResponse'
+        '400':
+          description: Invalid file reference, media context, or downstream upload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid proxy API key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File or request exceeds the configured size limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-openai-isConsequential: false
+components:
+  securitySchemes:
+    ProxyApiKey:
+      type: apiKey
+      in: header
+      name: X-Coaia-Proxy-Key
+      description: Configure this value in the GPT Action authentication UI; it must equal COAIA_MEDIA_PROXY_API_KEY.
+  schemas:
+    UploadConversationFileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        openaiFileIdRefs:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: string
+          description: >-
+            Exactly one file from the conversation: the user's actual media, a DALL-E image, or a Code Interpreter
+            file. Custom GPT replaces this string entry with its temporary runtime file-reference object.
+        traceId:
+          type: string
+          description: Trace receiving the media. Use either trace context or dataset-item context.
+        observationId:
+          type: string
+          description: Optional observation receiving the media; requires traceId.
+        datasetId:
+          type: string
+          description: Dataset receiving the media; requires datasetItemId and no traceId.
+        datasetItemId:
+          type: string
+          description: Dataset item receiving the media; requires datasetId and no traceId.
+        field:
+          type: string
+          enum:
+            - input
+            - output
+            - expectedOutput
+            - metadata
+          default: input
+          description: Field where the returned media token will be referenced.
+      required:
+        - openaiFileIdRefs
+    UploadConversationFileResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        success:
+          type: boolean
+        mediaId:
+          type: string
+        mediaToken:
+          type: string
+          description: Put this exact token in observation input, output, or metadata so Langfuse renders the media.
+        fileName:
+          type: string
+        openaiFileId:
+          type: string
+        contentType:
+          type: string
+        contentLength:
+          type: integer
+        sha256Hash:
+          type: string
+          minLength: 44
+          maxLength: 44
+          pattern: '^[A-Za-z0-9+/]{43}=$'
+          description: Standard padded Base64 SHA-256 digest of the uploaded bytes.
+        traceId:
+          type: string
+        observationId:
+          type: string
+        datasetId:
+          type: string
+        datasetItemId:
+          type: string
+        field:
+          type: string
+        uploadTimeMs:
+          type: integer
+        alreadyUploaded:
+          type: boolean
+      required:
+        - success
+        - mediaId
+        - mediaToken
+        - openaiFileId
+        - contentType
+        - contentLength
+        - sha256Hash
+        - field
+        - uploadTimeMs
+        - alreadyUploaded
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+      required:
+        - error

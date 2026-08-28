@@ -50,7 +50,8 @@ Import from the root, or from a subpath to pull in only what you need. Every ent
 | `coaiajs/github` | `listIssues`, `getIssue`, `getIssueComments`, `resetClient` |
 | `coaiajs/environment` | `EnvironmentManager`, `createEnvironment`, `findEnvironment` |
 | `coaiajs/version` | `getPackageVersion` |
-| `coaiajs/langfuse` | Langfuse JS SDK v5/OpenTelemetry tracing plus v4 observations, prompts, datasets, scores, comments, media, projects, and formatters (55 exports) |
+| `coaiajs/langfuse` | Langfuse JS SDK v5/OpenTelemetry tracing plus v4 observations, prompts, datasets, scores, comments, media, projects, and formatters (56 runtime exports) |
+| `coaiajs/media-upload-proxy` | Deployable Custom GPT conversation-file to Langfuse media bridge |
 | `coaiajs/narrative` | `KnowledgeGraphManager`, chart operations, markdown export, tool definitions (29 exports) |
 | `coaiajs/pde` | `SessionManager`, `StcMapper`, `handlePdeTool`, `PDE_MCP_TOOLS` (10 exports) |
 | `coaiajs/planning` | `parsePlan`, `planToSTC`, `syncToChart`, `syncToPlan`, `handlePlanningTool` (10 exports) |
@@ -141,6 +142,8 @@ Migration references: [Langfuse v4](https://langfuse.com/docs/v4) · [versions a
 ### Custom GPT observation actions
 
 [`agents/custom_gpt/ceremony-observations.yml`](./agents/custom_gpt/ceremony-observations.yml) is a focused OpenAPI 3.1 action specification for creating a root observation and appending child observations to the same Langfuse trace through OTLP/HTTP JSON. It contains 23 core actions—below the 30-action limit—including media upload-record, retrieval, and finalization capabilities; destructive operations remain omitted. Media hashes use the required 44-character padded Base64 SHA-256 digest of the exact upload bytes, and the documented workflow distinguishes URL creation from the actual presigned PUT. Setup, authentication, ID/timestamp rules, and ready-to-paste GPT instructions are in [`ceremony-observations.instructions.md`](./agents/custom_gpt/ceremony-observations.instructions.md). The broader imported API surface remains available in [`ceremony.yml`](./agents/custom_gpt/ceremony.yml).
+
+For autonomous conversation-file uploads, deploy the included `coaiajs-media-proxy` service and import [`ceremony-media-proxy.yml`](./agents/custom_gpt/ceremony-media-proxy.yml) as a second Action. It uses OpenAI's `openaiFileIdRefs` transfer, downloads the actual user/DALL-E/Code Interpreter file, performs the Langfuse media record + presigned PUT + finalization sequence, and returns a renderable `@@@langfuseMedia...@@@` token. Deployment and security instructions are in [`ceremony-media-proxy.instructions.md`](./agents/custom_gpt/ceremony-media-proxy.instructions.md). Together both specs expose 24 actions.
 
 ---
 

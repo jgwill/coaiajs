@@ -275,6 +275,22 @@ test('focused Custom GPT spec can append nested observations within the action l
   assert.equal(spec.paths['/api/public/sessions'], undefined);
   assert.doesNotMatch(source, /\bnullable:/);
 
+  const proxySource = await readFile(
+    new URL('../agents/custom_gpt/ceremony-media-proxy.yml', import.meta.url),
+    'utf8',
+  );
+  const proxySpec = yaml.load(proxySource);
+  const proxyOperation = proxySpec.paths['/media/upload'].post;
+  assert.equal(proxySpec.openapi, '3.1.0');
+  assert.equal(proxySpec.info.version, '0.4.2');
+  assert.equal(proxyOperation.operationId, 'media_uploadConversationFile');
+  assert.equal(proxyOperation['x-openai-isConsequential'], false);
+  assert.ok(proxyOperation.description.length <= 300);
+  const proxyRequest = proxySpec.components.schemas.UploadConversationFileRequest;
+  assert.equal(proxyRequest.properties.openaiFileIdRefs.items.type, 'string');
+  assert.equal(operations.length + 1, 24);
+  assert.ok(operations.length + 1 < 30);
+
   const instructions = await readFile(
     new URL('../agents/custom_gpt/ceremony-observations.instructions.md', import.meta.url),
     'utf8',

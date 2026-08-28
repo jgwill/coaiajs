@@ -29,6 +29,7 @@ Key facts an agent usually needs first:
 - `coaiajs/environment`: `EnvironmentManager`, `createEnvironment`, `findEnvironment`
 - `coaiajs/version`: `getPackageVersion`
 - `coaiajs/langfuse`: Langfuse v4-compatible OpenTelemetry tracing, Observations API v2, Scores API v3, prompts, datasets, comments, media, projects
+- `coaiajs/media-upload-proxy`: deployable `openaiFileIdRefs` to Langfuse media upload bridge (`coaiajs-media-proxy` binary)
 - `coaiajs/narrative`: `KnowledgeGraphManager`, structural tension charts, markdown export
 - `coaiajs/pde`: Prompt Decomposition Engine — sessions, STC mapping
 - `coaiajs/planning`: `parsePlan`, `planToSTC`, `syncToChart`, `syncToPlan`

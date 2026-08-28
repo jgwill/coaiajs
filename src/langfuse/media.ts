@@ -1,26 +1,34 @@
 // coaiajs/src/langfuse/media.ts — Media upload operations
 // Port of cofuse.py media functions
 
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, extname } from 'node:path';
 import { getClient } from './client.js';
 
 const SUPPORTED_CONTENT_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'image/tiff', 'image/bmp', 'image/avif',
-  'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/flac',
-  'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
-  'application/pdf',
-  'text/plain', 'text/html', 'text/css', 'text/csv',
-  'application/json', 'application/xml',
+  'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/svg+xml',
+  'image/tiff', 'image/bmp', 'image/avif', 'image/heic',
+  'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/oga', 'audio/aac',
+  'audio/mp4', 'audio/flac', 'audio/opus', 'audio/webm',
+  'video/mp4', 'video/webm', 'video/ogg', 'video/mpeg', 'video/quicktime',
+  'video/x-msvideo', 'video/x-matroska',
+  'text/plain', 'text/html', 'text/css', 'text/csv', 'text/markdown',
+  'text/x-python', 'text/x-typescript',
+  'application/javascript', 'application/x-yaml', 'application/pdf', 'application/msword',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/zip', 'application/json', 'application/xml', 'application/octet-stream',
+  'application/rtf', 'application/x-ndjson', 'application/vnd.apache.parquet',
+  'application/gzip', 'application/x-tar', 'application/x-7z-compressed',
 ]);
 
 const EXTENSION_MAP: Record<string, string> = {
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
   '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
   '.tiff': 'image/tiff', '.tif': 'image/tiff', '.bmp': 'image/bmp',
-  '.avif': 'image/avif',
+  '.avif': 'image/avif', '.heic': 'image/heic',
   '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav',
   '.ogg': 'audio/ogg', '.flac': 'audio/flac', '.weba': 'audio/webm',
   '.mp4': 'video/mp4', '.webm': 'video/webm', '.ogv': 'video/ogg',
@@ -28,7 +36,14 @@ const EXTENSION_MAP: Record<string, string> = {
   '.pdf': 'application/pdf',
   '.txt': 'text/plain', '.html': 'text/html', '.htm': 'text/html',
   '.css': 'text/css', '.csv': 'text/csv',
-  '.json': 'application/json', '.xml': 'application/xml',
+  '.json': 'application/json', '.xml': 'application/xml', '.md': 'text/markdown',
+  '.py': 'text/x-python', '.ts': 'text/x-typescript', '.yaml': 'application/x-yaml', '.yml': 'application/x-yaml',
+  '.doc': 'application/msword', '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.zip': 'application/zip', '.gz': 'application/gzip', '.tar': 'application/x-tar',
+  '.7z': 'application/x-7z-compressed', '.parquet': 'application/vnd.apache.parquet',
 };
 
 const TRUSTED_DOMAINS = [
@@ -39,6 +54,119 @@ const TRUSTED_DOMAINS = [
   'r2.cloudflarestorage.com',
 ];
 
+export type MediaSource = 'bytes' | 'file' | 'base64_data_uri';
+
+export interface UploadMediaBytesInput {
+  data: Uint8Array;
+  contentType: string;
+  fileName?: string;
+  traceId?: string;
+  observationId?: string;
+  datasetId?: string;
+  datasetItemId?: string;
+  field?: 'input' | 'output' | 'expectedOutput' | 'metadata';
+  source?: MediaSource;
+}
+
+export interface UploadMediaBytesResult {
+  success: boolean;
+  mediaId: string;
+  mediaToken: string;
+  fileName?: string;
+  contentType: string;
+  contentLength: number;
+  sha256Hash: string;
+  traceId?: string;
+  observationId?: string;
+  datasetId?: string;
+  datasetItemId?: string;
+  field: string;
+  uploadTimeMs: number;
+  alreadyUploaded: boolean;
+}
+
+/** Upload exact bytes through Langfuse's presigned object-storage flow. */
+export async function uploadMediaBytes(params: UploadMediaBytesInput): Promise<UploadMediaBytesResult> {
+  const data = Buffer.from(params.data);
+  const field = params.field ?? 'input';
+  const source = params.source ?? 'bytes';
+  if (!data.length) throw new Error('Media data must not be empty');
+  if (!SUPPORTED_CONTENT_TYPES.has(params.contentType)) {
+    throw new Error(`Unsupported content type: ${params.contentType}`);
+  }
+
+  const hasTraceContext = Boolean(params.traceId) && !params.datasetId && !params.datasetItemId;
+  const hasDatasetContext = Boolean(params.datasetId && params.datasetItemId) && !params.traceId && !params.observationId;
+  if (!hasTraceContext && !hasDatasetContext) {
+    throw new Error('Provide traceId (optionally observationId) or both datasetId and datasetItemId');
+  }
+  if (params.observationId && !params.traceId) {
+    throw new Error('observationId requires traceId');
+  }
+
+  const sha256Hash = createHash('sha256').update(data).digest('base64');
+  const uploadRequest: Record<string, unknown> = {
+    contentType: params.contentType,
+    contentLength: data.byteLength,
+    sha256Hash,
+    field,
+  };
+  if (params.traceId) uploadRequest.traceId = params.traceId;
+  if (params.observationId) uploadRequest.observationId = params.observationId;
+  if (params.datasetId) uploadRequest.datasetId = params.datasetId;
+  if (params.datasetItemId) uploadRequest.datasetItemId = params.datasetItemId;
+
+  const client = getClient();
+  const uploadInfo = await client.request<Record<string, unknown>>('POST', '/api/public/media', uploadRequest);
+  const mediaId = typeof uploadInfo.mediaId === 'string' ? uploadInfo.mediaId : '';
+  const uploadUrl = typeof uploadInfo.uploadUrl === 'string' ? uploadInfo.uploadUrl : undefined;
+  if (!mediaId) throw new Error('Langfuse did not return a mediaId');
+
+  let uploadTimeMs = 0;
+  if (uploadUrl) {
+    validateUploadUrl(uploadUrl);
+    const startTime = Date.now();
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': params.contentType,
+        'Content-Length': String(data.byteLength),
+        'x-amz-checksum-sha256': sha256Hash,
+      },
+      body: data,
+    });
+    uploadTimeMs = Date.now() - startTime;
+    const uploadHttpError = uploadResponse.ok ? undefined : (await uploadResponse.text()).slice(0, 1000);
+
+    await client.request('PATCH', `/api/public/media/${mediaId}`, {
+      uploadHttpStatus: uploadResponse.status,
+      uploadHttpError,
+      uploadTimeMs,
+      uploadedAt: new Date().toISOString(),
+    });
+    if (!uploadResponse.ok) {
+      throw new Error(`Media upload failed with HTTP ${uploadResponse.status}: ${uploadHttpError ?? ''}`.trim());
+    }
+  }
+
+  return {
+    success: true,
+    mediaId,
+    mediaToken: `@@@langfuseMedia:type=${params.contentType}|id=${mediaId}|source=${source}@@@`,
+    fileName: params.fileName,
+    contentType: params.contentType,
+    contentLength: data.byteLength,
+    sha256Hash,
+    traceId: params.traceId,
+    observationId: params.observationId,
+    datasetId: params.datasetId,
+    datasetItemId: params.datasetItemId,
+    field,
+    uploadTimeMs,
+    alreadyUploaded: !uploadUrl,
+  };
+}
+
 export async function uploadAndAttachMedia(params: {
   filePath: string;
   traceId: string;
@@ -46,94 +174,16 @@ export async function uploadAndAttachMedia(params: {
   observationId?: string;
   contentType?: string;
 }): Promise<string> {
-  const { filePath, traceId, observationId } = params;
-  const field = params.field ?? 'input';
-
-  // Detect content type
-  const contentType = params.contentType ?? detectContentType(filePath);
-  if (!SUPPORTED_CONTENT_TYPES.has(contentType)) {
-    return JSON.stringify({ error: `Unsupported content type: ${contentType}` });
-  }
-
-  // Calculate file info
-  const stat = statSync(filePath);
-  const fileData = readFileSync(filePath);
-  const sha256 = createHash('sha256').update(fileData).digest('base64');
-
-  const client = getClient();
-
-  // Step 1: Get presigned upload URL
-  const uploadReqData: Record<string, unknown> = {
-    traceId,
-    contentType,
-    contentLength: stat.size,
-    sha256Hash: sha256,
-    field,
-  };
-  if (observationId) uploadReqData.observationId = observationId;
-
-  const uploadInfo = await client.request<Record<string, unknown>>(
-    'POST',
-    '/api/public/media',
-    uploadReqData,
-  );
-
-  const uploadUrl = uploadInfo.uploadUrl as string;
-  const mediaId = uploadInfo.mediaId as string;
-
-  if (!uploadUrl || !mediaId) {
-    return JSON.stringify({ error: 'Failed to get upload URL', detail: uploadInfo });
-  }
-
-  // Step 2: Validate upload URL domain
-  const url = new URL(uploadUrl);
-  if (!isTrustedDomain(url.hostname)) {
-    return JSON.stringify({
-      error: `Security: Upload URL domain '${url.hostname}' is not trusted`,
-    });
-  }
-
-  // Step 3: Upload to presigned URL
-  const startTime = Date.now();
-  const uploadResponse = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': contentType,
-      'x-amz-checksum-sha256': sha256,
-    },
-    body: fileData,
+  const result = await uploadMediaBytes({
+    data: readFileSync(params.filePath),
+    fileName: basename(params.filePath),
+    contentType: params.contentType ?? detectContentType(params.filePath),
+    traceId: params.traceId,
+    observationId: params.observationId,
+    field: normalizeMediaField(params.field),
+    source: 'file',
   });
-  const uploadTimeMs = Date.now() - startTime;
-
-  // Step 4: Patch status
-  await client.request('PATCH', `/api/public/media/${mediaId}`, {
-    uploadHttpStatus: uploadResponse.status,
-    uploadTimeMs,
-    uploadedAt: new Date().toISOString(),
-  });
-
-  if (!uploadResponse.ok) {
-    return JSON.stringify({
-      error: `Upload failed: ${uploadResponse.status}`,
-      mediaId,
-    });
-  }
-
-  // Build media token
-  const token = `@@@langfuseMedia:type=${contentType}|id=${mediaId}|source=file@@@`;
-
-  return JSON.stringify({
-    success: true,
-    mediaId,
-    fileName: basename(filePath),
-    contentType,
-    contentLength: stat.size,
-    traceId,
-    field,
-    observationId: observationId ?? null,
-    uploadTimeMs,
-    mediaToken: token,
-  }, null, 2);
+  return JSON.stringify(result, null, 2);
 }
 
 export async function getMedia(mediaId: string): Promise<string> {
@@ -184,10 +234,29 @@ export function formatMediaDisplay(json: unknown): string {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function isTrustedDomain(hostname: string): boolean {
-  const lower = hostname.toLowerCase();
-  for (const domain of TRUSTED_DOMAINS) {
-    if (lower === domain || lower.endsWith(`.${domain}`)) return true;
+function normalizeMediaField(value?: string): UploadMediaBytesInput['field'] {
+  const field = value ?? 'input';
+  if (field === 'input' || field === 'output' || field === 'expectedOutput' || field === 'metadata') return field;
+  throw new Error(`Unsupported media field: ${field}`);
+}
+
+function validateUploadUrl(uploadUrl: string): void {
+  const url = new URL(uploadUrl);
+  const allowHttp = process.env['COAIA_MEDIA_ALLOW_HTTP'] === 'true';
+  if (url.protocol !== 'https:' && !(allowHttp && url.protocol === 'http:')) {
+    throw new Error(`Security: Upload URL protocol '${url.protocol}' is not allowed`);
   }
-  return false;
+  if (!isTrustedDomain(url.hostname)) {
+    throw new Error(`Security: Upload URL domain '${url.hostname}' is not trusted`);
+  }
+}
+
+function isTrustedDomain(hostname: string): boolean {
+  const configured = (process.env['COAIA_MEDIA_UPLOAD_HOSTS'] ?? '')
+    .split(',')
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean);
+  const domains = [...TRUSTED_DOMAINS, ...configured];
+  const lower = hostname.toLowerCase();
+  return domains.some((domain) => lower === domain || lower.endsWith(`.${domain}`));
 }

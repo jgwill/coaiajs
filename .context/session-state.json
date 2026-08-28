@@ -1,0 +1,32 @@
+{
+  "$schema": "session-state-v2",
+  "project": "coaiajs",
+  "cwd": "/a/src/coaiajs",
+  "ts": "2026-08-25T20:32:44.572Z",
+  "continue": "I’m using **TEAM mode** because this migration has three independent discovery tracks: official Langfuse v4 requirements, the full `coaia fuse` surface, and the separate Custom GPT OpenAPI specification. I’ll consolidate them into one implementation and release `0.4.0`.",
+  "task": "simple upgrade of output format for 'coaia fuse prompts get <prompt name> --md' (--md for markdown output that would be by default, right now, it is --json  by default).  commit, push and publish a ve",
+  "files": [
+    "src/langfuse/client.ts",
+    "src/langfuse/observations.ts",
+    "src/langfuse/projects.ts",
+    "/tmp/migrate-custom-gpt-v4.mjs",
+    "test/langfuse-v4.test.mjs",
+    "src/langfuse/prompts.ts",
+    "src/langfuse/index.ts",
+    "src/cli.ts",
+    "README.md",
+    "llms-full.txt"
+  ],
+  "files_read": [
+    "package.json",
+    "src/cli.ts",
+    "test/langfuse-prompts.test.mjs",
+    "src/langfuse/prompts.ts",
+    "test/docs.test.mjs",
+    "src/cli-helpers.ts",
+    "src/langfuse/index.ts",
+    "src/langfuse/client.ts",
+    "src/langfuse/traces.ts",
+    "src/langfuse/observations.ts"
+  ]
+}

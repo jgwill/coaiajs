@@ -170,9 +170,17 @@ Langfuse Cloud v4 compatibility: writes use the scoped JS SDK v5 and OpenTelemet
 - **Datasets:** `createDataset`, `getDataset`, `listDatasets`, `createDatasetItem`, `listDatasetItems`
 - **Scores:** `createScore`, `listScores`, `createScoreForTarget`, `applyScoreToTrace`, `createScoreConfig`, `getScoreConfig`, `listScoreConfigs`, `applyScoreConfig`, `importScoreConfigs`, `exportScoreConfigs`, `getBuiltInPresets`, `installPreset`
 - **Comments:** `createComment`, `getComment`, `listComments`
-- **Media:** `uploadAndAttachMedia`, `getMedia`
+- **Media:** `uploadMediaBytes`, `uploadAndAttachMedia`, `getMedia`
 - **Projects:** `listProjects`
 - **Formatters:** `formatTracesTable`, `formatTracesMarkdown`, `formatTraceTree`, `formatObservationDisplay`, `formatPromptMarkdown`, `formatPromptDisplay`, `formatPromptsTable`, `formatDatasetsTable`, `formatDatasetForFinetuning`, `formatScoresTable`, `formatScoreConfigsTable`, `formatMediaDisplay`
+
+### `coaiajs/media-upload-proxy`
+
+```
+uploadOpenAIFileToLangfuse, createMediaUploadProxyServer, startMediaUploadProxy
+```
+
+The deployable bridge consumes Custom GPT `openaiFileIdRefs`, downloads the actual conversation file from an allowlisted host, completes the Langfuse presigned media upload, and returns a renderable media token.
 
 ### Exported types
 

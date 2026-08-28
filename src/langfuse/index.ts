@@ -43,7 +43,8 @@ export { listComments, getComment, createComment } from './comments.js';
 export type { CommentFilters } from './comments.js';
 
 export {
-  uploadAndAttachMedia, getMedia, detectContentType, formatMediaDisplay,
+  uploadMediaBytes, uploadAndAttachMedia, getMedia, detectContentType, formatMediaDisplay,
 } from './media.js';
+export type { UploadMediaBytesInput, UploadMediaBytesResult, MediaSource } from './media.js';
 
 export { listProjects } from './projects.js';
