@@ -164,7 +164,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
   /api/public/v2/observations:
     get:
       operationId: observations_list
@@ -360,7 +360,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
   /api/public/v2/prompts/{promptName}:
     get:
       operationId: prompts_get
@@ -448,7 +448,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
   /api/public/v2/datasets:
     get:
       operationId: datasets_list
@@ -507,7 +507,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
   /api/public/v2/datasets/{datasetName}:
     get:
       operationId: datasets_get
@@ -604,7 +604,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
   /api/public/dataset-items/{id}:
     get:
       operationId: dataset_items_get
@@ -659,7 +659,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
   /api/public/v3/scores:
     get:
       operationId: scores_list
@@ -804,7 +804,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
   /api/public/score-configs/{configId}:
     get:
       operationId: score_configs_get
@@ -907,7 +907,7 @@ paths:
           $ref: "#/components/responses/ApiError"
         default:
           $ref: "#/components/responses/ApiError"
-      x-openai-isConsequential: true
+      x-openai-isConsequential: false
 components:
   securitySchemes:
     LangfuseAuthorization:
