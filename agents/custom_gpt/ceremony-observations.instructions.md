@@ -79,6 +79,17 @@ span. To record a correction or later result, append a new child event/span.
 After exporting, call observations_list with the traceId and fields
 core,basic,time,io,metadata,model,usage,trace_context to verify the hierarchy.
 Use each returned observation id as the span/parent ID for later children.
+
+### Langfuse media
+
+When the user supplies media, use the actual file bytes—never placeholder text.
+Compute contentLength from those bytes. Compute SHA-256 over those bytes and
+send the standard padded Base64 digest, not hexadecimal, as sha256Hash.
+
+media_getUploadUrl only creates a record and returns a presigned URL. Do not
+claim an upload succeeded until the exact bytes were PUT to that URL and
+media_patch recorded the PUT result. If an arbitrary PUT is unavailable,
+report that the media upload is pending instead of claiming completion.
 ```
 
 ## Minimal append example
@@ -101,7 +112,7 @@ The parent trace and root observation must already exist. Replace every example 
         {
           "scope": {
             "name": "custom-gpt-ceremony",
-            "version": "0.4.0"
+            "version": "0.4.2"
           },
           "spans": [
             {
@@ -155,12 +166,23 @@ The parent trace and root observation must already exist. Replace every example 
 
 ## Media workflow
 
-1. Call `media_getUploadUrl` with the trace/observation or dataset-item context, MIME type, byte length, SHA-256 hash, and field.
-2. Upload the exact bytes to the returned presigned `uploadUrl`.
-3. Call `media_patch` with the upload completion time and HTTP result.
-4. Call `media_get` when a temporary download URL or media metadata is needed.
+When the user supplies media, always use that media's actual bytes. Never create or hash placeholder text or surrogate bytes unless the user explicitly requests a placeholder.
 
-The upload itself is an HTTP request to the returned storage URL, not a Langfuse API action. The three restored actions match the media capabilities in `ceremony.yml`.
+1. Read the exact bytes that will be uploaded.
+2. Derive `contentType` from those bytes/file and set `contentLength` to their exact byte length.
+3. Compute SHA-256 over those exact bytes, then encode the 32-byte digest with standard padded RFC 4648 Base64. Send the resulting 44-character value as `sha256Hash`; never send the 64-character hexadecimal digest.
+4. Call `media_getUploadUrl` with the context, file metadata, Base64 hash, and field.
+5. PUT the same exact bytes to the returned presigned `uploadUrl` using the declared content type.
+6. Only after that PUT completes, call `media_patch` with the completion time and HTTP result.
+7. Optionally call `media_get` to verify the media record and obtain a temporary download URL.
+
+Example for the four UTF-8 bytes `test`:
+
+```text
+sha256Hash: n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=
+```
+
+Receiving `uploadUrl` creates a Langfuse media record but does **not** upload the bytes. Never report that media was uploaded after `media_getUploadUrl` alone. The current OpenAPI document cannot describe a PUT to a dynamically returned storage host. If the Custom GPT runtime cannot issue that arbitrary PUT, it must report the upload as pending; full autonomy requires a trusted repository-controlled `media_upload` proxy, which is not currently implemented.
 
 ## Why there are not separate create-trace and append-observation actions
 

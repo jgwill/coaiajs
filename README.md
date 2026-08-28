@@ -140,7 +140,7 @@ Migration references: [Langfuse v4](https://langfuse.com/docs/v4) · [versions a
 
 ### Custom GPT observation actions
 
-[`agents/custom_gpt/ceremony-observations.yml`](./agents/custom_gpt/ceremony-observations.yml) is a focused OpenAPI 3.1 action specification for creating a root observation and appending child observations to the same Langfuse trace through OTLP/HTTP JSON. It contains 23 core actions—below the 30-action limit—including media upload-record, retrieval, and finalization capabilities; destructive operations remain omitted. Setup, authentication, ID/timestamp rules, and ready-to-paste GPT instructions are in [`ceremony-observations.instructions.md`](./agents/custom_gpt/ceremony-observations.instructions.md). The broader imported API surface remains available in [`ceremony.yml`](./agents/custom_gpt/ceremony.yml).
+[`agents/custom_gpt/ceremony-observations.yml`](./agents/custom_gpt/ceremony-observations.yml) is a focused OpenAPI 3.1 action specification for creating a root observation and appending child observations to the same Langfuse trace through OTLP/HTTP JSON. It contains 23 core actions—below the 30-action limit—including media upload-record, retrieval, and finalization capabilities; destructive operations remain omitted. Media hashes use the required 44-character padded Base64 SHA-256 digest of the exact upload bytes, and the documented workflow distinguishes URL creation from the actual presigned PUT. Setup, authentication, ID/timestamp rules, and ready-to-paste GPT instructions are in [`ceremony-observations.instructions.md`](./agents/custom_gpt/ceremony-observations.instructions.md). The broader imported API surface remains available in [`ceremony.yml`](./agents/custom_gpt/ceremony.yml).
 
 ---
 

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Langfuse Ceremony Observations
-  version: 0.4.1
+  version: 0.4.2
   description: >-
     Focused Langfuse v4 Custom GPT actions for creating root observations, appending nested child observations through
     OTLP/HTTP JSON, reading observations, and managing projects, prompts, datasets, scores, comments, and media. Spans
@@ -64,7 +64,7 @@ paths:
                       scopeSpans:
                         - scope:
                             name: custom-gpt-ceremony
-                            version: 0.4.0
+                            version: 0.4.2
                           spans:
                             - traceId: 4bf92f3577b34da6a3ce929d0e0e4736
                               spanId: 00f067aa0ba902b7
@@ -129,7 +129,7 @@ paths:
                       scopeSpans:
                         - scope:
                             name: custom-gpt-ceremony
-                            version: 0.4.0
+                            version: 0.4.2
                           spans:
                             - traceId: 4bf92f3577b34da6a3ce929d0e0e4736
                               spanId: 3c16a3e45742d4c7
@@ -915,8 +915,9 @@ paths:
       operationId: media_getUploadUrl
       summary: Create a media upload record
       description: >-
-        Create a Langfuse media record and receive its presigned upload URL. Provide either trace context or
-        dataset-item context, plus file metadata and SHA-256 hash.
+        Create a media record and presigned URL. Hash the exact upload bytes, Base64-encode the 32-byte SHA-256 digest
+        to 44 padded characters (not hex), and send exact length/MIME type. This does not upload bytes: PUT them to
+        uploadUrl, then call media_patch. Never use placeholder bytes.
       tags:
         - Media
       requestBody:
@@ -1076,7 +1077,7 @@ components:
           default: custom-gpt-ceremony
         version:
           type: string
-          default: 0.4.0
+          default: 0.4.2
       required:
         - name
     OtlpSpan:
@@ -1544,7 +1545,9 @@ components:
     MediaUploadUrlRequest:
       type: object
       additionalProperties: false
-      description: Request a presigned upload URL. Provide traceId (optionally observationId) or both datasetId and datasetItemId.
+      description: >-
+        Use the user's actual media bytes. Provide traceId (optionally observationId) or both datasetId and
+        datasetItemId. Never substitute placeholder bytes unless the user explicitly requests a placeholder.
       properties:
         traceId:
           type: string
@@ -1560,15 +1563,20 @@ components:
           description: Dataset-item context; use with datasetId.
         contentType:
           type: string
-          description: MIME type such as image/png, audio/mpeg, application/pdf, or text/plain.
+          description: MIME type of the exact bytes, such as image/png, audio/mpeg, application/pdf, or text/plain.
         contentLength:
           type: integer
           minimum: 1
-          description: File size in bytes.
+          description: Byte length of the exact bytes that will be uploaded.
         sha256Hash:
           type: string
-          pattern: ^[0-9a-fA-F]{64}$
-          description: Hex-encoded SHA-256 digest of the exact upload bytes.
+          minLength: 44
+          maxLength: 44
+          pattern: ^[A-Za-z0-9+/]{43}=$
+          description: >-
+            Standard padded RFC 4648 Base64 encoding of the 32-byte SHA-256 digest of the exact upload bytes. This is
+            not the 64-character hexadecimal representation.
+          example: n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=
         field:
           type: string
           enum:
