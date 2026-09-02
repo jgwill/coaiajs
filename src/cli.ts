@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { tash, fetch as redisFetch, keys as redisKeys, disconnect as redisDisconnect } from './redis.js';
-import { readConfig, getConfig } from './config.js';
+import { loadConfig, getConfig } from './config.js';
 import { llm as llmCall, transcribeAudio, abstractProcess } from './llm.js';
 import { listIssues, getIssue } from './github.js';
 import { createEnvironment, findEnvironment } from './environment.js';
@@ -1312,7 +1312,7 @@ async function main(): Promise<void> {
       setColorEnabled(false);
     }
     if (opts.env) {
-      readConfig(opts.env as string);
+      loadConfig(opts.env as string);
     }
   });
 

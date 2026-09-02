@@ -156,9 +156,15 @@ function envOverrides(): Partial<CoaiaConfig> {
  * Priority: env vars > .env file > coaia.json > defaults.
  */
 export function readConfig(envPath?: string): CoaiaConfig {
-  // 1. Load .env (lowest priority file source)
+  // An explicitly requested env file wins over ambient shell variables;
+  // implicit discovery stays lowest priority.
+  const explicit = Boolean(
+    envPath ?? process.env['COAIAJS_ENV_PATH'] ?? process.env['COAIAPY_ENV_PATH'],
+  );
+
+  // 1. Load .env
   for (const dotenvPath of findEnvFiles(envPath)) {
-    dotenv.config({ path: dotenvPath, override: false });
+    dotenv.config({ path: dotenvPath, override: explicit });
   }
 
   // 2. Load coaia.json
@@ -179,6 +185,12 @@ export function getConfig(): CoaiaConfig {
   if (!_config) {
     _config = readConfig();
   }
+  return _config;
+}
+
+/** Read an env file and make the resulting config the active singleton. */
+export function loadConfig(envPath?: string): CoaiaConfig {
+  _config = readConfig(envPath);
   return _config;
 }
 

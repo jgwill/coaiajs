@@ -5,6 +5,7 @@ export {
   mergeConfigs,
   readConfig,
   getConfig,
+  loadConfig,
   resetConfig,
   config,
 } from './config.js';
