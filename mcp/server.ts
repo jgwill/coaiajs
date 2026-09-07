@@ -350,7 +350,16 @@ function createServer(): Server {
   );
 
   const memoryPath = cliArgs.memoryPath ?? process.env['COAIAJS_MEMORY_PATH'] ?? 'coaia-memory.jsonl';
-  const narrativeManager = new KnowledgeGraphManager(memoryPath);
+  // The manager refuses a path still carrying an unexpanded shell variable. Report
+  // that as a refusal to start rather than as an unhandled throw: a store is the one
+  // input where starting anyway — clean and empty — is the worst possible answer.
+  let narrativeManager: KnowledgeGraphManager;
+  try {
+    narrativeManager = new KnowledgeGraphManager(memoryPath);
+  } catch (error) {
+    console.error(`[coaiajs-mcp] ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
 
   // Collect all tool definitions
   const allToolDefs: ToolDefinition[] = [

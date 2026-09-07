@@ -237,6 +237,11 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
           },
           description: 'Optional Elements of Performance for MMOT evaluation — criteria the agent uses to self-assess output',
         },
+        githubIssue: {
+          type: 'string',
+          description:
+            "Optional GitHub issue this chart is written from, as the FULL path 'owner/repo#number' (e.g. jgwill/coaiajs#1). A bare '#number' is rejected — charts travel between repositories, and a bare number cites the wrong project once the chart is read elsewhere.",
+        },
       },
       required: ['desiredOutcome', 'currentReality', 'dueDate'],
     },
@@ -328,7 +333,14 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
         initialActionSteps: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Optional list of initial action steps for the telescoped chart',
+          description:
+            "Optional list of initial action steps for the telescoped chart. Also accepted as 'actionSteps', the name its sibling create_structural_tension_chart uses for the same concept.",
+        },
+        actionSteps: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            "Alias for 'initialActionSteps'. Present because create_structural_tension_chart names this same concept 'actionSteps'; supplying either works.",
         },
       },
       required: ['actionStepName', 'newCurrentReality'],
@@ -454,6 +466,31 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
         newDesiredOutcome: { type: 'string', description: 'New desired outcome text' },
       },
       required: ['chartId', 'newDesiredOutcome'],
+    },
+  },
+  {
+    name: 'update_chart_due_date',
+    description:
+      'Change the date a chart is due after it was created. Works for BOTH master charts AND action step charts. Moves the chart and its desired outcome together. Open action steps keep their own dates unless redistributeActionSteps is true; the count still falling after the new date is reported either way. The change is recorded as an observation on the chart.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        chartId: {
+          type: 'string',
+          description: "ID of the chart to update (works for master charts like 'chart_123' or action step charts like 'chart_456')",
+        },
+        newDueDate: {
+          type: 'string',
+          description: "New due date as an ISO date string (e.g. '2026-09-30T12:00:00Z')",
+        },
+        redistributeActionSteps: {
+          type: 'boolean',
+          default: false,
+          description:
+            'When true, open action steps and telescoped child charts are redistributed evenly between now and the new due date. When false (default), their dates are left as the caller set them.',
+        },
+      },
+      required: ['chartId', 'newDueDate'],
     },
   },
   {
@@ -588,6 +625,103 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
       },
     },
   },
+  {
+    name: 'link_chart_to_github_issue',
+    description:
+      "Record on an existing chart the GitHub issue it was written from. The reference must be the full 'owner/repo#number' path.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        chartId: { type: 'string', description: 'ID of the chart to link' },
+        githubIssue: {
+          type: 'string',
+          description: "GitHub issue as the FULL path 'owner/repo#number' (e.g. jgwill/coaiajs#1). A bare '#number' is rejected.",
+        },
+      },
+      required: ['chartId', 'githubIssue'],
+    },
+  },
+  {
+    name: 'create_wampum_belt',
+    description:
+      'Create a Wampum Belt: a non-linear mnemonic grid that runs in parallel with linear narrative beats.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Name of this Wampum belt' },
+        purpose: { type: 'string', description: 'What this belt encodes or remembers' },
+        rows: { type: 'number', description: 'Grid row count (default 1)' },
+        cols: { type: 'number', description: 'Grid column count (default 1)' },
+      },
+      required: ['title', 'purpose'],
+    },
+  },
+  {
+    name: 'add_wampum_bead',
+    description:
+      'Add a bead at a grid position with mnemonic anchor, optional relational readings, and optional ceremony/accountability links.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        beltId: { type: 'string', description: 'Target belt ID' },
+        mnemonic: { type: 'string', description: 'Short anchor phrase for this bead' },
+        color: {
+          type: 'string',
+          enum: ['white', 'purple', 'black', 'mixed'],
+          description: 'Bead color',
+        },
+        position: {
+          type: 'object',
+          properties: {
+            row: { type: 'number' },
+            col: { type: 'number' },
+          },
+          required: ['row', 'col'],
+        },
+        reading: { type: 'string', description: 'Canonical meaning for the bead' },
+        relationalReadings: {
+          type: 'object',
+          description: 'Optional perspective-specific readings (left/center/right/row:N/col:N)',
+        },
+        ceremonyLink: {
+          type: 'object',
+          properties: {
+            ceremonyType: {
+              type: 'string',
+              enum: ['commitment', 'accountability', 'witness', 'renewal'],
+            },
+            chartId: { type: 'string' },
+            beatName: { type: 'string' },
+            witnessNames: { type: 'array', items: { type: 'string' } },
+            renewalDate: { type: 'string' },
+            notes: { type: 'string' },
+          },
+          required: ['ceremonyType'],
+        },
+        observations: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['beltId', 'mnemonic', 'color', 'position', 'reading'],
+    },
+  },
+  {
+    name: 'read_wampum_belt',
+    description: 'Read a Wampum Belt in full, or read a bead by position with relational interpretation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        beltId: { type: 'string', description: 'Wampum belt ID' },
+        position: {
+          type: 'object',
+          properties: {
+            row: { type: 'number' },
+            col: { type: 'number' },
+          },
+          required: ['row', 'col'],
+        },
+      },
+      required: ['beltId'],
+    },
+  },
 ];
 
 // ─── Tool Group Subsets ─────────────────────────────────────────────
@@ -606,6 +740,8 @@ export const STC_TOOLS = [
   'update_action_progress',
   'update_current_reality',
   'update_desired_outcome',
+  'update_chart_due_date',
+  'link_chart_to_github_issue',
   'perform_mmot_evaluation',
 ] as const;
 
@@ -613,6 +749,12 @@ export const NARRATIVE_TOOLS = [
   'create_narrative_beat',
   'telescope_narrative_beat',
   'list_narrative_beats',
+] as const;
+
+export const WAMPUM_TOOLS = [
+  'create_wampum_belt',
+  'add_wampum_bead',
+  'read_wampum_belt',
 ] as const;
 
 export const KG_TOOLS = [

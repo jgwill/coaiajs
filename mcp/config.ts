@@ -33,7 +33,7 @@ const ALL_TOOLS = new Set([
   // Media (coaiapy-mcp, FULL only)
   'coaia_fuse_media_upload',
   'coaia_fuse_media_get',
-  // Narrative (coaia-narrative, 28 tools)
+  // Narrative (coaia-narrative, 32 tools)
   'create_structural_tension_chart',
   'telescope_action_step',
   'mark_action_complete',
@@ -47,11 +47,17 @@ const ALL_TOOLS = new Set([
   'add_action_step',
   'remove_action_step',
   'update_desired_outcome',
+  'update_chart_due_date',
+  'link_chart_to_github_issue',
   'perform_mmot_evaluation',
   'init_llm_guidance',
   'create_narrative_beat',
   'telescope_narrative_beat',
   'list_narrative_beats',
+  // Wampum Belt sequencing (parallel to linear narrative beats)
+  'create_wampum_belt',
+  'add_wampum_bead',
+  'read_wampum_belt',
   'add_observations',
   'create_entities',
   'create_relations',
@@ -119,11 +125,17 @@ const STANDARD_TOOLS = new Set([
   'add_action_step',
   'remove_action_step',
   'update_desired_outcome',
+  'update_chart_due_date',
+  'link_chart_to_github_issue',
   'perform_mmot_evaluation',
   'init_llm_guidance',
   'create_narrative_beat',
   'telescope_narrative_beat',
   'list_narrative_beats',
+  // Wampum Belt sequencing (parallel to linear narrative beats)
+  'create_wampum_belt',
+  'add_wampum_bead',
+  'read_wampum_belt',
   // KG tools
   'add_observations',
   'create_entities',

@@ -1188,13 +1188,27 @@ function registerNarrativeCommands(program: Command): void {
   narr
     .command('set-date')
     .alias('sd')
-    .description('Set due date on a chart')
+    .description('Set due date on a chart (moves the chart and its desired outcome together)')
     .argument('<chartId>', 'Chart ID')
     .argument('<date>', 'Due date (ISO)')
+    .option('-r, --redistribute', 'Also redistribute open action steps between now and the new date')
     .action(actionHandler(async (chartId: string, date: string, opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('narrative', 'setDueDate', chartId, date);
+      const result = await callModule('narrative', 'setDueDate', chartId, date, {
+        ...globals(cmd),
+        redistribute: opts['redistribute'] === true,
+      });
       if (typeof result === 'string') console.log(formatSuccess(result));
       else output(result, cmd);
+    }));
+
+  narr
+    .command('link-issue')
+    .description("Record the GitHub issue a chart was written from (owner/repo#number)")
+    .argument('<chartId>', 'Chart ID')
+    .argument('<githubIssue>', "GitHub issue as 'owner/repo#number'")
+    .action(actionHandler(async (chartId: string, githubIssue: string, _opts: Record<string, unknown>, cmd: Command) => {
+      const result = await callModule('narrative', 'linkGithubIssue', chartId, githubIssue, globals(cmd));
+      output(result, cmd);
     }));
 }
 

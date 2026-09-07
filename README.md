@@ -153,7 +153,7 @@ For autonomous conversation-file uploads, deploy the included `coaiajs-media-pro
 npx coaiajs-mcp
 ```
 
-Serves **62 tools, 3 prompts, and 1 listable resource** over stdio.
+Serves **67 tools, 3 prompts, and 1 listable resource** over stdio.
 
 | Group | Count | Examples |
 |---|---|---|
@@ -175,7 +175,7 @@ Set `COAIAJS_FEATURES` to control the exposed tool set (default `STANDARD`):
 | Level | Effect |
 |---|---|
 | `MINIMAL` | Core tash/fetch and essential graph tools |
-| `STANDARD` | Default — the 62 tools above |
+| `STANDARD` | Default — the 67 tools above |
 | `OBSERVABILITY` | Same set as `STANDARD` |
 | `FULL` | Everything, including media tools |
 

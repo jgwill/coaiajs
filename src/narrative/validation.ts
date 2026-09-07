@@ -18,27 +18,60 @@ interface ValidationSchema {
   [key: string]: ValidationRule;
 }
 
-export function validate(args: unknown, schema: ValidationSchema): { valid: boolean; error?: string } {
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+  /**
+   * Argument keys the caller supplied that this schema does not know.
+   *
+   * They are NOT rejected — an unknown key has never been fatal here and making
+   * it so would break existing callers. But it must be *said*: an argument that
+   * is silently dropped returns a success for a call that did less than it was
+   * asked, and the caller has no way to tell the difference. Handlers surface
+   * this alongside their own result.
+   */
+  ignored?: string[];
+}
+
+export function validate(args: unknown, schema: ValidationSchema): ValidationResult {
   if (typeof args !== 'object' || args === null) {
     return { valid: false, error: 'Arguments must be an object' };
   }
 
   const record = args as Record<string, unknown>;
 
+  // Every problem at once. Returning on the first one costs the caller a whole
+  // round trip per missing field, which reads as a broken tool rather than a
+  // mis-shaped call — two required fields meant learning the schema in three
+  // exchanges instead of one.
+  const problems: string[] = [];
+
   for (const [key, rule] of Object.entries(schema)) {
     const value = record[key];
 
     if (rule.required && (value === undefined || value === null)) {
-      return { valid: false, error: `Missing required field: ${key}` };
+      problems.push(`Missing required field: ${key}`);
+      continue;
     }
 
     if (value === undefined || value === null) continue;
 
     const result = validateValue(value, rule, key);
-    if (!result.valid) return result;
+    if (!result.valid && result.error) problems.push(result.error);
   }
 
-  return { valid: true };
+  const ignored = Object.keys(record).filter(k => !(k in schema));
+
+  if (problems.length > 0) {
+    const known = Object.keys(schema).join(', ');
+    let error = problems.join('; ');
+    if (ignored.length > 0) {
+      error += `; unrecognised argument(s) ignored: ${ignored.join(', ')} (this tool accepts: ${known})`;
+    }
+    return { valid: false, error, ignored };
+  }
+
+  return ignored.length > 0 ? { valid: true, ignored } : { valid: true };
 }
 
 function validateValue(value: unknown, rule: ValidationRule, path: string): { valid: boolean; error?: string } {

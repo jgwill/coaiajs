@@ -1,16 +1,65 @@
 // narrative/index.ts — Module barrel export
 
-export { KnowledgeGraphManager } from './graph-manager.js';
+export { KnowledgeGraphManager, parseGithubIssueSpec } from './graph-manager.js';
 export { handleToolCall } from './tool-handlers.js';
 export { validate, ValidationSchemas } from './validation.js';
+export type { ValidationResult } from './validation.js';
 export {
   ALL_TOOL_DEFINITIONS,
   STC_TOOLS,
   NARRATIVE_TOOLS,
+  WAMPUM_TOOLS,
   KG_TOOLS,
   CORE_TOOLS,
 } from './tool-definitions.js';
 export type { ToolDefinition } from './tool-definitions.js';
+
+// Store round-tripping: read and write the JSONL without losing another
+// consumer's fields, and without a truncating write a concurrent reader can see.
+export {
+  parseJsonlMemory,
+  serializeJsonlMemory,
+  readJsonlMemoryFile,
+  writeJsonlMemoryFile,
+} from './jsonl-preservation.js';
+export {
+  isObject,
+  isEntityRecord,
+  isLegacyNarrativeBeatRecord,
+  isRelationRecord,
+  normalizeLegacyNarrativeBeat,
+} from './jsonl-records.js';
+
+// Write-boundary refusal of unparsed tool-call syntax.
+export {
+  findUnparsedCallSyntax,
+  findUnparsedCallSyntaxIn,
+  describeUnparsedCallSyntax,
+  assertNoUnparsedCallSyntax,
+  KNOWN_ARGUMENT_NAMES,
+} from './argument-hygiene.js';
+export type { UnparsedCallSyntaxHit, UnparsedCallSyntaxLocation } from './argument-hygiene.js';
+
+// GitHub Projects bridge.
+export {
+  GITHUB_PROJECT_FIELD_NAMES,
+  normalizeGithubBridgeMetadata,
+  createGithubProjectFieldProjection,
+  projectEntityToGithubFields,
+  deriveGithubProjectStatus,
+  getGithubIssueUrl,
+} from './github-bridge.js';
+export type {
+  GithubProjectFieldName,
+  GithubProjectFieldProjection,
+  GithubProjectStatus,
+  GithubBridgeMetadataSource,
+  NormalizedGithubBridgeMetadata,
+} from './github-bridge.js';
+
+// The read contract: zero I/O, safe to import from a renderer. Also published as
+// the `coaiajs/narrative/contract` subpath so a consumer need not pull the rest.
+export * as contract from './contract.js';
 export {
   exportChartToMarkdown,
   exportAllCharts as exportAllChartsToMarkdown,
@@ -171,18 +220,41 @@ export async function performMmot(
   ));
 }
 
-export async function setDueDate(chartId: string, date: string): Promise<string> {
-  const graph = await managerFrom().readGraph();
-  const chart = graph.entities.find(
-    (entity) => entity.entityType === 'structural_tension_chart' && entity.metadata?.chartId === chartId,
+/**
+ * Move a chart's due date.
+ *
+ * This used to re-serialise the whole store by hand with writeFileSync: it dropped
+ * every field the manager does not model, ignored --memory-path in favour of the
+ * env var alone, and truncated the file in place where a concurrent reader could
+ * see a partial store. It now goes through the manager, which moves the chart and
+ * its desired outcome together and writes atomically.
+ */
+export async function setDueDate(
+  chartId: string,
+  date: string,
+  opts: { redistribute?: boolean } & CliGlobals = {},
+): Promise<string> {
+  const result = await managerFrom(opts).updateChartDueDate(
+    chartId,
+    date,
+    opts.redistribute === true,
   );
-  if (!chart) throw new Error(`Chart not found: ${chartId}`);
-  chart.metadata = { ...chart.metadata, dueDate: date, updatedAt: new Date().toISOString() };
-  const entities = graph.entities.map((entity) => entity.name === chart.name ? chart : entity);
-  const lines = [
-    ...entities.map((entity) => JSON.stringify({ type: 'entity', ...entity })),
-    ...graph.relations.map((relation) => JSON.stringify({ type: 'relation', ...relation })),
-  ];
-  writeFileSync(process.env['COAIAJS_MEMORY_PATH'] ?? 'coaia-memory.jsonl', lines.join('\n'), 'utf-8');
-  return `Due date set for ${chartId}`;
+  let text = `Due date for ${chartId} moved from ${result.previousDueDate || 'unset'} to ${result.newDueDate}`;
+  if (result.actionStepsRescheduled > 0) {
+    text += `\n${result.actionStepsRescheduled} open action step(s) redistributed.`;
+  } else if (result.actionStepsPastDueDate > 0) {
+    text += `\n⚠️ ${result.actionStepsPastDueDate} open action step(s) still fall after the new due date. Pass --redistribute to move them.`;
+  }
+  return text;
+}
+
+/** Record on an existing chart the GitHub issue it was written from. */
+export async function linkGithubIssue(
+  chartId: string,
+  githubIssue: string,
+  opts?: CliGlobals,
+): Promise<string> {
+  return firstText(
+    await handleToolCall('link_chart_to_github_issue', { chartId, githubIssue }, managerFrom(opts)),
+  );
 }

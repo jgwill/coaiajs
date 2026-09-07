@@ -117,18 +117,61 @@ Returns the resolved version of the installed package, read from `package.json` 
 ### `coaiajs/narrative`
 
 ```
-KnowledgeGraphManager, ValidationSchemas, validate,
-addAction, completeAction, addObservation, setDueDate, setCurrentChart, getCurrentChart,
+KnowledgeGraphManager, parseGithubIssueSpec, ValidationSchemas, validate,
+addAction, completeAction, addObservation, setDueDate, linkGithubIssue,
+setCurrentChart, getCurrentChart,
 updateChart, viewChart, listCharts, getProgress, getStats, performMmot,
 exportChart, exportAllCharts, exportChartToMarkdown, exportAllChartsToMarkdown,
 exportChartProgress, exportChartStats, writeMarkdownToFile, getDefaultFilename,
-handleToolCall, ALL_TOOL_DEFINITIONS, CORE_TOOLS, KG_TOOLS, NARRATIVE_TOOLS, STC_TOOLS
+handleToolCall, ALL_TOOL_DEFINITIONS, CORE_TOOLS, KG_TOOLS, NARRATIVE_TOOLS,
+STC_TOOLS, WAMPUM_TOOLS,
+parseJsonlMemory, serializeJsonlMemory, readJsonlMemoryFile, writeJsonlMemoryFile,
+isObject, isEntityRecord, isLegacyNarrativeBeatRecord, isRelationRecord,
+normalizeLegacyNarrativeBeat,
+findUnparsedCallSyntax, findUnparsedCallSyntaxIn, describeUnparsedCallSyntax,
+assertNoUnparsedCallSyntax, KNOWN_ARGUMENT_NAMES,
+GITHUB_PROJECT_FIELD_NAMES, normalizeGithubBridgeMetadata,
+createGithubProjectFieldProjection, projectEntityToGithubFields,
+deriveGithubProjectStatus, getGithubIssueUrl,
+contract
 ```
 
 ```typescript
 import { KnowledgeGraphManager } from 'coaiajs/narrative';
 const kg = new KnowledgeGraphManager('./memory.jsonl');
 const graph = await kg.readGraph();
+```
+
+The store is read and written through `jsonl-preservation`: a line's fields that this
+package does not model survive a write, the legacy top-level `type:"narrative_beat"`
+dialect round-trips as itself, and the write is temp-file-plus-rename so a concurrent
+reader never sees a truncated store.
+
+A memory path still carrying an unexpanded shell variable (`${VAR}`) is refused by the
+constructor rather than opened. The failure it prevents is silent: the store is created
+under that literal name, or — worse, if the variable pointed at a path that does not
+exist — the process starts clean and empty and the caller reports their charts lost.
+
+### `coaiajs/narrative/contract`
+
+The read contract for renderers: zero I/O, no import of the server, tolerant of one bad
+line where the writer's parser is deliberately not. Use it to read a chart store without
+re-deriving entity kinds, the `${chartId}_chart` naming scheme, or which metadata key
+holds the MMOT trail.
+
+```
+CONTRACT_VERSION, ENTITY_TYPES, MMOT_PHASES, CREATING_PHASES, isMmotPhase,
+parseStore, chartEntityName, desiredOutcomeName, currentRealityName,
+mmotBeatPrefix, isMmotBeatName, metaString, isComplete,
+getChartEntity, getDesiredOutcome, getCurrentReality,
+getFlatActionSteps, getChildCharts, getWork, getMmotBeats, getMmotEvaluations,
+storeRevision, revisionOf
+```
+
+```typescript
+import { parseStore, getWork } from 'coaiajs/narrative/contract';
+const store = parseStore(await readFile('./memory.jsonl', 'utf8'));
+const work = getWork(store, 'chart_1757200000000');
 ```
 
 ### `coaiajs/pde`
@@ -202,7 +245,7 @@ PipelineVariable, PipelineStep, PipelineTemplate, CoaiaConfig
 npx coaiajs-mcp
 ```
 
-Transport: **stdio**. Serves **62 tools, 3 prompts, 1 listable resource**.
+Transport: **stdio**. Serves **67 tools, 3 prompts, 1 listable resource**.
 
 Flags: `--memory-path <path>` (JSONL knowledge graph), `--plans-dir <path>`, `--feature-level <level>`.
 
@@ -223,7 +266,7 @@ Claude Code / client registration:
 | Level | Effect |
 |---|---|
 | `MINIMAL` | Core tash/fetch and essential graph tools |
-| `STANDARD` | Default — the 62 tools listed below |
+| `STANDARD` | Default — the 67 tools listed below |
 | `OBSERVABILITY` | Same set as `STANDARD` |
 | `FULL` | Everything, including media tools |
 
@@ -240,7 +283,7 @@ coaia_fuse_score_configs_list, coaia_fuse_score_configs_get, coaia_fuse_score_ap
 coaia_fuse_comments_list, coaia_fuse_comments_get, coaia_fuse_comments_create
 ```
 
-### Tools — narrative / knowledge graph (27)
+### Tools — narrative / knowledge graph (32)
 
 ```
 create_entities, create_relations, add_observations,
@@ -250,10 +293,25 @@ create_structural_tension_chart, manage_action_step, add_action_step,
 telescope_action_step, remove_action_step, mark_action_complete,
 get_chart_progress, list_active_charts, get_chart, get_action_step,
 update_action_progress, update_current_reality, update_desired_outcome,
+update_chart_due_date, link_chart_to_github_issue,
 perform_mmot_evaluation,
 create_narrative_beat, telescope_narrative_beat, list_narrative_beats,
+create_wampum_belt, add_wampum_bead, read_wampum_belt,
 init_llm_guidance
 ```
+
+`update_chart_due_date` moves a chart and its desired outcome together; open action
+steps keep their own dates unless `redistributeActionSteps` is true, and the count
+still falling after the new date is reported either way.
+
+`link_chart_to_github_issue` and the `githubIssue` argument on
+`create_structural_tension_chart` take the FULL `owner/repo#number` path. A bare
+`#number` is refused: charts travel between repositories, and a bare number cites
+the wrong project as soon as the chart is read elsewhere.
+
+The three `wampum_*` tools hold a non-linear mnemonic grid that runs in parallel with
+the linear narrative beats. A bead carries a mnemonic, a canonical reading, optional
+position-specific readings, and an optional ceremony link to a chart or a beat.
 
 ### Tools — PDE (10)
 

@@ -6,9 +6,34 @@
  * Testable without MCP transport.
  */
 
-import type { Entity, Relation, McpToolResult } from '../types.js';
+import type { Entity, Relation, McpToolResult, WampumCeremonyLink } from '../types.js';
 import type { KnowledgeGraphManager } from './graph-manager.js';
 import { validate, ValidationSchemas } from './validation.js';
+import { findUnparsedCallSyntaxIn, describeUnparsedCallSyntax } from './argument-hygiene.js';
+
+/**
+ * Say out loud which supplied arguments this tool did not know.
+ *
+ * A dropped argument is invisible from the caller's side: the call succeeds, the
+ * record is written, and the part that was ignored looks exactly like a part that
+ * was honoured. Nothing here is rejected — unknown keys have never been fatal and
+ * making them so would break callers — but the success now names what it skipped.
+ */
+function noteIgnored(result: McpToolResult, ignored?: string[]): McpToolResult {
+  if (!ignored || ignored.length === 0) return result;
+  return {
+    ...result,
+    content: [
+      ...result.content,
+      {
+        type: 'text',
+        text:
+          `⚠️ Ignored unrecognised argument(s): ${ignored.join(', ')}. ` +
+          `They were NOT applied — check the tool's inputSchema for the accepted names.`,
+      },
+    ],
+  };
+}
 
 const LLM_GUIDANCE_QUICK = `## 🚨 COAIA Memory Quick Reference
 
@@ -78,6 +103,17 @@ export async function handleToolCall(
   manager: KnowledgeGraphManager,
 ): Promise<McpToolResult> {
   const toolArgs = args || {};
+
+  // Before any tool runs: a call whose argument tags did not parse arrives with
+  // its own raw text inside a value. Refuse it here, naming the fragment, so the
+  // caller retries — rather than persisting a closing tag as if it were prose.
+  const leak = findUnparsedCallSyntaxIn(toolArgs);
+  if (leak) {
+    return {
+      content: [{ type: 'text', text: `Error: ${describeUnparsedCallSyntax(leak)}` }],
+      isError: true,
+    };
+  }
 
   switch (name) {
     case 'create_entities': {
@@ -168,6 +204,10 @@ export async function handleToolCall(
         currentReality: ValidationSchemas.nonEmptyString(),
         dueDate: ValidationSchemas.isoDate(),
         actionSteps: { type: 'array', items: { type: 'string' } },
+        // Declared so they are not reported as unrecognised: the handler below
+        // reads them, so the validation schema was the only place they were missing.
+        elementsOfPerformance: { type: 'array' },
+        githubIssue: { type: 'string' },
       });
       if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
       const chartResult = await manager.createStructuralTensionChart(
@@ -176,22 +216,38 @@ export async function handleToolCall(
         toolArgs.dueDate as string,
         (Array.isArray(toolArgs.actionSteps) ? toolArgs.actionSteps : []) as string[],
         toolArgs.elementsOfPerformance as Array<{ description: string; type: 'DESIGN' | 'EXECUTION' }> | undefined,
+        toolArgs.githubIssue as string | undefined,
       );
-      return { content: [{ type: 'text', text: JSON.stringify(chartResult, null, 2) }] };
+      return noteIgnored(
+        { content: [{ type: 'text', text: JSON.stringify(chartResult, null, 2) }] },
+        valResult.ignored,
+      );
     }
     case 'telescope_action_step': {
       const valResult = validate(toolArgs, {
         actionStepName: ValidationSchemas.nonEmptyString(),
         newCurrentReality: ValidationSchemas.nonEmptyString(),
         initialActionSteps: { type: 'array', items: { type: 'string' } },
+        // Accepted as an alias. Its sibling create_structural_tension_chart calls
+        // the same concept `actionSteps`, so a caller that has just used that tool
+        // reaches for the same name here and its steps vanish into a success.
+        actionSteps: { type: 'array', items: { type: 'string' } },
       });
       if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      const initialSteps = (Array.isArray(toolArgs.initialActionSteps)
+        ? toolArgs.initialActionSteps
+        : Array.isArray(toolArgs.actionSteps)
+          ? toolArgs.actionSteps
+          : []) as string[];
       const telescopeResult = await manager.telescopeActionStep(
         toolArgs.actionStepName as string,
         toolArgs.newCurrentReality as string,
-        (Array.isArray(toolArgs.initialActionSteps) ? toolArgs.initialActionSteps : []) as string[],
+        initialSteps,
       );
-      return { content: [{ type: 'text', text: JSON.stringify(telescopeResult, null, 2) }] };
+      return noteIgnored(
+        { content: [{ type: 'text', text: JSON.stringify(telescopeResult, null, 2) }] },
+        valResult.ignored,
+      );
     }
     case 'mark_action_complete': {
       const valResult = validate(toolArgs, { actionStepName: ValidationSchemas.nonEmptyString() });
@@ -227,20 +283,44 @@ export async function handleToolCall(
         hierarchyText += `📋 **${master.desiredOutcome}** (Master Chart)${progress}${dueDate}\n`;
         hierarchyText += `    ID: ${master.chartId}\n`;
 
+        // A chart's work lives in two shapes: action_step entities on the chart
+        // itself, and telescoped child charts. Render both, or a chart holding
+        // eight steps and no child chart reports itself empty.
         const actions = actionCharts.filter(a => a.parentChart === master.chartId);
-        if (actions.length > 0) {
-          actions.forEach((action, index) => {
-            const isLast = index === actions.length - 1;
-            const connector = isLast ? '└── ' : '├── ';
-            const actionProgress =
-              action.progress > 0 ? ` (${Math.round(action.progress * 100)}%)` : '';
-            const actionDue = action.dueDate
-              ? ` [${new Date(action.dueDate).toLocaleDateString()}]`
-              : '';
-            hierarchyText += `    ${connector}🎯 ${action.desiredOutcome} (Action Step)${actionProgress}${actionDue}\n`;
-            hierarchyText += `        ID: ${action.chartId}\n`;
-          });
-        } else {
+        // A step that telescoped still exists as an action_step entity alongside the
+        // child chart it became. Render it once, as the chart — two lines carrying
+        // the same title read as two open results.
+        const telescopedStepNames = new Set(
+          actions.map(a => a.parentActionStep).filter((x): x is string => Boolean(x)),
+        );
+        const ownSteps = (master.actionSteps || []).filter(
+          step => !telescopedStepNames.has(step.name),
+        );
+        const branchCount = actions.length + ownSteps.length;
+        let branchIndex = 0;
+        const connectorFor = () => (++branchIndex === branchCount ? '└── ' : '├── ');
+
+        ownSteps.forEach(step => {
+          const mark = step.complete ? '✅' : '🎯';
+          const stepDue = step.dueDate
+            ? ` [${new Date(step.dueDate).toLocaleDateString()}]`
+            : '';
+          hierarchyText += `    ${connectorFor()}${mark} ${step.title} (Action Step)${stepDue}\n`;
+          hierarchyText += `        ID: ${step.name}\n`;
+        });
+
+        actions.forEach(action => {
+          const actionProgress =
+            action.progress > 0 ? ` (${Math.round(action.progress * 100)}%)` : '';
+          const actionDue = action.dueDate
+            ? ` [${new Date(action.dueDate).toLocaleDateString()}]`
+            : '';
+          const from = action.parentActionStep ? ` ← ${action.parentActionStep}` : '';
+          hierarchyText += `    ${connectorFor()}🎯 ${action.desiredOutcome} (Telescoped Chart)${actionProgress}${actionDue}\n`;
+          hierarchyText += `        ID: ${action.chartId}${from}\n`;
+        });
+
+        if (branchCount === 0) {
           hierarchyText += `    └── (No action steps yet)\n`;
         }
         hierarchyText += '\n';
@@ -337,14 +417,17 @@ export async function handleToolCall(
         toolArgs.dueDate as string | undefined,
         toolArgs.currentReality as string,
       );
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Action step '${toolArgs.actionStepTitle as string}' added to chart '${toolArgs.parentChartId as string}' as telescoped chart '${addActionResult.chartId}'`,
-          },
-        ],
-      };
+      return noteIgnored(
+        {
+          content: [
+            {
+              type: 'text',
+              text: `Action step '${toolArgs.actionStepTitle as string}' added to chart '${toolArgs.parentChartId as string}' as telescoped chart '${addActionResult.chartId}'`,
+            },
+          ],
+        },
+        valResult.ignored,
+      );
     }
     case 'remove_action_step': {
       const valResult = validate(toolArgs, {
@@ -379,6 +462,28 @@ export async function handleToolCall(
         content: [{ type: 'text', text: `Desired outcome updated for chart '${toolArgs.chartId as string}'` }],
       };
     }
+    case 'update_chart_due_date': {
+      const valResult = validate(toolArgs, {
+        chartId: ValidationSchemas.nonEmptyString(),
+        newDueDate: ValidationSchemas.isoDate(),
+        redistributeActionSteps: { type: 'boolean' },
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      const dueDateResult = await manager.updateChartDueDate(
+        toolArgs.chartId as string,
+        toolArgs.newDueDate as string,
+        toolArgs.redistributeActionSteps === true,
+      );
+      let dueDateText = `Due date for chart '${dueDateResult.chartId}' moved from ${dueDateResult.previousDueDate || 'unset'} to ${dueDateResult.newDueDate}`;
+      if (dueDateResult.actionStepsRescheduled > 0) {
+        dueDateText += `\n${dueDateResult.actionStepsRescheduled} open action step(s) redistributed between now and the new date.`;
+      } else if (dueDateResult.actionStepsPastDueDate > 0) {
+        dueDateText += `\n⚠️ ${dueDateResult.actionStepsPastDueDate} open action step(s) still fall after the new due date. Re-run with redistributeActionSteps: true to move them.`;
+      }
+      return {
+        content: [{ type: 'text', text: `${dueDateText}\n\n${JSON.stringify(dueDateResult, null, 2)}` }],
+      };
+    }
     case 'perform_mmot_evaluation': {
       const valResult = validate(toolArgs, {
         chartId: ValidationSchemas.nonEmptyString(),
@@ -399,7 +504,14 @@ export async function handleToolCall(
       );
       let responseText = mmotResult.guidance;
       if (mmotResult.evaluationStored) {
-        responseText += '\n\n✅ Evaluation stored in chart current reality.';
+        // Name the destination that was actually written. The evaluation always joins
+        // the chart's mmotEvaluations trail; current reality is appended only when the
+        // caller asked for it. A success line that names the wrong record is the same
+        // failure class as a success line over zero bytes.
+        responseText +=
+          toolArgs.updateReality !== false
+            ? '\n\n✅ Evaluation stored: chart MMOT trail + current reality.'
+            : '\n\n✅ Evaluation stored: chart MMOT trail (current reality left untouched, as requested).';
       }
       if (mmotResult.beatEmitted) {
         responseText += '\n📡 MMOT narrative beat emitted.';
@@ -500,6 +612,116 @@ export async function handleToolCall(
       });
 
       return { content: [{ type: 'text', text: beatsText }] };
+    }
+    case 'link_chart_to_github_issue': {
+      const valResult = validate(toolArgs, {
+        chartId: ValidationSchemas.nonEmptyString(),
+        githubIssue: ValidationSchemas.nonEmptyString(),
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      const result = await manager.linkChartToGithubIssue(
+        toolArgs.chartId as string,
+        toolArgs.githubIssue as string,
+      );
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+    case 'create_wampum_belt': {
+      const valResult = validate(toolArgs, {
+        title: ValidationSchemas.nonEmptyString(),
+        purpose: ValidationSchemas.nonEmptyString(),
+        rows: { type: 'number', minValue: 1 },
+        cols: { type: 'number', minValue: 1 },
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      const rows = (toolArgs.rows as number | undefined) ?? 1;
+      const cols = (toolArgs.cols as number | undefined) ?? 1;
+      if (!Number.isInteger(rows) || !Number.isInteger(cols)) {
+        return { content: [{ type: 'text', text: 'Error: rows and cols must be integers' }], isError: true };
+      }
+      const result = await manager.createWampumBelt(
+        toolArgs.title as string,
+        toolArgs.purpose as string,
+        rows,
+        cols,
+      );
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+    case 'add_wampum_bead': {
+      const valResult = validate(toolArgs, {
+        beltId: ValidationSchemas.nonEmptyString(),
+        mnemonic: ValidationSchemas.nonEmptyString(),
+        color: { type: 'enum', required: true, enumValues: ['white', 'purple', 'black', 'mixed'] },
+        position: {
+          type: 'object',
+          required: true,
+          properties: {
+            row: { type: 'number', required: true },
+            col: { type: 'number', required: true },
+          },
+        },
+        reading: ValidationSchemas.nonEmptyString(),
+        relationalReadings: { type: 'object' },
+        ceremonyLink: { type: 'object' },
+        observations: { type: 'array', items: { type: 'string' } },
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      const position = toolArgs.position as { row: number; col: number };
+      if (!Number.isInteger(position.row) || !Number.isInteger(position.col)) {
+        return {
+          content: [{ type: 'text', text: 'Error: position.row and position.col must be integers' }],
+          isError: true,
+        };
+      }
+      const ceremonyLink = toolArgs.ceremonyLink as WampumCeremonyLink | undefined;
+      if (
+        ceremonyLink &&
+        !['commitment', 'accountability', 'witness', 'renewal'].includes(
+          ceremonyLink.ceremonyType as string,
+        )
+      ) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Error: ceremonyLink.ceremonyType must be one of commitment, accountability, witness, renewal',
+            },
+          ],
+          isError: true,
+        };
+      }
+      const result = await manager.addWampumBead(
+        toolArgs.beltId as string,
+        toolArgs.mnemonic as string,
+        toolArgs.color as 'white' | 'purple' | 'black' | 'mixed',
+        position,
+        toolArgs.reading as string,
+        toolArgs.relationalReadings as Record<string, string> | undefined,
+        ceremonyLink,
+        (toolArgs.observations as string[] | undefined) || [],
+      );
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    }
+    case 'read_wampum_belt': {
+      const valResult = validate(toolArgs, {
+        beltId: ValidationSchemas.nonEmptyString(),
+        position: {
+          type: 'object',
+          properties: {
+            row: { type: 'number', required: true },
+            col: { type: 'number', required: true },
+          },
+        },
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      const position = toolArgs.position as { row: number; col: number } | undefined;
+      if (position && (!Number.isInteger(position.row) || !Number.isInteger(position.col))) {
+        return {
+          content: [{ type: 'text', text: 'Error: position.row and position.col must be integers' }],
+          isError: true,
+        };
+      }
+      const result = await manager.readWampumBelt(toolArgs.beltId as string, position);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     }
     case 'init_llm_guidance': {
       const valResult = validate(toolArgs, {
