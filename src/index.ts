@@ -51,6 +51,7 @@ export { getPackageVersion } from './version.js';
 
 export * as langfuse from './langfuse/index.js';
 export * as narrative from './narrative/index.js';
+export * as skill from './skill.js';
 export * as pde from './pde/index.js';
 export * as planning from './planning/index.js';
 export * as pipeline from './pipeline/index.js';

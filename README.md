@@ -49,10 +49,12 @@ Import from the root, or from a subpath to pull in only what you need. Every ent
 | `coaiajs/audio` | `synthesize`, `resetClient` |
 | `coaiajs/github` | `listIssues`, `getIssue`, `getIssueComments`, `resetClient` |
 | `coaiajs/environment` | `EnvironmentManager`, `createEnvironment`, `findEnvironment` |
-| `coaiajs/version` | `getPackageVersion` |
+| `coaiajs/version` | `getPackageVersion`, `getPackageRoot` |
 | `coaiajs/langfuse` | Langfuse JS SDK v5/OpenTelemetry tracing plus v4 observations, prompts, datasets, scores, comments, media, projects, and formatters (56 runtime exports) |
 | `coaiajs/media-upload-proxy` | Deployable Custom GPT conversation-file to Langfuse media bridge |
-| `coaiajs/narrative` | `KnowledgeGraphManager`, chart operations, markdown export, tool definitions (29 exports) |
+| `coaiajs/narrative` | `KnowledgeGraphManager`, chart operations, markdown export, tool definitions, JSONL preservation, argument hygiene, GitHub bridge |
+| `coaiajs/narrative/contract` | The store read contract for renderers — zero I/O, tolerant of a bad line |
+| `coaiajs/skill` | The packaged agent skill: `showSkill`, `installSkill`, `checkSkill`, `renderSkill`, `renderToolMap` |
 | `coaiajs/pde` | `SessionManager`, `StcMapper`, `handlePdeTool`, `PDE_MCP_TOOLS` (10 exports) |
 | `coaiajs/planning` | `parsePlan`, `planToSTC`, `syncToChart`, `syncToPlan`, `handlePlanningTool` (10 exports) |
 | `coaiajs/pipeline` | `MobileTemplateEngine`, `TemplateLoader`, `TemplateRenderer` |
@@ -122,7 +124,8 @@ npx coaia <command>          # or: npm i -g coaiajs && coaia <command>
 | `p <tag> [text]` | Process text with a custom tag |
 | `init` | Create a sample `coaia.json` |
 | `fuse` | Langfuse operations — `traces`, `prompts`, `datasets`, `scores`, `score-configs`, `sessions`, `comments`, `media`, `projects`, `dataset-items` |
-| `narrative` (`n`) | Chart operations — `list`, `view`, `current`, `update`, `add-action`, `add-obs`, `complete`, `export`, `export-all`, `stats`, `progress`, `mmot`, `set-date` |
+| `skill` | The packaged agent skill — `show`, `install`, `check` |
+| `narrative` (`n`) | Chart operations — `list`, `view`, `current`, `update`, `add-action`, `add-obs`, `complete`, `export`, `export-all`, `stats`, `progress`, `mmot`, `set-date`, `link-issue` |
 | `pde` | `import`, `list`, `sessions`, `show` |
 | `plan` | `parse`, `convert`, `sync-to-chart`, `sync-to-plan` |
 | `pipeline` | `list`, `show`, `create`, `init` |
@@ -178,6 +181,22 @@ Set `COAIAJS_FEATURES` to control the exposed tool set (default `STANDARD`):
 | `STANDARD` | Default — the 67 tools above |
 | `OBSERVABILITY` | Same set as `STANDARD` |
 | `FULL` | Everything, including media tools |
+
+### Agent skill
+
+`coaiajs` ships a skill describing its own surface. The tool map inside it is generated
+from the server's tool definitions at install time, so it cannot advertise a tool this
+package does not serve.
+
+```bash
+coaia skill show                 # print it
+coaia skill install --yes        # ./.agents/skills/coaiajs + the .claude/skills symlink
+coaia skill install --global     # ~/.agents/skills/coaiajs
+coaia skill check                # is the installed copy current?
+```
+
+Run `coaia skill check` after upgrading. A skill installed by an older version describes an
+older tool surface, and nothing else reports that. It exits non-zero when stale or missing.
 
 ### Claude Code
 

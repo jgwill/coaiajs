@@ -1,6 +1,6 @@
 {
   "name": "coaiajs",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "description": "CoAIA unified TypeScript monorepo — CLI, MCP server, and library consolidating coaia-narrative, coaia-pde, coaia-planning, and coaiapy patterns into one package.",
   "main": "./dist/src/index.js",
@@ -54,6 +54,10 @@
       "types": "./dist/src/narrative/contract.d.ts",
       "import": "./dist/src/narrative/contract.js"
     },
+    "./skill": {
+      "types": "./dist/src/skill.d.ts",
+      "import": "./dist/src/skill.js"
+    },
     "./pde": {
       "types": "./dist/src/pde/index.d.ts",
       "import": "./dist/src/pde/index.js"
@@ -70,6 +74,8 @@
   },
   "files": [
     "dist",
+    "skills",
+    "docs",
     "agents/custom_gpt",
     "rispecs",
     "README.md",

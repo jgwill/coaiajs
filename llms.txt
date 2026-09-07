@@ -17,6 +17,7 @@ Key facts an agent usually needs first:
 - [llms-full.txt](./llms-full.txt): complete API surface — every export, every MCP tool, every CLI command, in one file
 - [CLAUDE.md](./CLAUDE.md): repository conventions for agents working *on* this codebase
 - [KINSHIP.md](./KINSHIP.md): lineage and type provenance from the four origin projects
+- [docs/LINEAGE-COAIA-NARRATIVE.md](./docs/LINEAGE-COAIA-NARRATIVE.md): how corrections are carried forward from `avadisabelle/coaia-narrative` — where the last port stopped, how to find the next one, and what is deliberately not copied
 
 ## Entry points
 
@@ -32,6 +33,7 @@ Key facts an agent usually needs first:
 - `coaiajs/media-upload-proxy`: deployable `openaiFileIdRefs` to Langfuse media upload bridge (`coaiajs-media-proxy` binary)
 - `coaiajs/narrative`: `KnowledgeGraphManager`, structural tension charts, markdown export, Wampum Belt sequencing, GitHub issue linkage, loss-free JSONL round-tripping
 - `coaiajs/narrative/contract`: the store read contract for renderers — zero I/O, tolerant of a bad line
+- `coaiajs/skill`: the packaged agent skill — render, install, and check it (`coaia skill show|install|check`)
 - `coaiajs/pde`: Prompt Decomposition Engine — sessions, STC mapping
 - `coaiajs/planning`: `parsePlan`, `planToSTC`, `syncToChart`, `syncToPlan`
 - `coaiajs/pipeline`: pipeline template engine

@@ -110,9 +110,10 @@ EnvironmentManager, createEnvironment, findEnvironment
 
 ```
 getPackageVersion
+getPackageRoot
 ```
 
-Returns the resolved version of the installed package, read from `package.json` at runtime.
+`getPackageVersion` returns the resolved version of the installed package, read from `package.json` at runtime. `getPackageRoot` returns the directory holding that `package.json` — the way anything shipped beside `dist/` (the packaged skill under `skills/`, the Custom GPT specs) is located. Do not use `process.cwd()` for that; it is the caller's directory and says nothing about where the package was installed.
 
 ### `coaiajs/narrative`
 
@@ -173,6 +174,26 @@ import { parseStore, getWork } from 'coaiajs/narrative/contract';
 const store = parseStore(await readFile('./memory.jsonl', 'utf8'));
 const work = getWork(store, 'chart_1757200000000');
 ```
+
+### `coaiajs/skill`
+
+The agent skill this package ships, describing its own surface.
+
+```
+SKILL_NAME, SKILL_FILES, getPackagedSkillDir,
+renderSkill, renderSkillFile, renderToolMap,
+showSkill, installSkill, checkSkill, formatSkillCheck,
+getSkillInstallDir, getClaudeSkillLinkPath
+```
+
+```bash
+coaia skill show                 # print the packaged SKILL.md, rendered
+coaia skill install --yes        # ./.agents/skills/coaiajs + the .claude/skills symlink
+coaia skill install --global     # ~/.agents/skills/coaiajs
+coaia skill check                # current / stale / missing; exits non-zero unless current
+```
+
+The content lives as real markdown under `skills/coaiajs/` rather than as strings in the TypeScript, so a documentation change reads as a documentation diff. The `{{TOOL_MAP}}` placeholder inside `SKILL.md` is rendered from `ALL_TOOL_DEFINITIONS` — the same array the MCP server registers — so an installed skill cannot advertise a tool the server does not serve. The version it was rendered from is recorded in the installed frontmatter as `packageVersion`, which is what `checkSkill` reads.
 
 ### `coaiajs/pde`
 
@@ -367,6 +388,7 @@ Global options: `--env <path>` · `-M, --memory-path <path>` · `--json` · `--n
 | `p <tag> [text]` | | Process text with a custom tag |
 | `init` | | Create a sample `coaia.json` |
 | `fuse` | | Langfuse operations |
+| `skill` | | The packaged agent skill: show, install, check |
 | `narrative` | `n` | Structural tension chart operations |
 | `pde` | | Prompt Decomposition Engine |
 | `plan` | | Structural tension plan operations |
@@ -377,7 +399,8 @@ Global options: `--env <path>` · `-M, --memory-path <path>` · `--json` · `--n
 Subcommands:
 
 - **`fuse`** — `traces`, `prompts`, `datasets`, `sessions`, `scores` (`sc`), `score-configs` (`scc`), `comments`, `media`, `dataset-items`, `projects`
-- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`)
+- **`skill`** — `show`, `install` (`--global`, `--yes`, `--force`), `check` (`--global`)
+- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`, `--redistribute`), `link-issue`
 - **`pde`** — `import <pdeId>`, `list`, `sessions`, `show <sessionId>`
 - **`plan`** — `parse <planPath>`, `convert <planPath>`, `sync-to-chart <planPath> <chartsPath>`, `sync-to-plan <chartsPath> <planPath>`
 - **`pipeline`** — `list`, `show <name>`, `create <name>`, `init <name>`
@@ -428,3 +451,7 @@ npm run dev        # tsc --watch
 Conventions: ESM only, relative imports end in `.js` · `strict: true`, no unjustified `any` · shared types live in `src/types.ts` · clients lazy, each module exports `resetClient()` · no side effects at import time.
 
 Per-module RISE specifications live in `rispecs/`, one file per module.
+
+### Carrying corrections forward from coaia-narrative
+
+`src/narrative/` began as a snapshot of `avadisabelle/coaia-narrative` and still takes corrections from it — one way. `docs/LINEAGE-COAIA-NARRATIVE.md` records where the last port stopped (upstream `68f6e2f`, v0.16.2), how to compute the next diff, what was adapted rather than copied and why, and what is deliberately not ported. Read it before porting anything from that repository. The two trees are not diff-compatible; port semantically and carry the reasoning, not just the code.

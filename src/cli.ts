@@ -943,6 +943,55 @@ function registerEnvCommands(program: Command): void {
 // GitHub commands
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Skill commands
+// ---------------------------------------------------------------------------
+
+function registerSkillCommands(program: Command): void {
+  const skill = program
+    .command('skill')
+    .description('The packaged coaiajs agent skill: show, install, or check it');
+
+  skill
+    .command('show')
+    .description('Print the packaged SKILL.md, with its tool map rendered from this build')
+    .action(actionHandler(async () => {
+      const { showSkill } = await import('./skill.js');
+      showSkill();
+    }));
+
+  skill
+    .command('install')
+    .description('Write the skill to ./.agents/skills/coaiajs')
+    .option('-g, --global', 'Install into ~/.agents/skills/coaiajs instead')
+    .option('-y, --yes', 'Also create the matching .claude/skills/coaiajs symlink')
+    .option('-f, --force', 'Replace an existing install or symlink')
+    .action(actionHandler(async (opts: Record<string, unknown>) => {
+      const { installSkill } = await import('./skill.js');
+      await installSkill({
+        global: opts['global'] === true,
+        force: opts['force'] === true,
+        yes: opts['yes'] === true,
+      });
+    }));
+
+  skill
+    .command('check')
+    .description('Report whether an installed skill matches this version of the package')
+    .option('-g, --global', 'Check ~/.agents/skills/coaiajs instead')
+    .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
+      const { checkSkill, formatSkillCheck } = await import('./skill.js');
+      const result = checkSkill({ global: opts['global'] === true });
+      if (globals(cmd).json) {
+        output(result, cmd);
+      } else {
+        console.log(formatSkillCheck(result));
+      }
+      // A stale or missing skill is a real finding, not a normal success.
+      if (result.status !== 'current') process.exitCode = 1;
+    }));
+}
+
 function registerGhCommands(program: Command): void {
   const gh = program
     .command('gh')
@@ -1335,6 +1384,7 @@ async function main(): Promise<void> {
   registerPipelineCommands(program);
   registerEnvCommands(program);
   registerGhCommands(program);
+  registerSkillCommands(program);
   registerNarrativeCommands(program);
   registerPdeCommands(program);
   registerPlanCommands(program);
