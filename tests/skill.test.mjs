@@ -21,12 +21,15 @@ import {
   renderSkill,
   renderSkillFile,
   renderToolMap,
+  renderCliMap,
+  servedTools,
   installSkill,
   checkSkill,
   formatSkillCheck,
   getSkillInstallDir,
 } from '../dist/src/skill.js';
 import { ALL_TOOL_DEFINITIONS } from '../dist/src/narrative/index.js';
+import { buildProgram } from '../dist/src/cli.js';
 import { getPackageVersion, getPackageRoot } from '../dist/src/version.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -78,7 +81,7 @@ describe('rendering', () => {
   test('an unknown placeholder is refused rather than left in place', () => {
     // Guards the substitution table itself: a typo'd placeholder must not ship silently.
     const skillMd = readFileSync(join(getPackagedSkillDir(), 'SKILL.md'), 'utf8');
-    const known = new Set(['VERSION', 'NARRATIVE_TOOL_COUNT', 'TOOL_MAP']);
+    const known = new Set(['VERSION', 'TOOL_COUNT', 'NARRATIVE_TOOL_COUNT', 'TOOL_MAP', 'CLI_MAP']);
     for (const [, key] of skillMd.matchAll(/\{\{([A-Z_]+)\}\}/g)) {
       assert.ok(known.has(key), `SKILL.md uses {{${key}}}, which substitutions() does not define`);
     }
@@ -104,20 +107,58 @@ describe('rendering', () => {
 });
 
 describe('the tool map cannot drift from the server', () => {
-  test('every served narrative tool appears in the map', () => {
+  test('the map covers the whole served surface, not just narrative', () => {
     const map = renderToolMap();
-    for (const tool of ALL_TOOL_DEFINITIONS) {
+    const served = servedTools();
+    // The first version of this skill mapped only the 32 narrative tools while being
+    // named for the package. Every group the server serves must be present.
+    assert.ok(served.length > ALL_TOOL_DEFINITIONS.length, 'servedTools() returned narrative only');
+    for (const tool of served) {
       assert.ok(map.includes(`\`${tool.name}\``), `${tool.name} is served but absent from the tool map`);
     }
   });
 
+  test('every group is represented', () => {
+    const map = renderToolMap();
+    for (const heading of [
+      'Start here',
+      'Structural tension charts',
+      'Narrative beats',
+      'Wampum belts',
+      'Knowledge graph',
+      'Prompt decomposition (PDE)',
+      'Planning',
+      'Redis and Langfuse',
+    ]) {
+      assert.ok(map.includes(`### ${heading}`), `the tool map has no "${heading}" section`);
+    }
+  });
+
   test('the map invents no tool', () => {
-    const served = new Set(ALL_TOOL_DEFINITIONS.map(t => t.name));
+    const served = new Set(servedTools().map(t => t.name));
     const listed = [...renderToolMap().matchAll(/^\| `([a-z_]+)` \|/gm)].map(m => m[1]);
     assert.ok(listed.length > 0, 'the tool map parsed to zero rows');
     for (const name of listed) {
       assert.ok(served.has(name), `the tool map lists ${name}, which the server does not serve`);
     }
+  });
+
+  test('"Start here" points at no tool that calls itself deprecated', () => {
+    const map = renderToolMap();
+    const startHere = map.split('### ')[1] ?? '';
+    assert.ok(startHere.startsWith('Start here'), 'Start here is not the first group');
+    assert.ok(
+      !/DEPRECATED/i.test(startHere),
+      'the group a newcomer reads first recommends a tool that tells them to use another one',
+    );
+  });
+
+  test('the tool the skill says to call first is in the first group', () => {
+    const startHere = renderToolMap().split('### ')[1] ?? '';
+    assert.ok(
+      startHere.includes('`init_llm_guidance`'),
+      'SKILL.md tells the reader to call init_llm_guidance first, but the map files it elsewhere',
+    );
   });
 
   test('each tool appears exactly once', () => {
@@ -206,6 +247,17 @@ describe('install and check', () => {
     const installed = readFileSync(join(getSkillInstallDir(false), 'SKILL.md'), 'utf8');
     assert.ok(!installed.includes('{{'), 'an unrendered placeholder was installed');
     assert.ok(installed.includes('| `create_wampum_belt` |'), 'the tool map was not rendered in');
+  });
+
+  test('the CLI map matches the real command tree', () => {
+    const map = renderCliMap();
+    const program = buildProgram();
+    for (const command of program.commands) {
+      if (command.name() === 'help') continue;
+      assert.ok(map.includes(`\`${command.name()}\``), `${command.name()} is a command but absent from the CLI map`);
+    }
+    assert.ok(map.includes('`skill`'), 'the CLI map omits the skill command');
+    assert.ok(map.includes('`narrative`'), 'the CLI map omits the narrative command');
   });
 
   test('the skill name is stable', () => {

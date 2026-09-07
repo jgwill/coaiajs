@@ -769,9 +769,18 @@ export const KG_TOOLS = [
   'read_graph',
 ] as const;
 
+/**
+ * The shortest path a newcomer can take through this surface.
+ *
+ * `init_llm_guidance` leads because every other tool's guidance assumes it was read.
+ * `manage_action_step` is here rather than `add_action_step`: the latter's own
+ * description begins "⚠️ DEPRECATED", and a group literally presented as "start here"
+ * must not point at a tool that tells the reader to use a different one.
+ */
 export const CORE_TOOLS = [
+  'init_llm_guidance',
   'list_active_charts',
   'create_structural_tension_chart',
-  'add_action_step',
+  'manage_action_step',
   'mark_action_complete',
 ] as const;

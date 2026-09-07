@@ -38,13 +38,41 @@ import { createInterface } from 'node:readline/promises';
 
 import { getPackageRoot, getPackageVersion } from './version.js';
 import {
-  ALL_TOOL_DEFINITIONS,
+  ALL_TOOL_DEFINITIONS as NARRATIVE_TOOL_DEFINITIONS,
   CORE_TOOLS,
   STC_TOOLS,
   NARRATIVE_TOOLS,
   WAMPUM_TOOLS,
   KG_TOOLS,
 } from './narrative/index.js';
+import { PDE_MCP_TOOLS } from './pde/index.js';
+import { PLANNING_MCP_TOOLS } from './planning/index.js';
+import { getCoaiapyToolDefinitions } from '../mcp/tools/index.js';
+import { FeatureConfig } from '../mcp/config.js';
+import { buildProgram } from './cli.js';
+
+interface ToolLike {
+  name: string;
+  description: string;
+}
+
+/**
+ * Every tool the MCP server serves at STANDARD, assembled from the same definition
+ * sources the server itself registers.
+ *
+ * The first version of this skill mapped only the narrative group, and described the
+ * rest in prose written by hand — which is precisely the drift the generated map was
+ * introduced to prevent. A skill named for the package has to cover the package.
+ */
+export function servedTools(): ToolLike[] {
+  const featureConfig = new FeatureConfig('STANDARD');
+  return [
+    ...getCoaiapyToolDefinitions(featureConfig),
+    ...NARRATIVE_TOOL_DEFINITIONS,
+    ...PDE_MCP_TOOLS,
+    ...PLANNING_MCP_TOOLS,
+  ] as ToolLike[];
+}
 
 export const SKILL_NAME = 'coaiajs';
 
@@ -109,43 +137,83 @@ function shortDescription(description: string): string {
   return escaped.length > 180 ? `${escaped.slice(0, 177)}…` : escaped;
 }
 
-const TOOL_GROUP_ORDER: Array<{ title: string; names: readonly string[] }> = [
+const TOOL_GROUP_ORDER: Array<{ title: string; names?: readonly string[]; prefix?: string }> = [
   { title: 'Start here', names: CORE_TOOLS },
   { title: 'Structural tension charts', names: STC_TOOLS },
   { title: 'Narrative beats', names: NARRATIVE_TOOLS },
   { title: 'Wampum belts', names: WAMPUM_TOOLS },
   { title: 'Knowledge graph', names: KG_TOOLS },
+  { title: 'Prompt decomposition (PDE)', names: PDE_MCP_TOOLS.map(t => t.name) },
+  { title: 'Planning', names: PLANNING_MCP_TOOLS.map(t => t.name) },
+  { title: 'Redis and Langfuse', prefix: 'coaia_' },
 ];
 
+function toolTable(rows: string[]): string {
+  return `| Tool | Use |\n|---|---|\n${rows.join('\n')}`;
+}
+
 /**
- * Render the narrative tool surface as grouped markdown tables, from the definitions
- * the MCP server actually registers. A tool that belongs to no group still appears,
- * under "Other" — a tool silently absent from its own map is the drift this avoids.
+ * Render the served tool surface as grouped markdown tables, from the definitions the
+ * MCP server actually registers. A tool belonging to no group still appears, under
+ * "Other" — a tool silently absent from its own map is the drift this avoids.
  */
 export function renderToolMap(): string {
-  const byName = new Map(ALL_TOOL_DEFINITIONS.map(t => [t.name, t] as const));
+  const tools = servedTools();
+  const byName = new Map(tools.map(t => [t.name, t] as const));
   const placed = new Set<string>();
   const sections: string[] = [];
 
   for (const group of TOOL_GROUP_ORDER) {
+    const names = group.names
+      ?? tools.filter(t => t.name.startsWith(group.prefix as string)).map(t => t.name);
     const rows: string[] = [];
-    for (const name of group.names) {
+    for (const name of names) {
       const tool = byName.get(name);
       if (!tool || placed.has(name)) continue;
       placed.add(name);
       rows.push(`| \`${name}\` | ${shortDescription(tool.description)} |`);
     }
     if (rows.length === 0) continue;
-    sections.push(`### ${group.title}\n\n| Tool | Use |\n|---|---|\n${rows.join('\n')}`);
+    sections.push(`### ${group.title}\n\n${toolTable(rows)}`);
   }
 
-  const leftover = ALL_TOOL_DEFINITIONS.filter(t => !placed.has(t.name));
+  const leftover = tools.filter(t => !placed.has(t.name));
   if (leftover.length > 0) {
-    const rows = leftover.map(t => `| \`${t.name}\` | ${shortDescription(t.description)} |`);
-    sections.push(`### Other\n\n| Tool | Use |\n|---|---|\n${rows.join('\n')}`);
+    sections.push(
+      `### Other\n\n${toolTable(leftover.map(t => `| \`${t.name}\` | ${shortDescription(t.description)} |`))}`,
+    );
   }
 
   return sections.join('\n\n');
+}
+
+/**
+ * Render the CLI as a table of commands and their subcommands, walked from the real
+ * commander program. Hand-written command tables were already a maintenance debt in
+ * README and llms-full; the skill does not add a third copy.
+ */
+export function renderCliMap(): string {
+  const program = buildProgram();
+  const rows: string[] = [];
+
+  for (const command of program.commands) {
+    if (command.name() === 'help') continue;
+    const aliases = command.aliases();
+    const name = aliases.length > 0 ? `\`${command.name()}\` (\`${aliases[0]}\`)` : `\`${command.name()}\``;
+    const subs = command.commands
+      .filter(c => c.name() !== 'help')
+      .map(c => `\`${c.name()}\``);
+    const detail = subs.length > 0
+      ? `${shortDescription(command.description())} — ${subs.join(', ')}`
+      : shortDescription(command.description());
+    rows.push(`| ${name} | ${detail} |`);
+  }
+
+  const globals = program.options
+    .map(o => `\`${o.flags}\``)
+    .join(' · ');
+
+  return `Global options: ${globals}\n\n| Command | Purpose |\n|---|---|\n${rows.join('\n')}`;
 }
 
 // ─── Rendering ────────────────────────────────────────────────────────
@@ -154,11 +222,10 @@ export function renderToolMap(): string {
 function substitutions(): Record<string, string> {
   return {
     VERSION: getPackageVersion(),
-    // The narrative/chart surface only. The server also serves Langfuse, PDE, and
-    // planning tools, and counting those here would mean importing the MCP feature
-    // config into the library — see references/beyond-narrative.md instead.
-    NARRATIVE_TOOL_COUNT: String(ALL_TOOL_DEFINITIONS.length),
+    TOOL_COUNT: String(servedTools().length),
+    NARRATIVE_TOOL_COUNT: String(NARRATIVE_TOOL_DEFINITIONS.length),
     TOOL_MAP: renderToolMap(),
+    CLI_MAP: renderCliMap(),
   };
 }
 

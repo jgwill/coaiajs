@@ -1,6 +1,6 @@
 ---
 name: coaiajs
-description: Use coaiajs to create and manage Structural Tension Charts, narrative beats, Wampum Belts, MMOT evaluations, PDE decompositions, action plans, and Langfuse-traced pipelines over a JSONL knowledge graph.
+description: Create and manage Structural Tension Charts, narrative beats, Wampum Belts, MMOT evaluations, PDE decompositions, action plans, and Langfuse-traced pipelines over a JSONL knowledge graph. Use when working with desired outcomes and current reality, telescoping action steps, creative orientation, chart memory, or the coaia CLI and coaiajs-mcp MCP server.
 license: MIT
 compatibility: Requires the coaiajs package. CLI: coaia. MCP server: coaiajs-mcp.
 metadata:
@@ -17,11 +17,13 @@ installable unit: a library, a CLI (`coaia`), and an MCP server (`coaiajs-mcp`).
 an assistant should help create outcomes, hold current reality clearly, track strategic
 secondary choices, archive significant learning, and keep that work traced.
 
-The chart and knowledge-graph surface below is {{NARRATIVE_TOOL_COUNT}} tools. The same
-server also serves Langfuse, PDE, and planning tools — see `references/beyond-narrative.md`.
+The MCP server serves {{TOOL_COUNT}} tools at the default `STANDARD` level, of which
+{{NARRATIVE_TOOL_COUNT}} are the chart and knowledge-graph surface. The rest are Redis and
+Langfuse, prompt decomposition, and planning — all mapped below.
 
 Its core data model is the structural tension chart — desired outcome, current reality,
-telescoping action steps — backed by a JSONL knowledge graph.
+telescoping action steps — backed by a JSONL knowledge graph. Everything else either feeds
+that model or observes it.
 
 ## Status
 
@@ -64,17 +66,21 @@ refusal is the kind answer.
 When a new session connects, call `init_llm_guidance` first: `format: "full"` for first
 use, `format: "quick"` for a refresh.
 
-## CLI Inspection Flow
+## CLI
 
-The CLI is for quick inspection, exports, and local chart context:
+The CLI is for quick inspection, exports, local chart context, and everything that is
+easier to type than to call.
 
 ```bash
 coaia narrative list -M ./memory.jsonl
 coaia narrative view <chartId> -M ./memory.jsonl
-coaia narrative stats -M ./memory.jsonl
 coaia narrative export <chartId> --output chart.md -M ./memory.jsonl
 coaia narrative link-issue <chartId> owner/repo#123 -M ./memory.jsonl
+coaia fuse traces list
+coaia tash mykey "value" && coaia fetch mykey
 ```
+
+{{CLI_MAP}}
 
 ## Core Workflow
 
@@ -136,7 +142,15 @@ mark_action_complete
 
 ## Tool Map
 
+Generated from the server's own tool definitions, so it cannot list a tool that is not
+served or omit one that is.
+
 {{TOOL_MAP}}
+
+Two names appear in both the narrative and PDE groups with different meaning.
+`add_action_step`, `update_action_progress`, `mark_action_complete`, and
+`update_current_reality` target the narrative chart; their `pde_`-prefixed twins target
+the PDE session. Calling the wrong one writes to the wrong store and reports success.
 
 ## References
 

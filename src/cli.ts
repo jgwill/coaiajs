@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { tash, fetch as redisFetch, keys as redisKeys, disconnect as redisDisconnect } from './redis.js';
 import { loadConfig, getConfig } from './config.js';
@@ -1357,7 +1358,14 @@ function registerPlanCommands(program: Command): void {
 // Main
 // ---------------------------------------------------------------------------
 
-async function main(): Promise<void> {
+/**
+ * Assemble the full command tree without running it.
+ *
+ * Exported so the packaged skill can render its CLI map from the real program rather
+ * than from a hand-written table. A table drifts the moment a command is added; this
+ * cannot.
+ */
+export function buildProgram(): Command {
   const program = new Command();
 
   program
@@ -1393,10 +1401,26 @@ async function main(): Promise<void> {
     try { await redisDisconnect(); } catch { /* client may not have been initialized */ }
   });
 
-  await program.parseAsync(process.argv);
+  return program;
 }
 
-main().catch((err: unknown) => {
+async function main(): Promise<void> {
+  await buildProgram().parseAsync(process.argv);
+}
+
+// Only drive the CLI when this file IS the process entry point. Importing it — which
+// `src/skill.ts` does, to read the command tree — must not parse argv or run a command.
+const invokedDirectly = (() => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (invokedDirectly) main().catch((err: unknown) => {
   console.error(formatError(err instanceof Error ? err.message : String(err)));
   process.exit(1);
 });
