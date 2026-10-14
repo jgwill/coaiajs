@@ -47,6 +47,9 @@ export async function addObservation(params: {
   modelParameters?: Record<string, string | number>;
   usage?: Record<string, number>;
   cost?: Record<string, number>;
+  /** For a generation: the managed prompt and version it used. Both or neither. */
+  promptName?: string;
+  promptVersion?: number | string;
   traceName?: string;
   userId?: string;
   sessionId?: string;
@@ -55,6 +58,7 @@ export async function addObservation(params: {
 }): Promise<string> {
   const client = getClient();
   const type = normalizeObservationType(params.type);
+  const prompt = promptLink(params.promptName, params.promptVersion, type);
   const result = await client.exportObservation({
     traceId: params.traceId,
     observationId: params.observationId,
@@ -72,6 +76,7 @@ export async function addObservation(params: {
     modelParameters: params.modelParameters,
     usageDetails: params.usage,
     costDetails: params.cost,
+    ...(prompt ? { prompt } : {}),
     traceName: params.traceName,
     userId: params.userId,
     sessionId: params.sessionId,
@@ -170,6 +175,17 @@ export async function addObservations(params: {
     })) as unknown);
   }
   return JSON.stringify({ success: true, count: results.length, observations: results }, null, 2);
+}
+
+/** The prompt a generation used: a name and a positive integer version, given together, on a generation only. */
+function promptLink(name: string | undefined, version: number | string | undefined, type: V4ObservationType): { name: string; version: number } | undefined {
+  const given = (name !== undefined && name !== '') || (version !== undefined && version !== '');
+  if (!given) return undefined;
+  if (!name || version === undefined || version === '') throw new Error('--prompt-name and --prompt-version are given together.');
+  const n = typeof version === 'number' ? version : Number(String(version).trim());
+  if (!Number.isInteger(n) || n < 1) throw new Error(`Prompt version '${version}' must be a positive integer.`);
+  if (type !== 'GENERATION') throw new Error('A prompt is linked to a generation: use --type generation.');
+  return { name, version: n };
 }
 
 function normalizeObservationType(type?: string): V4ObservationType {

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 
 import {
+  addObservation,
   addTrace,
   getClient,
   getObservation,
@@ -163,6 +164,45 @@ test('trace creation exports immutable spans to the v4 OpenTelemetry endpoint', 
     assert.equal(attributes['langfuse.user.id'], 'user-1');
     assert.equal(attributes['langfuse.observation.input'], '{"request":true}');
     assert.equal(attributes['langfuse.observation.output'], '{"response":true}');
+  } finally {
+    resetClient();
+    await stub.close();
+  }
+});
+
+test('a generation exported with a prompt name and version carries the attributes that link it to that prompt (jgwill/coaiajs#14)', async () => {
+  const stub = await createLangfuseStub();
+  resetClient();
+  getClient({ publicKey: 'pk-test', secretKey: 'sk-test', baseUrl: stub.baseUrl });
+
+  try {
+    await addObservation({
+      traceId: '0ef81f48c439dd215145819216641f07',
+      parentId: '5f239c972e681160',
+      type: 'generation',
+      name: 'miadi-run · return · mission.v2',
+      promptName: 'miadiRun-2610121041-pde-into-miadi-chronicle',
+      promptVersion: '2',
+      inputData: { prompt: 'miadi-tracing:ceremony/prompt/miadiRun-2610121041-pde-into-miadi-chronicle@2' },
+    });
+    const request = stub.requests.find((item) => item.url === '/api/public/otel/v1/traces');
+    assert.ok(request, 'expected an OTLP trace export');
+    const span = JSON.parse(request.body.toString('utf8')).resourceSpans[0].scopeSpans[0].spans[0];
+    const attributes = Object.fromEntries(span.attributes.map((attribute) => [attribute.key, Object.values(attribute.value)[0]]));
+    assert.equal(attributes['langfuse.observation.type'], 'generation');
+    assert.equal(attributes['langfuse.observation.prompt.name'], 'miadiRun-2610121041-pde-into-miadi-chronicle');
+    assert.equal(Number(attributes['langfuse.observation.prompt.version']), 2);
+    assert.equal(span.parentSpanId, '5f239c972e681160');
+
+    for (const params of [
+      { type: 'event', promptName: 'p', promptVersion: 1 },
+      { type: 'generation', promptName: 'p' },
+      { type: 'generation', promptVersion: 2 },
+      { type: 'generation', promptName: 'p', promptVersion: 'latest' },
+      { type: 'generation', promptName: 'p', promptVersion: 0 },
+    ]) {
+      await assert.rejects(addObservation({ traceId: '0ef81f48c439dd215145819216641f07', name: 'x', ...params }), /prompt/i, JSON.stringify(params));
+    }
   } finally {
     resetClient();
     await stub.close();

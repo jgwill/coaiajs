@@ -38,6 +38,8 @@ export interface V4ObservationInput {
   modelParameters?: Record<string, string | number>;
   usageDetails?: Record<string, number>;
   costDetails?: Record<string, number>;
+  /** For a generation: the managed prompt version it used, which links the two in Langfuse. */
+  prompt?: { name: string; version: number; isFallback?: boolean };
   traceName?: string;
   userId?: string;
   sessionId?: string;
@@ -170,6 +172,7 @@ export class LangfuseClient {
               modelParameters: input.modelParameters,
               usageDetails: input.usageDetails,
               costDetails: input.costDetails,
+              ...(input.prompt ? { prompt: { name: input.prompt.name, version: input.prompt.version, isFallback: input.prompt.isFallback ?? false } } : {}),
             }, { ...options, asType: 'generation' });
           case 'EVENT':
             // LangfuseEvent ends immediately in its constructor, before trace-wide

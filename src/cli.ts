@@ -655,6 +655,8 @@ function registerFuseCommands(program: Command): void {
     .option('--user-id <id>', 'Propagated user ID')
     .option('--tags <tags>', 'Comma-separated propagated tags')
     .option('--model <model>', 'Model name for generation observations')
+    .option('--prompt-name <name>', 'For a generation: the managed prompt it used (with --prompt-version)')
+    .option('--prompt-version <version>', 'For a generation: the prompt version it used; links the two in Langfuse')
     .action(actionHandler(async (opts: Record<string, unknown>, cmd: Command) => {
       const result = await callModule('langfuse', 'addObservation', {
         ...opts,
