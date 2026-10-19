@@ -46,3 +46,24 @@ Pass `elementsOfPerformance` when creating a chart to define what the MMOT will 
 against. Each is `{ description, type }` where `type` is `DESIGN` (structural intent,
 architecture) or `EXECUTION` (delivery, implementation quality). Without them, MMOT still
 runs, but it has nothing concrete to compare the work to.
+
+## Choosing to delay a step's resolution
+
+A due date says when. A delayed resolution says someone **chose** to wait: Fritz calls it
+a secondary choice made in favour of a primary one. Record it on the step, do not leave
+it as an unexplained late date.
+
+- `delay_resolution` — `actionStepName`, `resolveBy` (an ISO date in the future, which
+  becomes the step's due date), `reason`, `chosenBy`; optional `primaryChoice` (defaults
+  to the chart's desired outcome), `wakeOn` (event cues, in words) and `session` (the agent
+  session to rehydrate: `sessionId`, `agent`, `host`, `cwd`, `tmux`, `resumeCommand`,
+  `inventoryRecord`). A completed step is refused. A re-delay keeps the earlier record in
+  `metadata.delayedResolutionHistory`.
+- `list_delayed_resolutions` — open delays, soonest first, with `daysRemaining` and
+  `owed` (the date has passed). `dueWithinDays` narrows it; `includeEnded` widens it.
+- `end_delayed_resolution` — `outcome` is `rehydrated` (returns the session's resume
+  command) or `released`. The record is kept, with who ended it and when.
+
+A delayed step reads `delayed` in `get_action_step`, `get_chart`, `get_chart_progress`,
+`list_active_charts` and the markdown export. `completionStatus` is unchanged by a delay.
+The CLI carries the same three: `coaia narrative delay`, `delayed`, `end-delay`.

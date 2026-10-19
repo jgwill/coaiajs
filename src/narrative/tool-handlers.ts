@@ -6,10 +6,56 @@
  * Testable without MCP transport.
  */
 
-import type { Entity, Relation, McpToolResult, WampumCeremonyLink } from '../types.js';
+import type {
+  Entity,
+  Relation,
+  McpToolResult,
+  WampumCeremonyLink,
+  KnowledgeGraph,
+  AgentSessionRef,
+  DelayedResolutionOutcome,
+} from '../types.js';
 import type { KnowledgeGraphManager } from './graph-manager.js';
 import { validate, ValidationSchemas } from './validation.js';
 import { findUnparsedCallSyntaxIn, describeUnparsedCallSyntax } from './argument-hygiene.js';
+import {
+  DELAYED_RESOLUTION_OUTCOMES,
+  deriveActionStepStatus,
+  describeOpenDelay,
+  formatDelayChosen,
+  formatDelayEnded,
+  formatDelayedResolutionList,
+  isOwed,
+  openDelay,
+  stepMark,
+} from './delayed-resolution.js';
+
+/**
+ * A chart or step as get_chart and get_action_step show it: each step-shaped
+ * entity carries its derived `status` (completed, delayed, pending), and a delayed
+ * one says whether it is owed. Derived on the way out, never written to the store.
+ */
+function withStepStatus(graph: KnowledgeGraph): KnowledgeGraph {
+  const now = new Date();
+  return {
+    entities: graph.entities.map(e => {
+      if (e.entityType !== 'action_step' && e.entityType !== 'desired_outcome') return e;
+      const status = deriveActionStepStatus(e);
+      return status === 'delayed'
+        ? { ...e, status, owed: isOwed(openDelay(e), now) }
+        : { ...e, status };
+    }),
+    relations: graph.relations,
+  };
+}
+
+/** A refusal from the manager, returned as the tool's error rather than thrown past it. */
+function errorResult(error: unknown): McpToolResult {
+  return {
+    content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+    isError: true,
+  };
+}
 
 /**
  * Say out loud which supplied arguments this tool did not know.
@@ -300,12 +346,16 @@ export async function handleToolCall(
         let branchIndex = 0;
         const connectorFor = () => (++branchIndex === branchCount ? '└── ' : '├── ');
 
+        // A delayed step says so beside its title: the wait was chosen, and until when.
+        const delayNote = (status: string, record?: Parameters<typeof describeOpenDelay>[0]) =>
+          status === 'delayed' && record ? ` — ${describeOpenDelay(record)}` : '';
+
         ownSteps.forEach(step => {
-          const mark = step.complete ? '✅' : '🎯';
+          const mark = stepMark(step.status, step.delayedResolution);
           const stepDue = step.dueDate
             ? ` [${new Date(step.dueDate).toLocaleDateString()}]`
             : '';
-          hierarchyText += `    ${connectorFor()}${mark} ${step.title} (Action Step)${stepDue}\n`;
+          hierarchyText += `    ${connectorFor()}${mark} ${step.title} (Action Step)${stepDue}${delayNote(step.status, step.delayedResolution)}\n`;
           hierarchyText += `        ID: ${step.name}\n`;
         });
 
@@ -316,7 +366,10 @@ export async function handleToolCall(
             ? ` [${new Date(action.dueDate).toLocaleDateString()}]`
             : '';
           const from = action.parentActionStep ? ` ← ${action.parentActionStep}` : '';
-          hierarchyText += `    ${connectorFor()}🎯 ${action.desiredOutcome} (Telescoped Chart)${actionProgress}${actionDue}\n`;
+          // The telescoped mark stays 🎯 unless the step is delayed; completion was
+          // never drawn on this line and is not added here.
+          const mark = action.status === 'delayed' ? stepMark(action.status, action.delayedResolution) : '🎯';
+          hierarchyText += `    ${connectorFor()}${mark} ${action.desiredOutcome} (Telescoped Chart)${actionProgress}${actionDue}${delayNote(action.status, action.delayedResolution)}\n`;
           hierarchyText += `        ID: ${action.chartId}${from}\n`;
         });
 
@@ -338,14 +391,98 @@ export async function handleToolCall(
       if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
       const result = await manager.getChartDetails(toolArgs.chartId as string);
       if (!result) return { content: [{ type: 'text', text: `Error: Chart with ID ${toolArgs.chartId} not found` }], isError: true };
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(withStepStatus(result), null, 2) }] };
     }
     case 'get_action_step': {
       const valResult = validate(toolArgs, { actionStepName: ValidationSchemas.nonEmptyString() });
       if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
       const result = await manager.getActionStepDetails(toolArgs.actionStepName as string);
       if (!result) return { content: [{ type: 'text', text: `Error: Action step with name ${toolArgs.actionStepName} not found` }], isError: true };
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(withStepStatus(result), null, 2) }] };
+    }
+    case 'delay_resolution': {
+      const valResult = validate(toolArgs, {
+        actionStepName: ValidationSchemas.nonEmptyString(),
+        resolveBy: ValidationSchemas.isoDate(),
+        reason: ValidationSchemas.nonEmptyString(),
+        chosenBy: ValidationSchemas.nonEmptyString(),
+        primaryChoice: { type: 'string' },
+        wakeOn: { type: 'array', items: { type: 'string' } },
+        session: {
+          type: 'object',
+          properties: {
+            sessionId: ValidationSchemas.nonEmptyString(),
+            agent: { type: 'string' },
+            host: { type: 'string' },
+            cwd: { type: 'string' },
+            tmux: { type: 'string' },
+            resumeCommand: { type: 'string' },
+            inventoryRecord: { type: 'string' },
+          },
+        },
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      try {
+        const entry = await manager.delayResolution(toolArgs.actionStepName as string, {
+          resolveBy: toolArgs.resolveBy as string,
+          reason: toolArgs.reason as string,
+          chosenBy: toolArgs.chosenBy as string,
+          primaryChoice: toolArgs.primaryChoice as string | undefined,
+          wakeOn: toolArgs.wakeOn as string[] | undefined,
+          session: toolArgs.session as (Partial<AgentSessionRef> & { sessionId: string }) | undefined,
+        });
+        return noteIgnored(
+          { content: [{ type: 'text', text: `${formatDelayChosen(entry)}\n\n${JSON.stringify(entry, null, 2)}` }] },
+          valResult.ignored,
+        );
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+    case 'list_delayed_resolutions': {
+      const valResult = validate(toolArgs, {
+        dueWithinDays: { type: 'number', minValue: 0 },
+        includeEnded: { type: 'boolean' },
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      try {
+        const entries = await manager.listDelayedResolutions({
+          dueWithinDays: toolArgs.dueWithinDays as number | undefined,
+          includeEnded: toolArgs.includeEnded === true,
+        });
+        return noteIgnored(
+          {
+            content: [
+              { type: 'text', text: `${formatDelayedResolutionList(entries)}\n\n${JSON.stringify(entries, null, 2)}` },
+            ],
+          },
+          valResult.ignored,
+        );
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+    case 'end_delayed_resolution': {
+      const valResult = validate(toolArgs, {
+        actionStepName: ValidationSchemas.nonEmptyString(),
+        endedBy: ValidationSchemas.nonEmptyString(),
+        outcome: { type: 'enum', required: true, enumValues: [...DELAYED_RESOLUTION_OUTCOMES] },
+        endNote: { type: 'string' },
+      });
+      if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
+      try {
+        const ended = await manager.endDelayedResolution(toolArgs.actionStepName as string, {
+          endedBy: toolArgs.endedBy as string,
+          outcome: toolArgs.outcome as DelayedResolutionOutcome,
+          endNote: toolArgs.endNote as string | undefined,
+        });
+        return noteIgnored(
+          { content: [{ type: 'text', text: `${formatDelayEnded(ended)}\n\n${JSON.stringify(ended, null, 2)}` }] },
+          valResult.ignored,
+        );
+      } catch (error) {
+        return errorResult(error);
+      }
     }
     case 'update_action_progress': {
       const valResult = validate(toolArgs, {

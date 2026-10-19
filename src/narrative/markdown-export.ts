@@ -9,6 +9,13 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { Entity, KnowledgeGraph } from '../types.js';
 import type { KnowledgeGraphManager } from './graph-manager.js';
+import {
+  deriveActionStepStatus,
+  describeOpenDelay,
+  isOwed,
+  openDelay,
+  stepMark,
+} from './delayed-resolution.js';
 
 export interface MarkdownOptions {
   includeMetadata?: boolean;
@@ -54,6 +61,14 @@ function formatProgressBar(progress: number): string {
 
 function getStatusIcon(completed: boolean): string {
   return completed ? '✅' : '⏳';
+}
+
+/** "Delayed until 2026-11-01 (in 13 days)" when the step carries an open delay. */
+function delayedLine(step: Entity | undefined): string | undefined {
+  const record = openDelay(step);
+  if (!record || deriveActionStepStatus(step) !== 'delayed') return undefined;
+  const text = describeOpenDelay(record);
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function slugify(text: string): string {
@@ -104,6 +119,14 @@ export async function exportChartToMarkdown(
     }
     if (chart.metadata?.dueDate) {
       md += `> **Due**: ${formatDateForMarkdown(chart.metadata.dueDate)}\n`;
+    }
+    // A telescoped chart is a step: when that step's resolution is delayed, say so.
+    const chartOutcome = graph.entities.find(
+      e => e.name === `${chartId}_desired_outcome` && e.entityType === 'desired_outcome',
+    );
+    const chartDelay = delayedLine(chartOutcome);
+    if (chartDelay) {
+      md += `> **Status**: ${chartDelay}\n`;
     }
     md += '\n';
   }
@@ -161,12 +184,19 @@ export async function exportChartToMarkdown(
     md += '## Action Steps\n\n';
     actionSteps.forEach((step, idx) => {
       const isComplete = step.metadata?.completionStatus === true;
-      const status = getStatusIcon(isComplete);
+      const delayed = delayedLine(step);
+      const status = delayed
+        ? stepMark('delayed', openDelay(step))
+        : getStatusIcon(isComplete);
       const stepId = (step.metadata?.chartId as string) || `step_${idx + 1}`;
 
       md += `### ${status} ${escapeMarkdown(step.observations[0])}\n\n`;
       md += `- **ID**: ${stepId}\n`;
-      md += `- **Status**: ${isComplete ? 'Completed' : 'In Progress'}\n`;
+      md += `- **Status**: ${isComplete ? 'Completed' : delayed ?? 'In Progress'}\n`;
+      if (delayed) {
+        const record = openDelay(step)!;
+        md += `- **Delay chosen by**: ${escapeMarkdown(record.chosenBy)} — ${escapeMarkdown(record.reason)}\n`;
+      }
       if (step.metadata?.dueDate) {
         md += `- **Due**: ${formatDateForMarkdown(step.metadata.dueDate)}\n`;
       }
@@ -334,10 +364,18 @@ export async function exportAllCharts(
         const actionProgress =
           actionTotal > 0 ? actionCompleted / actionTotal : 0;
         const isComplete = actionChart.metadata?.completionStatus === true;
-        const status = isComplete ? '✅' : actionProgress > 0 ? '🔄' : '⏳';
+        const delayed = isComplete ? undefined : delayedLine(actionOutcome);
+        const status = isComplete
+          ? '✅'
+          : delayed
+            ? stepMark('delayed', openDelay(actionOutcome))
+            : actionProgress > 0 ? '🔄' : '⏳';
 
         md += `- ${status} **${escapeMarkdown(actionOutcome?.observations[0] || 'Unknown')}**\n`;
         md += `  - ID: ${actionChartId}\n`;
+        if (delayed) {
+          md += `  - ${delayed}\n`;
+        }
         if (actionChart.metadata?.dueDate) {
           md += `  - Due: ${formatDateForMarkdown(actionChart.metadata.dueDate)}\n`;
         }
@@ -413,6 +451,10 @@ export async function exportChartProgress(
   if (incomplete.length > 0) {
     incomplete.forEach((action, idx) => {
       md += `${idx + 1}. ${escapeMarkdown(action.observations[0])}\n`;
+      const delayed = delayedLine(action);
+      if (delayed) {
+        md += `   - ${delayed}\n`;
+      }
       if (action.metadata?.dueDate) {
         md += `   - Due: ${formatDateForMarkdown(action.metadata.dueDate)}\n`;
       }
@@ -459,6 +501,14 @@ export async function exportChartStats(
     e => e.entityType === 'narrative_beat',
   );
 
+  // Steps in both shapes: written action steps and telescoped desired outcomes.
+  const delayedSteps = graph.entities.filter(
+    e =>
+      (e.entityType === 'action_step' || e.entityType === 'desired_outcome') &&
+      deriveActionStepStatus(e) === 'delayed',
+  );
+  const owedSteps = delayedSteps.filter(e => isOwed(openDelay(e)));
+
   const overdueCharts = charts.filter(chart => {
     if (!chart.metadata?.dueDate) return false;
     const dueDate = new Date(chart.metadata.dueDate);
@@ -480,6 +530,7 @@ export async function exportChartStats(
   md += `| Status | Count |\n`;
   md += `|--------|-------|\n`;
   md += `| Completed Actions | ${completedActions.length}/${allActions.length} |\n`;
+  md += `| Delayed Steps | ${delayedSteps.length}${owedSteps.length > 0 ? ` (${owedSteps.length} owed)` : ''} |\n`;
   const overallProgress =
     allActions.length > 0
       ? Math.round((completedActions.length / allActions.length) * 100)

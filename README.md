@@ -125,7 +125,7 @@ npx coaia <command>          # or: npm i -g coaiajs && coaia <command>
 | `init` | Create a sample `coaia.json` |
 | `fuse` | Langfuse operations — `traces`, `prompts`, `datasets`, `scores`, `score-configs`, `sessions`, `comments`, `media`, `projects`, `dataset-items` |
 | `skill` | The packaged agent skill — `show`, `install`, `check` |
-| `narrative` (`n`) | Chart operations — `list`, `view`, `current`, `update`, `add-action`, `add-obs`, `complete`, `export`, `export-all`, `stats`, `progress`, `mmot`, `set-date`, `link-issue` |
+| `narrative` (`n`) | Chart operations — `list`, `view`, `current`, `update`, `add-action`, `add-obs`, `complete`, `export`, `export-all`, `stats`, `progress`, `mmot`, `set-date`, `delay`, `delayed`, `end-delay`, `link-issue` |
 | `pde` | `import`, `list`, `sessions`, `show` |
 | `plan` | `parse`, `convert`, `sync-to-chart`, `sync-to-plan` |
 | `pipeline` | `list`, `show`, `create`, `init` |
@@ -156,12 +156,12 @@ For autonomous conversation-file uploads, deploy the included `coaiajs-media-pro
 npx coaiajs-mcp
 ```
 
-Serves **67 tools, 3 prompts, and 1 listable resource** over stdio.
+Serves **70 tools, 3 prompts, and 1 listable resource** over stdio.
 
 | Group | Count | Examples |
 |---|---|---|
 | coaiapy + Langfuse | 19 | `coaia_tash`, `coaia_fetch`, `coaia_fuse_trace_create`, `coaia_fuse_traces_list` |
-| Narrative / knowledge graph | 27 | `create_entities`, `read_graph`, `create_structural_tension_chart`, `perform_mmot_evaluation` |
+| Narrative / knowledge graph | 35 | `create_entities`, `read_graph`, `create_structural_tension_chart`, `delay_resolution`, `perform_mmot_evaluation` |
 | PDE | 10 | `import_pde_decomposition`, `create_stc_from_pde`, `complete_session` |
 | Planning | 6 | `parse_plan_structural`, `plan_to_stc`, `sync_plan_to_chart`, `pde_to_plan` |
 
@@ -178,7 +178,7 @@ Set `COAIAJS_FEATURES` to control the exposed tool set (default `STANDARD`):
 | Level | Effect |
 |---|---|
 | `MINIMAL` | Core tash/fetch and essential graph tools |
-| `STANDARD` | Default — the 67 tools above |
+| `STANDARD` | Default — the 70 tools above |
 | `OBSERVABILITY` | Same set as `STANDARD` |
 | `FULL` | Everything, including media tools |
 

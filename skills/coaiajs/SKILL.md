@@ -156,7 +156,7 @@ the PDE session. Calling the wrong one writes to the wrong store and reports suc
 
 - `references/creative-orientation.md` — the creation-vs-problem-solving distinction
 - `references/structural-tension-charting.md` — chart and action-step rules
-- `references/delayed-resolution.md` — current reality discipline
+- `references/delayed-resolution.md` — current reality discipline, and choosing to delay a step
 - `references/narrative-beats.md` — story archive usage
 - `references/wampum-belts.md` — non-linear mnemonic sequencing
 - `references/reading-the-store.md` — reading a chart store without re-deriving its shape

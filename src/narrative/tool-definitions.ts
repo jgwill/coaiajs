@@ -494,6 +494,89 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    name: 'delay_resolution',
+    description:
+      "Record on an action step that someone strategically chose to delay its resolution: until when (resolveBy, which becomes the step's due date), why, who chose it, what the delay serves, the events that should wake it, and the agent session to rehydrate when it comes due. A due date says when; this says the wait was chosen. A completed step is refused, and so is a resolveBy not in the future. Delaying a step already delayed moves the earlier record into its history.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        actionStepName: {
+          type: 'string',
+          description:
+            "The step: a written step ('chart_123_action_1') or a telescoped step ('chart_456_desired_outcome', as add_action_step returns it).",
+        },
+        resolveBy: {
+          type: 'string',
+          description: "When resolution is wanted, an ISO date in the future (e.g. '2026-11-01T09:00:00Z'). Becomes the step's due date.",
+        },
+        reason: { type: 'string', description: 'Why delaying serves the work now.' },
+        chosenBy: { type: 'string', description: 'The person or seat that chose the delay.' },
+        primaryChoice: {
+          type: 'string',
+          description: "What the delay serves. Defaults to the chart's desired outcome, copied now.",
+        },
+        wakeOn: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Event cues, in words, that should bring the step back before resolveBy.',
+        },
+        session: {
+          type: 'object',
+          description: 'The agent session to rehydrate when the delay ends.',
+          properties: {
+            sessionId: { type: 'string', description: "Claude Code session id, or another agent's." },
+            agent: { type: 'string', description: "Defaults to 'claude'." },
+            host: { type: 'string', description: 'e.g. gaia, ilex, eury' },
+            cwd: { type: 'string', description: 'Working directory the session ran in.' },
+            tmux: { type: 'string', description: 'tmux session or pane.' },
+            resumeCommand: { type: 'string', description: "e.g. 'cd <cwd> && claude --resume <id>'" },
+            inventoryRecord: { type: 'string', description: "Path of the session's record in the session inventory." },
+          },
+          required: ['sessionId'],
+        },
+      },
+      required: ['actionStepName', 'resolveBy', 'reason', 'chosenBy'],
+    },
+  },
+  {
+    name: 'list_delayed_resolutions',
+    description:
+      'List delayed action steps, soonest resolveBy first, each with its chart, days remaining, whether it is owed (resolveBy has passed), what it serves, its wake cues and its agent session.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dueWithinDays: {
+          type: 'number',
+          description: 'Keep only delays resolving within this many days from now (owed ones included).',
+        },
+        includeEnded: {
+          type: 'boolean',
+          default: false,
+          description: 'Also list steps whose latest delay has ended.',
+        },
+      },
+    },
+  },
+  {
+    name: 'end_delayed_resolution',
+    description:
+      "End an action step's open delay, either by rehydrating its agent session or by releasing the step. The record is kept with who ended it, when, and how; the step reads as it did before the delay. When rehydrated, returns the session's resume command.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        actionStepName: { type: 'string', description: 'The delayed step, named as for delay_resolution.' },
+        endedBy: { type: 'string', description: 'The person or seat ending the delay.' },
+        outcome: {
+          type: 'string',
+          enum: ['rehydrated', 'released'],
+          description: "'rehydrated' when the session is resumed, 'released' when the step is let go of its delay.",
+        },
+        endNote: { type: 'string', description: 'Optional note on how the delay ended.' },
+      },
+      required: ['actionStepName', 'endedBy', 'outcome'],
+    },
+  },
+  {
     name: 'perform_mmot_evaluation',
     description:
       "Autonomous MMOT (Managerial Moment of Truth) self-evaluation on a structural tension chart. The agent compares produced output against defined Elements of Performance, acknowledges discrepancy, analyzes dynamics, updates the chart, and recommits or redirects. Runs the four Creator's Moment of Truth steps: acknowledge → analyze → update → recommit. Can be called from any directional perspective (South/East/West/North) for collective inquiry.",
@@ -741,6 +824,9 @@ export const STC_TOOLS = [
   'update_current_reality',
   'update_desired_outcome',
   'update_chart_due_date',
+  'delay_resolution',
+  'list_delayed_resolutions',
+  'end_delayed_resolution',
   'link_chart_to_github_issue',
   'perform_mmot_evaluation',
 ] as const;

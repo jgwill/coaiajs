@@ -33,7 +33,7 @@ const ALL_TOOLS = new Set([
   // Media (coaiapy-mcp, FULL only)
   'coaia_fuse_media_upload',
   'coaia_fuse_media_get',
-  // Narrative (coaia-narrative, 32 tools)
+  // Narrative (coaia-narrative lineage, 35 tools)
   'create_structural_tension_chart',
   'telescope_action_step',
   'mark_action_complete',
@@ -48,6 +48,9 @@ const ALL_TOOLS = new Set([
   'remove_action_step',
   'update_desired_outcome',
   'update_chart_due_date',
+  'delay_resolution',
+  'list_delayed_resolutions',
+  'end_delayed_resolution',
   'link_chart_to_github_issue',
   'perform_mmot_evaluation',
   'init_llm_guidance',
@@ -126,6 +129,9 @@ const STANDARD_TOOLS = new Set([
   'remove_action_step',
   'update_desired_outcome',
   'update_chart_due_date',
+  'delay_resolution',
+  'list_delayed_resolutions',
+  'end_delayed_resolution',
   'link_chart_to_github_issue',
   'perform_mmot_evaluation',
   'init_llm_guidance',

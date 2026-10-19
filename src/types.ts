@@ -204,6 +204,58 @@ export interface WampumBeltMetadata {
   updatedAt: string;
 }
 
+// ─── Delayed resolution ──────────────────────────────────────────────
+//
+// A due date says when. It does not say that someone chose to wait. These record
+// the choice (Fritz: delaying resolution is a secondary choice in favour of a
+// primary one) and the agent session to bring back when the date or an event
+// comes. Canonical names are snake_case across the three lineages; this package
+// writes the same fields in camelCase on the step entity's metadata.
+
+/** The agent session a delayed step will rehydrate (resume with its state). */
+export interface AgentSessionRef {
+  /** Claude Code session id, or another agent's. */
+  sessionId: string;
+  /** Defaults to "claude". */
+  agent: string;
+  host?: string;
+  cwd?: string;
+  /** tmux session or pane. */
+  tmux?: string;
+  /** e.g. `cd <cwd> && claude --resume <id>` */
+  resumeCommand?: string;
+  /** Path of the session's record in the session inventory. */
+  inventoryRecord?: string;
+}
+
+export type DelayedResolutionOutcome = 'rehydrated' | 'released';
+
+export interface DelayedResolution {
+  /** Set by the tool. */
+  chosenAt: string;
+  /** The person or seat that made the choice. */
+  chosenBy: string;
+  /** When resolution is wanted. In the future when chosen. Also the step's due date. */
+  resolveBy: string;
+  /** Why delaying serves the work now. */
+  reason: string;
+  /** What the delay serves. Defaults to the chart's desired outcome at the time of choosing. */
+  primaryChoice?: string;
+  /** Event cues, in words. */
+  wakeOn?: string[];
+  session?: AgentSessionRef;
+  endedAt?: string;
+  endedBy?: string;
+  outcome?: DelayedResolutionOutcome;
+  endNote?: string;
+}
+
+/**
+ * A step's status as shown to a reader. Derived, never stored: `completionStatus`
+ * stays the stored truth, and `delayed` means an open delay on a step not completed.
+ */
+export type ActionStepStatus = 'completed' | 'delayed' | 'pending';
+
 export interface EntityMetadata {
   dueDate?: string;
   chartId?: string;
@@ -258,6 +310,10 @@ export interface EntityMetadata {
   wampumBelt?: WampumBeltMetadata;
   /** Belt identifier carried on the wampum_belt entity itself. */
   beltId?: string;
+  /** The latest chosen delay on this step, open until `endedAt` is set. */
+  delayedResolution?: DelayedResolution;
+  /** Earlier delay records, oldest first. A re-delay moves the current record here. */
+  delayedResolutionHistory?: DelayedResolution[];
   /** @deprecated Use github.issue and github.projectItem instead. */
   sync_target?: LegacyGithubSyncTarget;
   /** @deprecated Use github.issue instead. */

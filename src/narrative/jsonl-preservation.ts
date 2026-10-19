@@ -41,7 +41,9 @@ const MUTABLE_METADATA_KEYS = new Set([
   'fourDirections',
   'narrative',
   'isTelescopedChart',
-  'telescopedChartId'
+  'telescopedChartId',
+  'delayedResolution',
+  'delayedResolutionHistory'
 ]);
 
 function cloneJson<T>(value: T): T {

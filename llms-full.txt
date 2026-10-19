@@ -1,6 +1,6 @@
 # coaiajs — Full Reference
 
-> Complete API surface for `coaiajs`: every entry point, every export, all 63 MCP tools, and the full CLI. Written for AI agents integrating against this package.
+> Complete API surface for `coaiajs`: every entry point, every export, all 70 MCP tools, and the full CLI. Written for AI agents integrating against this package.
 
 Package: `coaiajs` · License: MIT · Node.js >= 20 · **ESM only**
 
@@ -124,6 +124,9 @@ setCurrentChart, getCurrentChart,
 updateChart, viewChart, listCharts, getProgress, getStats, performMmot,
 exportChart, exportAllCharts, exportChartToMarkdown, exportAllChartsToMarkdown,
 exportChartProgress, exportChartStats, writeMarkdownToFile, getDefaultFilename,
+delayAction, listDelayedActions, endActionDelay,
+DELAYED_RESOLUTION_OUTCOMES, deriveActionStepStatus, openDelay, isOwed, daysUntil,
+resumeCommandFor, formatDelayedResolutionList, formatDelayChosen, formatDelayEnded,
 handleToolCall, ALL_TOOL_DEFINITIONS, CORE_TOOLS, KG_TOOLS, NARRATIVE_TOOLS,
 STC_TOOLS, WAMPUM_TOOLS,
 parseJsonlMemory, serializeJsonlMemory, readJsonlMemoryFile, writeJsonlMemoryFile,
@@ -266,7 +269,7 @@ PipelineVariable, PipelineStep, PipelineTemplate, CoaiaConfig
 npx coaiajs-mcp
 ```
 
-Transport: **stdio**. Serves **67 tools, 3 prompts, 1 listable resource**.
+Transport: **stdio**. Serves **70 tools, 3 prompts, 1 listable resource**.
 
 Flags: `--memory-path <path>` (JSONL knowledge graph), `--plans-dir <path>`, `--feature-level <level>`.
 
@@ -287,7 +290,7 @@ Claude Code / client registration:
 | Level | Effect |
 |---|---|
 | `MINIMAL` | Core tash/fetch and essential graph tools |
-| `STANDARD` | Default — the 67 tools listed below |
+| `STANDARD` | Default — the 70 tools listed below |
 | `OBSERVABILITY` | Same set as `STANDARD` |
 | `FULL` | Everything, including media tools |
 
@@ -304,7 +307,7 @@ coaia_fuse_score_configs_list, coaia_fuse_score_configs_get, coaia_fuse_score_ap
 coaia_fuse_comments_list, coaia_fuse_comments_get, coaia_fuse_comments_create
 ```
 
-### Tools — narrative / knowledge graph (32)
+### Tools — narrative / knowledge graph (35)
 
 ```
 create_entities, create_relations, add_observations,
@@ -315,6 +318,7 @@ telescope_action_step, remove_action_step, mark_action_complete,
 get_chart_progress, list_active_charts, get_chart, get_action_step,
 update_action_progress, update_current_reality, update_desired_outcome,
 update_chart_due_date, link_chart_to_github_issue,
+delay_resolution, list_delayed_resolutions, end_delayed_resolution,
 perform_mmot_evaluation,
 create_narrative_beat, telescope_narrative_beat, list_narrative_beats,
 create_wampum_belt, add_wampum_bead, read_wampum_belt,
@@ -324,6 +328,18 @@ init_llm_guidance
 `update_chart_due_date` moves a chart and its desired outcome together; open action
 steps keep their own dates unless `redistributeActionSteps` is true, and the count
 still falling after the new date is reported either way.
+
+`delay_resolution` records on a step that someone chose to delay its resolution: the
+date resolution is wanted (`resolveBy`, which becomes the step's due date), the reason,
+who chose it, what it serves (`primaryChoice`, default the chart's desired outcome),
+event cues (`wakeOn`) and the agent `session` to rehydrate. The record lives in the
+step's `metadata.delayedResolution`; a re-delay moves the earlier one into
+`metadata.delayedResolutionHistory`. A completed step and a past `resolveBy` are refused.
+`list_delayed_resolutions` lists open delays soonest first with `daysRemaining` and
+`owed`; `end_delayed_resolution` ends one as `rehydrated` (returning the session's
+resume command) or `released`, keeping the record. `get_action_step`, `get_chart`,
+`get_chart_progress`, `list_active_charts` and the markdown export report a derived
+status `delayed`; `completionStatus` stays the stored truth.
 
 `link_chart_to_github_issue` and the `githubIssue` argument on
 `create_structural_tension_chart` take the FULL `owner/repo#number` path. A bare
@@ -400,7 +416,7 @@ Subcommands:
 
 - **`fuse`** — `traces`, `prompts`, `datasets`, `sessions`, `scores` (`sc`), `score-configs` (`scc`), `comments`, `media`, `dataset-items`, `projects`
 - **`skill`** — `show`, `install` (`--global`, `--yes`, `--force`), `check` (`--global`)
-- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`, `--redistribute`), `link-issue`
+- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`, `--redistribute`), `delay` (`--resolve-by`, `--reason`, `--chosen-by`, `--wake-on`, `--session-id`…), `delayed` (`--within`, `--all`), `end-delay` (`--by`, `--outcome`, `--note`), `link-issue`
 - **`pde`** — `import <pdeId>`, `list`, `sessions`, `show <sessionId>`
 - **`plan`** — `parse <planPath>`, `convert <planPath>`, `sync-to-chart <planPath> <chartsPath>`, `sync-to-plan <chartsPath> <planPath>`
 - **`pipeline`** — `list`, `show <name>`, `create <name>`, `init <name>`

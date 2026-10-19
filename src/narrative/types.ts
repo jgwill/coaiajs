@@ -28,4 +28,9 @@ export type {
   WampumBeadPosition,
   WampumBeltMetadata,
   WampumCeremonyLink,
+  // Delayed resolution
+  ActionStepStatus,
+  AgentSessionRef,
+  DelayedResolution,
+  DelayedResolutionOutcome,
 } from '../types.js';

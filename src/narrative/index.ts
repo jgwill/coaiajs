@@ -70,6 +70,20 @@ export {
 } from './markdown-export.js';
 export type { MarkdownOptions } from './markdown-export.js';
 
+// Delayed resolution: deriving a step's status, measuring what is owed, rendering.
+export {
+  DELAYED_RESOLUTION_OUTCOMES,
+  deriveActionStepStatus,
+  openDelay,
+  isOwed,
+  daysUntil,
+  resumeCommandFor,
+  formatDelayedResolutionList,
+  formatDelayChosen,
+  formatDelayEnded,
+} from './delayed-resolution.js';
+export type { DelayedResolutionEntry, EndedDelayedResolution } from './delayed-resolution.js';
+
 // Re-export narrative-relevant types
 export type {
   Entity,
@@ -78,6 +92,10 @@ export type {
   RelationMetadata,
   KnowledgeGraph,
   McpToolResult,
+  ActionStepStatus,
+  AgentSessionRef,
+  DelayedResolution,
+  DelayedResolutionOutcome,
 } from './types.js';
 
 import { writeFileSync } from 'node:fs';
@@ -91,7 +109,8 @@ import {
   exportChartStats,
 } from './markdown-export.js';
 import { createEnvironment } from '../environment.js';
-import type { McpToolResult } from '../types.js';
+import type { McpToolResult, AgentSessionRef, DelayedResolutionOutcome } from '../types.js';
+import type { DelayedResolutionEntry, EndedDelayedResolution } from './delayed-resolution.js';
 
 interface CliGlobals {
   memoryPath?: string;
@@ -257,4 +276,59 @@ export async function linkGithubIssue(
   return firstText(
     await handleToolCall('link_chart_to_github_issue', { chartId, githubIssue }, managerFrom(opts)),
   );
+}
+
+/** Record that resolving a step is strategically delayed (`coaia narrative delay`). */
+export async function delayAction(
+  actionStepName: string,
+  opts: {
+    resolveBy?: string;
+    reason?: string;
+    chosenBy?: string;
+    primaryChoice?: string;
+    wakeOn?: string[];
+    session?: Partial<AgentSessionRef>;
+  } & CliGlobals,
+): Promise<DelayedResolutionEntry> {
+  if (!opts.resolveBy) throw new Error('--resolve-by is required');
+  if (!opts.reason) throw new Error('--reason is required');
+  if (!opts.chosenBy) throw new Error('--chosen-by is required');
+  const session = opts.session?.sessionId
+    ? (opts.session as Partial<AgentSessionRef> & { sessionId: string })
+    : undefined;
+  if (opts.session && !session && Object.values(opts.session).some(Boolean)) {
+    throw new Error('--session-id is required when describing a session');
+  }
+  return managerFrom(opts).delayResolution(actionStepName, {
+    resolveBy: opts.resolveBy,
+    reason: opts.reason,
+    chosenBy: opts.chosenBy,
+    primaryChoice: opts.primaryChoice,
+    wakeOn: opts.wakeOn,
+    session,
+  });
+}
+
+/** Delayed steps, soonest first (`coaia narrative delayed`). */
+export async function listDelayedActions(
+  opts: { dueWithinDays?: number; includeEnded?: boolean } & CliGlobals = {},
+): Promise<DelayedResolutionEntry[]> {
+  return managerFrom(opts).listDelayedResolutions({
+    dueWithinDays: opts.dueWithinDays,
+    includeEnded: opts.includeEnded === true,
+  });
+}
+
+/** End a step's delay, by rehydrating its session or releasing it (`coaia narrative end-delay`). */
+export async function endActionDelay(
+  actionStepName: string,
+  opts: { endedBy?: string; outcome?: string; endNote?: string } & CliGlobals,
+): Promise<EndedDelayedResolution> {
+  if (!opts.endedBy) throw new Error('--by is required');
+  if (!opts.outcome) throw new Error('--outcome is required (rehydrated | released)');
+  return managerFrom(opts).endDelayedResolution(actionStepName, {
+    endedBy: opts.endedBy,
+    outcome: opts.outcome as DelayedResolutionOutcome,
+    endNote: opts.endNote,
+  });
 }

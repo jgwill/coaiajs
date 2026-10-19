@@ -1253,6 +1253,83 @@ function registerNarrativeCommands(program: Command): void {
       else output(result, cmd);
     }));
 
+  // ── delayed resolution ──────────────────────────────────────────────
+  // A due date says when; a delay says the wait was chosen, until when, why, and
+  // which agent session to rehydrate when it comes due.
+  const collect = (value: string, previous: string[] = []) => [...previous, value];
+
+  narr
+    .command('delay')
+    .description("Record that resolving an action step is strategically delayed (its due date becomes --resolve-by)")
+    .argument('<actionStepName>', 'Step: chart_123_action_1, or chart_456_desired_outcome for a telescoped step')
+    .requiredOption('--resolve-by <date>', 'When resolution is wanted (ISO date, in the future)')
+    .requiredOption('--reason <text>', 'Why delaying serves the work now')
+    .requiredOption('--chosen-by <who>', 'The person or seat that chose the delay')
+    .option('--primary-choice <text>', "What the delay serves (default: the chart's desired outcome)")
+    .option('--wake-on <cue>', 'An event cue that should bring the step back (repeatable)', collect)
+    .option('--session-id <id>', 'Agent session to rehydrate when the delay ends')
+    .option('--agent <name>', 'Agent of that session (default: claude)')
+    .option('--host <host>', 'Host the session ran on')
+    .option('--cwd <dir>', 'Working directory of the session')
+    .option('--tmux <target>', 'tmux session or pane')
+    .option('--resume-command <cmd>', 'Command that resumes the session')
+    .option('--inventory-record <path>', "Path of the session's record in the session inventory")
+    .action(actionHandler(async (actionStepName: string, opts: Record<string, string | string[] | undefined>, cmd: Command) => {
+      const session = {
+        sessionId: opts['sessionId'] as string | undefined,
+        agent: opts['agent'] as string | undefined,
+        host: opts['host'] as string | undefined,
+        cwd: opts['cwd'] as string | undefined,
+        tmux: opts['tmux'] as string | undefined,
+        resumeCommand: opts['resumeCommand'] as string | undefined,
+        inventoryRecord: opts['inventoryRecord'] as string | undefined,
+      };
+      const result = await callModule('narrative', 'delayAction', actionStepName, {
+        ...globals(cmd),
+        resolveBy: opts['resolveBy'],
+        reason: opts['reason'],
+        chosenBy: opts['chosenBy'],
+        primaryChoice: opts['primaryChoice'],
+        wakeOn: opts['wakeOn'],
+        session: Object.values(session).some(Boolean) ? session : undefined,
+      });
+      if (globals(cmd).json) output(result, cmd);
+      else console.log(await callModule('narrative', 'formatDelayChosen', result));
+    }));
+
+  narr
+    .command('delayed')
+    .description('List delayed action steps, soonest first, with days remaining and which are owed')
+    .option('--within <days>', 'Only delays resolving within this many days (owed ones included)', parseFloat)
+    .option('--all', 'Also list steps whose latest delay has ended')
+    .action(actionHandler(async (opts: { within?: number; all?: boolean }, cmd: Command) => {
+      const result = await callModule('narrative', 'listDelayedActions', {
+        ...globals(cmd),
+        dueWithinDays: opts.within,
+        includeEnded: opts.all === true,
+      });
+      if (globals(cmd).json) output(result, cmd);
+      else console.log(await callModule('narrative', 'formatDelayedResolutionList', result));
+    }));
+
+  narr
+    .command('end-delay')
+    .description("End a step's delay: rehydrate its agent session, or release the step")
+    .argument('<actionStepName>', 'The delayed step')
+    .requiredOption('--by <who>', 'The person or seat ending the delay')
+    .requiredOption('--outcome <outcome>', 'rehydrated | released')
+    .option('--note <text>', 'How the delay ended')
+    .action(actionHandler(async (actionStepName: string, opts: { by: string; outcome: string; note?: string }, cmd: Command) => {
+      const result = await callModule('narrative', 'endActionDelay', actionStepName, {
+        ...globals(cmd),
+        endedBy: opts.by,
+        outcome: opts.outcome,
+        endNote: opts.note,
+      });
+      if (globals(cmd).json) output(result, cmd);
+      else console.log(await callModule('narrative', 'formatDelayEnded', result));
+    }));
+
   narr
     .command('link-issue')
     .description("Record the GitHub issue a chart was written from (owner/repo#number)")
