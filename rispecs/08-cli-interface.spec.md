@@ -86,7 +86,7 @@ Langfuse v4 removes legacy session entities and immutable observation updates, s
 
 ### Narrative Commands
 
-`coaia narrative` (alias `coaia n`). On 0.6.1, `list`, `view`, `complete`, `set-date`, `link-issue`, `delay`, `delayed` and `end-delay` honour the global `-M, --memory-path <path>`. `update`, `add-action`, `add-obs`, `export`, `export-all`, `stats`, `progress` and `mmot` do not yet: they open `COAIAJS_MEMORY_PATH` or `coaia-memory.jsonl` (their helpers in `src/narrative/index.ts` call `managerFrom()` without the options). The desired outcome is that every narrative command honours `-M`.
+`coaia narrative` (alias `coaia n`). From 0.7.0, every narrative command that opens a store honours the global `-M, --memory-path <path>`, then `COAIAJS_MEMORY_PATH`, then `./coaia-memory.jsonl` (`current` reads and writes the environment file, not a store). Before 0.7.0, `update`, `add-action`, `add-obs`, `export`, `export-all`, `stats`, `progress` and `mmot` ignored `-M` because their helpers in `src/narrative/index.ts` called `managerFrom()` without the options (Episode 297 spec lane, finding F2). [`test/narrative-memory-path.test.mjs`](../test/narrative-memory-path.test.mjs) runs all eight from an empty working directory with `COAIAJS_MEMORY_PATH` unset and checks that they used the `-M` store and created no `./coaia-memory.jsonl`.
 
 ```
 coaia narrative list                    # List active charts
@@ -105,15 +105,18 @@ coaia narrative set-date <chartId> <ISO> [-r, --redistribute]
 coaia narrative link-issue <chartId> <owner/repo#number>
 ```
 
-Delayed resolution (0.6.0, Episode 297, `miadi-chronicle://297`; specified in [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md)):
+Delayed resolution (0.6.0, Episode 297, `miadi-chronicle://297`; `--trace` and `--rehydrate-with` from 0.7.0; specified in [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md)):
 
 ```
 coaia narrative delay <actionStepName> --resolve-by <ISO> --reason <text> --chosen-by <who>
     [--primary-choice <text>] [--wake-on <cue>]... [--session-id <id> --agent <name> --host <host>
-    --cwd <dir> --tmux <target> --resume-command <cmd> --inventory-record <path>]
+    --cwd <dir> --tmux <target> --resume-command <cmd> --inventory-record <path>
+    --trace <miadi-addr> --rehydrate-with <miadi-addr>]
 coaia narrative delayed [--within <days>] [--all]
 coaia narrative end-delay <actionStepName> --by <who> --outcome rehydrated|released [--note <text>]
 ```
+
+`--trace` is the session's LLMOps record and `--rehydrate-with` the pinned prompt version that rehydrates it, as `@miadi/llmops rehydrate` prints them (e.g. `miadi-tracing:ceremony/session/<id>`, `miadi-tracing:ceremony/prompt/miadiRun-<name>@<N>`). Each needs `--session-id` and must begin with `miadi-`; the CLI exits 1 otherwise. `delayed` shows them under the session line (`Trace:`, `Rehydrate with:`), and `end-delay --outcome rehydrated` prints them after the resume command (`--json` returns `resumeCommand`, `trace`, `rehydrateWith` at the top level).
 
 ### PDE Commands
 ```

@@ -74,6 +74,7 @@ export type { MarkdownOptions } from './markdown-export.js';
 export {
   DELAYED_RESOLUTION_OUTCOMES,
   COMPLETION_ENDED_BY_DEFAULT,
+  MIADI_ADDRESS_PREFIX,
   deriveActionStepStatus,
   openDelay,
   isOwed,
@@ -147,9 +148,9 @@ export function getCurrentChart(): string | undefined {
 
 export async function updateChart(
   chartId: string,
-  opts: { desiredOutcome?: string; currentReality?: string },
+  opts: { desiredOutcome?: string; currentReality?: string } & CliGlobals,
 ): Promise<string[]> {
-  const manager = managerFrom();
+  const manager = managerFrom(opts);
   const results: string[] = [];
   if (opts.desiredOutcome) {
     results.push(firstText(await handleToolCall(
@@ -171,7 +172,7 @@ export async function updateChart(
 
 export async function addAction(
   chartId: string,
-  opts: { title?: string; currentReality?: string; due?: string },
+  opts: { title?: string; currentReality?: string; due?: string } & CliGlobals,
 ): Promise<string> {
   if (!opts.title) throw new Error('--title is required');
   if (!opts.currentReality) throw new Error('--current-reality is required');
@@ -183,15 +184,19 @@ export async function addAction(
       currentReality: opts.currentReality,
       dueDate: opts.due,
     },
-    managerFrom(),
+    managerFrom(opts),
   ));
 }
 
-export async function addObservation(chartId: string, observation: string): Promise<string> {
+export async function addObservation(
+  chartId: string,
+  observation: string,
+  opts?: CliGlobals,
+): Promise<string> {
   return firstText(await handleToolCall(
     'update_current_reality',
     { chartId, newObservations: [observation] },
-    managerFrom(),
+    managerFrom(opts),
   ));
 }
 
@@ -206,12 +211,14 @@ export async function completeAction(
   ));
 }
 
-export async function exportChart(chartId: string): Promise<string> {
-  return exportChartMarkdown(chartId, managerFrom());
+export async function exportChart(chartId: string, opts?: CliGlobals): Promise<string> {
+  return exportChartMarkdown(chartId, managerFrom(opts));
 }
 
-export async function exportAllCharts(opts: { output?: string } = {}): Promise<string | { output: string }> {
-  const markdown = await exportAllChartsMarkdown(managerFrom());
+export async function exportAllCharts(
+  opts: { output?: string } & CliGlobals = {},
+): Promise<string | { output: string }> {
+  const markdown = await exportAllChartsMarkdown(managerFrom(opts));
   if (opts.output) {
     const outPath = resolve(opts.output);
     writeFileSync(outPath, markdown, 'utf-8');
@@ -220,17 +227,17 @@ export async function exportAllCharts(opts: { output?: string } = {}): Promise<s
   return markdown;
 }
 
-export async function getStats(): Promise<string> {
-  return exportChartStats(managerFrom());
+export async function getStats(opts?: CliGlobals): Promise<string> {
+  return exportChartStats(managerFrom(opts));
 }
 
-export async function getProgress(chartId: string): Promise<string> {
-  return exportChartProgress(chartId, managerFrom());
+export async function getProgress(chartId: string, opts?: CliGlobals): Promise<string> {
+  return exportChartProgress(chartId, managerFrom(opts));
 }
 
 export async function performMmot(
   chartId: string,
-  opts: { assessment?: string; direction?: string },
+  opts: { assessment?: string; direction?: string } & CliGlobals,
 ): Promise<string> {
   return firstText(await handleToolCall(
     'perform_mmot_evaluation',
@@ -239,7 +246,7 @@ export async function performMmot(
       assessment: opts.assessment,
       direction: opts.direction,
     },
-    managerFrom(),
+    managerFrom(opts),
   ));
 }
 

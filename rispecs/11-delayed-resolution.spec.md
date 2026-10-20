@@ -2,7 +2,7 @@
 
 > An action step records that someone strategically chose to delay its resolution, until when, why, for what, and which agent session to rehydrate when the delay ends.
 
-**Status:** Implemented and published. `coaiajs` 0.6.0 (`880b7a7`) brought the record, the three operations, the CLI and the derived status; 0.6.1 (`8565dee`) made completion end a delay as `resolved`. `npm view coaiajs version` → 0.6.1 on 2026-10-19; 113 of 113 tests; a consumer installing 0.6.1 from npm ran delay, list and end with exit 0 (Episode 297 `validation/coaiajs/output-261019.txt`).
+**Status:** 0.7.0. `coaiajs` 0.6.0 (`880b7a7`) brought the record, the three operations, the CLI and the derived status; 0.6.1 (`8565dee`) made completion end a delay as `resolved`, and a consumer installing 0.6.1 from npm ran delay, list and end with exit 0 (Episode 297 `validation/coaiajs/output-261019.txt`). 0.7.0 adds the session's `trace` and `rehydrateWith` (design addition of 2026-10-20, Episode 297 `c06b57cd`) and makes every narrative command honour `-M`; 123 of 123 tests on the release commit. Its consumer run, against `@miadi/llmops` 0.1.0, is kept as Episode 297 `validation/coaiajs/output-261020.txt`.
 **Origin:** Miadi Chronicle Episode 297 (`miadi-chronicle://297`), design `2026-07-24-episode-297-mino-bimaadizi-daa-stc-bot-ceremony/delayed-resolution-design-261019.md`, shared with `coaia-narrative` and the medicine wheel. coaiajs carries its own port and depends on neither.
 **Lineage:** coaia-narrative's `delayed-resolution` (0.24.0, 0.24.1) is the sibling implementation; the two were built the same night from the same design.
 
@@ -26,6 +26,7 @@ Fritz, course lesson `LAA-w04-22bc-Delay_Resolution`: "Part of the maturation pr
 - From 0.6.0, [`src/narrative/delayed-resolution.ts`](../src/narrative/delayed-resolution.ts) holds the pure half (status, days remaining, owed, resume command, rendering), and [`src/narrative/graph-manager.ts`](../src/narrative/graph-manager.ts) writes the records (`delayResolution`, `listDelayedResolutions`, `endDelayedResolution`, `markActionStepComplete`).
 - The MCP server exposes the three tools at every feature level that loads narrative tools (STANDARD: 70 tools, FULL: 72, measured on the server built from 0.6.1 with `tools/list`).
 - The CLI carries `coaia narrative delay`, `delayed`, `end-delay`, and `complete --by`.
+- From 0.7.0 a session carries `trace` and `rehydrateWith`, the two addresses `@miadi/llmops` 0.1.0 prints (jgwill/Miadi#829), and ending a delay as `rehydrated` hands them back beside `resumeCommand`.
 
 **Desired Outcome:** every surface of the package (library, MCP, CLI, markdown export) says the same thing about the same delayed step, and the record is kept whole after it ends.
 
@@ -39,6 +40,8 @@ interface AgentSessionRef {
   agent?: string;             // "claude" when not given
   host?: string; cwd?: string; tmux?: string;
   resumeCommand?: string; inventoryRecord?: string;
+  trace?: string;             // 0.7.0: the session's LLMOps record, begins with "miadi-"
+  rehydrateWith?: string;     // 0.7.0: the pinned prompt version that rehydrates it, begins with "miadi-"
 }
 
 type DelayedResolutionOutcome = 'rehydrated' | 'released' | 'resolved';
@@ -68,7 +71,7 @@ A step is named the way the package's other step tools name it: a written step (
 ## Rules
 
 1. Choosing a delay sets the step's `dueDate` to `resolveBy`. For a telescoped step, the step's desired outcome and its chart carry the date together; a written step that grew a child chart carries that chart along.
-2. A completed step is refused. `resolveBy` must parse as a date and lie in the future. `reason` and `chosenBy` are required. A `session` must carry a `sessionId`.
+2. A completed step is refused. `resolveBy` must parse as a date and lie in the future. `reason` and `chosenBy` are required. A `session` must carry a `sessionId`. A session's `trace` and `rehydrateWith`, when given, must each be a string beginning with `miadi-` (case-sensitive; an empty string is refused) and are stored exactly as given. The chart does not resolve them: that is `@miadi/llmops`' work.
 3. Delaying a step that already carries a record, open or ended, moves that record to `delayedResolutionHistory` and writes the new one.
 4. Ending keeps the record with `endedAt`, `endedBy`, `outcome` and an optional `endNote`. `completionStatus` is never changed by a delay, so the step reads as it did before.
 4b. Completing a delayed step (`markActionStepComplete(name, completedBy?)`, `mark_action_complete` with `completedBy`, `coaia narrative complete --by`) ends its open delay with `outcome: "resolved"`, `endedBy` = the completer or `"mark_action_complete"`, `endNote: "completed"`. A delay already ended is not rewritten.
@@ -80,9 +83,9 @@ A step is named the way the package's other step tools name it: a written step (
 
 | library | MCP tool | CLI | input | result |
 |---|---|---|---|---|
-| `delayResolution(name, opts)` | `delay_resolution` | `coaia narrative delay <name> --resolve-by --reason --chosen-by [--primary-choice] [--wake-on]... [--session-id --agent --host --cwd --tmux --resume-command --inventory-record]` | `actionStepName`, `resolveBy`, `reason`, `chosenBy`, optional `primaryChoice`, `wakeOn[]`, `session` | the listing entry of the new delay; `historyCount` says how many earlier records were kept |
+| `delayResolution(name, opts)` | `delay_resolution` | `coaia narrative delay <name> --resolve-by --reason --chosen-by [--primary-choice] [--wake-on]... [--session-id --agent --host --cwd --tmux --resume-command --inventory-record --trace --rehydrate-with]` | `actionStepName`, `resolveBy`, `reason`, `chosenBy`, optional `primaryChoice`, `wakeOn[]`, `session` | the listing entry of the new delay; `historyCount` says how many earlier records were kept |
 | `listDelayedResolutions(opts)` | `list_delayed_resolutions` | `coaia narrative delayed [--within <days>] [--all]` | optional `dueWithinDays` (≥ 0), `includeEnded` | entries sorted by `resolveBy`, soonest first |
-| `endDelayedResolution(name, opts)` | `end_delayed_resolution` | `coaia narrative end-delay <name> --by <who> --outcome <rehydrated\|released> [--note]` | `actionStepName`, `endedBy`, `outcome`, optional `endNote` | the closed entry, and `resumeCommand` when rehydrated |
+| `endDelayedResolution(name, opts)` | `end_delayed_resolution` | `coaia narrative end-delay <name> --by <who> --outcome <rehydrated\|released> [--note]` | `actionStepName`, `endedBy`, `outcome`, optional `endNote` | the closed entry; when rehydrated, `resumeCommand`, `trace` and `rehydrateWith`, each when known |
 
 - A listing entry is the record plus `actionStepName`, `title`, `chartId` (the chart the step advances), `telescopedChartId` (for a telescoped step), `status`, `dueDate`, `daysRemaining`, `owed`, `historyCount`.
 - `daysRemaining` is whole days to `resolveBy`, rounded up, never `-0`: 0 within the last day, negative once owed.
@@ -90,8 +93,9 @@ A step is named the way the package's other step tools name it: a written step (
 - `dueWithinDays: N` keeps entries resolving at or before now + N days, owed ones included.
 - `end_delayed_resolution` accepts only `rehydrated` and `released`; `resolved` is refused with a message naming `mark_action_complete`. `rehydrated` is refused when the record has no session.
 - `resumeCommand`: the stored one; for a `claude` session without one, `claude --resume <sessionId>`, prefixed by `cd <cwd> && ` when `cwd` is known; for any other agent, none is guessed.
-- `delay`, `delayed`, `end-delay` and `complete` honour the global `-M, --memory-path` (`complete` from 0.6.1; it opened the default store before).
-- The pure helpers are exported from `coaiajs/narrative`: `deriveActionStepStatus`, `openDelay`, `isOwed`, `daysUntil`, `resumeCommandFor`, `formatDelayedResolutionList`, `formatDelayChosen`, `formatDelayEnded`, `DELAYED_RESOLUTION_OUTCOMES`, `COMPLETION_ENDED_BY_DEFAULT`.
+- When a delay ends as `rehydrated`, the entry carries `trace` and `rehydrateWith` at its top level, copied from the session, each only when the session holds it. `released` returns neither; the record keeps them either way. `delayed` shows them under the session line, and `end-delay` prints them after the resume command.
+- `delay`, `delayed`, `end-delay` and `complete` honour the global `-M, --memory-path` (`complete` from 0.6.1; it opened the default store before). From 0.7.0 every narrative command that opens a store does (spec 08).
+- The pure helpers are exported from `coaiajs/narrative`: `deriveActionStepStatus`, `openDelay`, `isOwed`, `daysUntil`, `resumeCommandFor`, `formatDelayedResolutionList`, `formatDelayChosen`, `formatDelayEnded`, `DELAYED_RESOLUTION_OUTCOMES`, `COMPLETION_ENDED_BY_DEFAULT`, `MIADI_ADDRESS_PREFIX` (0.7.0).
 
 ## Where the status shows
 
@@ -112,6 +116,17 @@ A step is named the way the package's other step tools name it: a written step (
 **Achieved Outcome**: The session comes back with the reason it stopped, and the closed record stays on the step.
 **Supporting Features**: `delayResolution`, `listDelayedResolutions`, `endDelayedResolution`, `resumeCommandFor`.
 
+**Creative Advancement Scenario**: Rehydrating a session with its trace and its pinned prompt (0.7.0)
+
+**User Intent**: A seat that sets a session aside wants the person who brings it back to receive the session's LLMOps record and the prompt version that restarts it, not only the resume command.
+**Current Reality**: `npx @miadi/llmops rehydrate --domain ceremony --trace <T> --mission miadiRun-<name>.v<N>` prints `trace` and `rehydrate_with` for the session.
+**Natural Progression Steps**:
+  1. `coaia narrative delay <step> ... --session-id <id> --cwd <dir> --trace <trace> --rehydrate-with <rehydrate_with>` stores both on the session, as printed.
+  2. `coaia narrative delayed` shows them under the session line.
+  3. `coaia narrative end-delay <step> --by <who> --outcome rehydrated` prints the resume command, then `trace:` and `rehydrateWith:`.
+**Achieved Outcome**: The session comes back with the trace that recorded it and the prompt version that restarts it, both exactly as `@miadi/llmops` printed them.
+**Supporting Features**: `AgentSessionRef.trace`, `AgentSessionRef.rehydrateWith`, `MIADI_ADDRESS_PREFIX`, `formatDelayEnded`.
+
 **Creative Advancement Scenario**: A delayed step is completed before its date
 
 **User Intent**: Work that was set aside gets done another way, earlier.
@@ -125,7 +140,6 @@ A step is named the way the package's other step tools name it: a written step (
 ## Out of scope
 
 - The clock that steers a session before `resolveBy`. Who runs it is undecided (Episode 297, resolve-by 2026-10-27).
-- The LLMOps fields `trace` and `rehydrate_with`, which wait for jgwill/Miadi `packages/llmops` (Episode 297, resolve-by 2026-11-09).
 - Writing these fields from the session inventory, which owns its own records.
 
 ## Quality Criteria
@@ -135,7 +149,8 @@ A step is named the way the package's other step tools name it: a written step (
 - ✅ Ending keeps the record and leaves `completionStatus` untouched
 - ✅ Completing a delayed step ends its delay as `resolved`
 - ✅ Library, MCP, CLI and markdown export report the same derived status
-- ✅ `test/delayed-resolution.test.mjs` covers the three operations and rule 4b (24 tests)
+- ✅ A session's `trace` and `rehydrateWith` are refused unless they begin with `miadi-`, stored as given, and returned when rehydrated
+- ✅ `test/delayed-resolution.test.mjs` covers the three operations, rule 4b and the session's LLMOps fields (31 tests)
 
 ## Implementation Links
 

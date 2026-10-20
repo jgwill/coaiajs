@@ -590,3 +590,184 @@ describe('surfaces', () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// 0.7.0: a session carries its LLMOps trace and the prompt version that rehydrates
+// it, as `@miadi/llmops rehydrate` prints them. The chart stores both as given and
+// hands them back with the resume command; resolving them is LLMOps' work.
+const TRACE = 'miadi-tracing:ceremony/session/4b1f0c2e-7d3a-4f6e-9a51-0c2d9e8b7a10';
+const REHYDRATE_WITH = 'miadi-tracing:ceremony/prompt/miadiRun-2610201200-mia-ep297-delay@3';
+
+describe('a session carries its trace and the prompt that rehydrates it', () => {
+  test('both are stored as given and returned beside the resume command when rehydrated', async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    const entry = await manager.delayResolution(written, {
+      resolveBy: inDays(4),
+      reason: 'resume when the sibling lineage lands',
+      chosenBy: 'mia',
+      session: { ...SESSION, trace: TRACE, rehydrateWith: REHYDRATE_WITH },
+    });
+    assert.equal(entry.session.trace, TRACE);
+    assert.equal(entry.session.rehydrateWith, REHYDRATE_WITH);
+
+    const stored = storedEntity(path, written).metadata.delayedResolution.session;
+    assert.equal(stored.trace, TRACE, 'trace was not stored as given');
+    assert.equal(stored.rehydrateWith, REHYDRATE_WITH, 'rehydrateWith was not stored as given');
+
+    const [listed] = await manager.listDelayedResolutions();
+    assert.equal(listed.session.trace, TRACE);
+    assert.equal(listed.session.rehydrateWith, REHYDRATE_WITH);
+
+    const ended = await manager.endDelayedResolution(written, { endedBy: 'William', outcome: 'rehydrated' });
+    assert.equal(ended.resumeCommand, `cd ${SESSION.cwd} && claude --resume ${SESSION.sessionId}`);
+    assert.equal(ended.trace, TRACE, 'trace was not returned beside resumeCommand');
+    assert.equal(ended.rehydrateWith, REHYDRATE_WITH, 'rehydrateWith was not returned beside resumeCommand');
+  });
+
+  test('released returns neither, and the record keeps both', async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, {
+      resolveBy: inDays(4),
+      reason: 'r',
+      chosenBy: 'mia',
+      session: { ...SESSION, trace: TRACE, rehydrateWith: REHYDRATE_WITH },
+    });
+    const ended = await manager.endDelayedResolution(written, { endedBy: 'mia', outcome: 'released' });
+    assert.equal(ended.resumeCommand, undefined);
+    assert.equal(ended.trace, undefined);
+    assert.equal(ended.rehydrateWith, undefined);
+    const stored = storedEntity(path, written).metadata.delayedResolution.session;
+    assert.equal(stored.trace, TRACE);
+    assert.equal(stored.rehydrateWith, REHYDRATE_WITH);
+  });
+
+  test('a session without them ends rehydrated with the resume command only', async () => {
+    const { manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, { resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', session: SESSION });
+    const ended = await manager.endDelayedResolution(written, { endedBy: 'mia', outcome: 'rehydrated' });
+    assert.ok(ended.resumeCommand);
+    assert.ok(!('trace' in ended), 'an absent trace was returned');
+    assert.ok(!('rehydrateWith' in ended), 'an absent rehydrateWith was returned');
+    assert.ok(!('trace' in ended.session) && !('rehydrateWith' in ended.session));
+  });
+
+  test("each is refused unless it begins with 'miadi-', and the store is left as it was", async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    const before = readFileSync(path, 'utf8');
+    for (const [field, value] of [
+      ['trace', 'langfuse:trace/abc'],
+      ['trace', ''],
+      ['trace', 'Miadi-tracing:ceremony/session/x'],
+      ['rehydrateWith', 'miadi'],
+      ['rehydrateWith', 'tracing:ceremony/prompt/miadiRun-x@1'],
+      ['rehydrateWith', 42],
+    ]) {
+      await assert.rejects(
+        manager.delayResolution(written, {
+          resolveBy: inDays(4),
+          reason: 'r',
+          chosenBy: 'mia',
+          session: { ...SESSION, [field]: value },
+        }),
+        new RegExp(`session\\.${field} must be an address beginning with 'miadi-'`),
+        `${field}=${JSON.stringify(value)} was accepted`,
+      );
+    }
+    assert.equal(readFileSync(path, 'utf8'), before, 'a refused delay wrote to the store');
+  });
+
+  test('the MCP tools accept, refuse and return them', async () => {
+    const { manager } = fresh();
+    const { written } = await seed(manager);
+
+    const refused = await handleToolCall(
+      'delay_resolution',
+      {
+        actionStepName: written,
+        resolveBy: inDays(4),
+        reason: 'r',
+        chosenBy: 'mia',
+        session: { ...SESSION, trace: 'langfuse:trace/abc' },
+      },
+      manager,
+    );
+    assert.equal(refused.isError, true);
+    assert.match(refused.content[0].text, /session\.trace must be an address beginning with 'miadi-'/);
+
+    const delayed = await handleToolCall(
+      'delay_resolution',
+      {
+        actionStepName: written,
+        resolveBy: inDays(4),
+        reason: 'r',
+        chosenBy: 'mia',
+        session: { ...SESSION, trace: TRACE, rehydrateWith: REHYDRATE_WITH },
+      },
+      manager,
+    );
+    assert.ok(!delayed.isError, delayed.content[0].text);
+    assert.doesNotMatch(delayed.content[0].text, /ignored/);
+    assert.match(delayed.content[0].text, new RegExp(`Trace: ${TRACE}`));
+    assert.match(delayed.content[0].text, new RegExp(`Rehydrate with: ${REHYDRATE_WITH}`));
+
+    const ended = await handleToolCall(
+      'end_delayed_resolution',
+      { actionStepName: written, endedBy: 'mia', outcome: 'rehydrated' },
+      manager,
+    );
+    assert.ok(!ended.isError, ended.content[0].text);
+    assert.match(ended.content[0].text, new RegExp(`trace: ${TRACE}`));
+    assert.match(ended.content[0].text, new RegExp(`rehydrateWith: ${REHYDRATE_WITH}`));
+    const json = JSON.parse(ended.content[0].text.slice(ended.content[0].text.indexOf('{')));
+    assert.equal(json.trace, TRACE);
+    assert.equal(json.rehydrateWith, REHYDRATE_WITH);
+  });
+
+  test('the delay_resolution schema declares both on its session', () => {
+    const tool = ALL_TOOL_DEFINITIONS.find(t => t.name === 'delay_resolution');
+    const session = tool.inputSchema.properties.session.properties;
+    for (const field of ['trace', 'rehydrateWith']) {
+      assert.equal(session[field]?.type, 'string', `${field} is not in the session schema`);
+      assert.match(session[field].description, /miadi-/);
+    }
+  });
+
+  test('the coaia CLI takes --trace and --rehydrate-with; delayed and end-delay show them', async () => {
+    const { path } = fresh();
+    const { written } = await seed(new KnowledgeGraphManager(path));
+    const run = (...args) => execFileSync('node', [CLI, '-M', path, ...args], { encoding: 'utf8', stdio: 'pipe' });
+
+    assert.throws(
+      () => run('narrative', 'delay', written, '--resolve-by', inDays(5), '--reason', 'r', '--chosen-by', 'mia',
+        '--session-id', SESSION.sessionId, '--rehydrate-with', 'prompt/miadiRun-x@1'),
+      e => /session\.rehydrateWith must be an address beginning with 'miadi-'/.test(String(e.stderr)),
+    );
+
+    run(
+      'narrative', 'delay', written,
+      '--resolve-by', inDays(5),
+      '--reason', 'resume when the review lands',
+      '--chosen-by', 'mia',
+      '--session-id', SESSION.sessionId,
+      '--cwd', SESSION.cwd,
+      '--trace', TRACE,
+      '--rehydrate-with', REHYDRATE_WITH,
+    );
+
+    const text = run('narrative', 'delayed');
+    assert.match(text, new RegExp(`Trace: ${TRACE}`));
+    assert.match(text, new RegExp(`Rehydrate with: ${REHYDRATE_WITH}`));
+    const [listed] = JSON.parse(run('--json', 'narrative', 'delayed'));
+    assert.equal(listed.session.trace, TRACE);
+    assert.equal(listed.session.rehydrateWith, REHYDRATE_WITH);
+
+    const ended = JSON.parse(run('--json', 'narrative', 'end-delay', written, '--by', 'mia', '--outcome', 'rehydrated'));
+    assert.equal(ended.resumeCommand, `cd ${SESSION.cwd} && claude --resume ${SESSION.sessionId}`);
+    assert.equal(ended.trace, TRACE);
+    assert.equal(ended.rehydrateWith, REHYDRATE_WITH);
+  });
+});

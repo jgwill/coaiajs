@@ -1124,7 +1124,7 @@ function registerNarrativeCommands(program: Command): void {
     .option('--desired-outcome <text>', 'New desired outcome')
     .option('--current-reality <text>', 'New current reality observation')
     .action(actionHandler(async (chartId: string, opts: { desiredOutcome?: string; currentReality?: string }, cmd: Command) => {
-      const result = await callModule('narrative', 'updateChart', chartId, opts);
+      const result = await callModule('narrative', 'updateChart', chartId, { ...opts, memoryPath: globals(cmd).memoryPath });
       output(result, cmd);
     }));
 
@@ -1137,7 +1137,7 @@ function registerNarrativeCommands(program: Command): void {
     .option('--current-reality <text>', 'Current reality for this step')
     .option('--due <date>', 'Due date (ISO)')
     .action(actionHandler(async (chartId: string, opts: { title?: string; currentReality?: string; due?: string }, cmd: Command) => {
-      const result = await callModule('narrative', 'addAction', chartId, opts);
+      const result = await callModule('narrative', 'addAction', chartId, { ...opts, memoryPath: globals(cmd).memoryPath });
       output(result, cmd);
     }));
 
@@ -1153,7 +1153,7 @@ function registerNarrativeCommands(program: Command): void {
         console.error(formatError('Observation text required'));
         process.exit(1);
       }
-      const result = await callModule('narrative', 'addObservation', chartId, observation);
+      const result = await callModule('narrative', 'addObservation', chartId, observation, globals(cmd));
       output(result, cmd);
     }));
 
@@ -1179,7 +1179,7 @@ function registerNarrativeCommands(program: Command): void {
     .argument('<chartId>', 'Chart ID')
     .option('--output <path>', 'Output file path')
     .action(actionHandler(async (chartId: string, opts: { output?: string }, cmd: Command) => {
-      const result = await callModule('narrative', 'exportChart', chartId) as string;
+      const result = await callModule('narrative', 'exportChart', chartId, globals(cmd)) as string;
       if (opts.output) {
         writeFileSync(resolve(opts.output), result);
         console.log(formatSuccess(`Exported to ${opts.output}`));
@@ -1193,7 +1193,7 @@ function registerNarrativeCommands(program: Command): void {
     .description('Export all charts to markdown')
     .option('--output <dir>', 'Output directory')
     .action(actionHandler(async (opts: { output?: string }, cmd: Command) => {
-      const result = await callModule('narrative', 'exportAllCharts', opts);
+      const result = await callModule('narrative', 'exportAllCharts', { ...opts, memoryPath: globals(cmd).memoryPath });
       output(result, cmd);
     }));
 
@@ -1212,7 +1212,7 @@ function registerNarrativeCommands(program: Command): void {
     .description('Progress report for a chart')
     .argument('<chartId>', 'Chart ID')
     .action(actionHandler(async (chartId: string, opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('narrative', 'getProgress', chartId) as {
+      const result = await callModule('narrative', 'getProgress', chartId, globals(cmd)) as {
         completed: number; total: number; chartId: string;
       } | unknown;
       if (globals(cmd).json) {
@@ -1237,7 +1237,7 @@ function registerNarrativeCommands(program: Command): void {
     .option('--assessment <text>', 'Assessment text')
     .option('--direction <dir>', 'Direction: South | East | West | North')
     .action(actionHandler(async (chartId: string, opts: { assessment?: string; direction?: string }, cmd: Command) => {
-      const result = await callModule('narrative', 'performMmot', chartId, opts);
+      const result = await callModule('narrative', 'performMmot', chartId, { ...opts, memoryPath: globals(cmd).memoryPath });
       output(result, cmd);
     }));
 
@@ -1278,6 +1278,8 @@ function registerNarrativeCommands(program: Command): void {
     .option('--tmux <target>', 'tmux session or pane')
     .option('--resume-command <cmd>', 'Command that resumes the session')
     .option('--inventory-record <path>', "Path of the session's record in the session inventory")
+    .option('--trace <addr>', "The session's LLMOps trace, e.g. miadi-tracing:ceremony/session/<id> (must begin with miadi-)")
+    .option('--rehydrate-with <addr>', 'The pinned prompt version that rehydrates the session, e.g. miadi-tracing:ceremony/prompt/miadiRun-<name>@<N> (must begin with miadi-)')
     .action(actionHandler(async (actionStepName: string, opts: Record<string, string | string[] | undefined>, cmd: Command) => {
       const session = {
         sessionId: opts['sessionId'] as string | undefined,
@@ -1287,6 +1289,8 @@ function registerNarrativeCommands(program: Command): void {
         tmux: opts['tmux'] as string | undefined,
         resumeCommand: opts['resumeCommand'] as string | undefined,
         inventoryRecord: opts['inventoryRecord'] as string | undefined,
+        trace: opts['trace'] as string | undefined,
+        rehydrateWith: opts['rehydrateWith'] as string | undefined,
       };
       const result = await callModule('narrative', 'delayAction', actionStepName, {
         ...globals(cmd),

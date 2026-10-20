@@ -226,6 +226,17 @@ export interface AgentSessionRef {
   resumeCommand?: string;
   /** Path of the session's record in the session inventory. */
   inventoryRecord?: string;
+  /**
+   * The session's LLMOps record, as `@miadi/llmops` writes it
+   * (e.g. `miadi-tracing:ceremony/session/<id>`). Must begin with `miadi-`; stored as given.
+   */
+  trace?: string;
+  /**
+   * The pinned prompt version that rehydrates the session
+   * (e.g. `miadi-tracing:ceremony/prompt/miadiRun-<name>@<N>`). Must begin with `miadi-`;
+   * stored as given. Resolving it is the LLMOps package's work, not the chart's.
+   */
+  rehydrateWith?: string;
 }
 
 /**

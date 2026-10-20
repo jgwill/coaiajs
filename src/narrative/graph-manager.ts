@@ -25,6 +25,7 @@ import { assertNoUnparsedCallSyntax } from './argument-hygiene.js';
 import {
   COMPLETION_ENDED_BY_DEFAULT,
   DELAYED_RESOLUTION_OUTCOMES,
+  MIADI_ADDRESS_PREFIX,
   daysUntil,
   deriveActionStepStatus,
   isOwed,
@@ -1282,6 +1283,19 @@ export class KnowledgeGraphManager {
       if (typeof options.session?.sessionId !== 'string' || options.session.sessionId.trim() === '') {
         throw new Error('session.sessionId is required when a session is given.');
       }
+      for (const field of ['trace', 'rehydrateWith'] as const) {
+        const value = options.session[field];
+        if (value === undefined) continue;
+        if (typeof value !== 'string' || !value.startsWith(MIADI_ADDRESS_PREFIX)) {
+          throw new Error(
+            `session.${field} must be an address beginning with '${MIADI_ADDRESS_PREFIX}' ` +
+              `(got ${JSON.stringify(value)}), as @miadi/llmops prints it, e.g. ` +
+              (field === 'trace'
+                ? `miadi-tracing:ceremony/session/<id>.`
+                : `miadi-tracing:ceremony/prompt/miadiRun-<name>@<N>.`),
+          );
+        }
+      }
     }
     assertNoUnparsedCallSyntax(options.reason, 'reason');
     assertNoUnparsedCallSyntax(options.primaryChoice, 'primaryChoice');
@@ -1315,6 +1329,10 @@ export class KnowledgeGraphManager {
           ...(options.session.resumeCommand ? { resumeCommand: options.session.resumeCommand } : {}),
           ...(options.session.inventoryRecord
             ? { inventoryRecord: options.session.inventoryRecord }
+            : {}),
+          ...(options.session.trace !== undefined ? { trace: options.session.trace } : {}),
+          ...(options.session.rehydrateWith !== undefined
+            ? { rehydrateWith: options.session.rehydrateWith }
             : {}),
         }
       : undefined;
@@ -1447,7 +1465,17 @@ export class KnowledgeGraphManager {
     await this.saveGraph(graph);
 
     const entry = this.delayEntry(graph, step, record, now);
-    return options.outcome === 'rehydrated' && resumeCommand ? { ...entry, resumeCommand } : entry;
+    if (options.outcome !== 'rehydrated') return entry;
+    // Rehydrating hands back what resumes the session: its command, its LLMOps trace,
+    // and the prompt version that rehydrates it, each only when the record holds it.
+    const trace = record.session?.trace;
+    const rehydrateWith = record.session?.rehydrateWith;
+    return {
+      ...entry,
+      ...(resumeCommand ? { resumeCommand } : {}),
+      ...(trace ? { trace } : {}),
+      ...(rehydrateWith ? { rehydrateWith } : {}),
+    };
   }
 
   // ─── MMOT Evaluation ────────────────────────────────────────────────

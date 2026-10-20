@@ -57,15 +57,18 @@ it as an unexplained late date.
   becomes the step's due date), `reason`, `chosenBy`; optional `primaryChoice` (defaults
   to the chart's desired outcome), `wakeOn` (event cues, in words) and `session` (the agent
   session to rehydrate: `sessionId`, `agent`, `host`, `cwd`, `tmux`, `resumeCommand`,
-  `inventoryRecord`). A completed step is refused. A re-delay keeps the earlier record in
+  `inventoryRecord`, and `trace` and `rehydrateWith`, the addresses `@miadi/llmops
+  rehydrate` prints, each beginning with `miadi-` and stored as given). A completed step
+  is refused. A re-delay keeps the earlier record in
   `metadata.delayedResolutionHistory`.
 - `list_delayed_resolutions` — open delays, soonest first, with `daysRemaining` and
   `owed` (the date has passed). `dueWithinDays` narrows it; `includeEnded` widens it.
 - `end_delayed_resolution` — `outcome` is `rehydrated` (returns the session's resume
-  command) or `released`. The record is kept, with who ended it and when.
+  command, and its `trace` and `rehydrateWith` when it carries them) or `released`. The record is kept, with who ended it and when.
 - Completing a delayed step (`mark_action_complete`, with `completedBy` when you know who)
   ends its delay as `resolved`, noted `completed`. `resolved` comes only from completion.
 
 A delayed step reads `delayed` in `get_action_step`, `get_chart`, `get_chart_progress`,
 `list_active_charts` and the markdown export. `completionStatus` is unchanged by a delay.
-The CLI carries the same three: `coaia narrative delay`, `delayed`, `end-delay`.
+The CLI carries the same three: `coaia narrative delay` (`--trace`, `--rehydrate-with`
+for the session's LLMOps addresses), `delayed`, `end-delay`.

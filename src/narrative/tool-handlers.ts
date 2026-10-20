@@ -421,6 +421,8 @@ export async function handleToolCall(
             tmux: { type: 'string' },
             resumeCommand: { type: 'string' },
             inventoryRecord: { type: 'string' },
+            trace: { type: 'string' },
+            rehydrateWith: { type: 'string' },
           },
         },
       });

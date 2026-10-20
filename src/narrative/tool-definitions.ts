@@ -537,6 +537,16 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
             tmux: { type: 'string', description: 'tmux session or pane.' },
             resumeCommand: { type: 'string', description: "e.g. 'cd <cwd> && claude --resume <id>'" },
             inventoryRecord: { type: 'string', description: "Path of the session's record in the session inventory." },
+            trace: {
+              type: 'string',
+              description:
+                "The session's LLMOps record as @miadi/llmops prints it, e.g. 'miadi-tracing:ceremony/session/<id>'. Must begin with 'miadi-'; stored as given and returned when the delay ends as rehydrated.",
+            },
+            rehydrateWith: {
+              type: 'string',
+              description:
+                "The pinned prompt version that rehydrates the session, e.g. 'miadi-tracing:ceremony/prompt/miadiRun-<name>@<N>'. Must begin with 'miadi-'; stored as given and returned when the delay ends as rehydrated.",
+            },
           },
           required: ['sessionId'],
         },
@@ -566,7 +576,7 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'end_delayed_resolution',
     description:
-      "End an action step's open delay, either by rehydrating its agent session or by releasing the step. The record is kept with who ended it, when, and how; the step reads as it did before the delay. When rehydrated, returns the session's resume command.",
+      "End an action step's open delay, either by rehydrating its agent session or by releasing the step. The record is kept with who ended it, when, and how; the step reads as it did before the delay. When rehydrated, returns the session's resume command, and its trace and rehydrateWith when the session carries them.",
     inputSchema: {
       type: 'object',
       properties: {

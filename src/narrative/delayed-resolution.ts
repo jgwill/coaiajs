@@ -34,6 +34,13 @@ export const DELAYED_RESOLUTION_OUTCOMES: readonly DelayedResolutionOutcome[] = 
 /** Who ended a delay by completing its step, when the completer is not named. */
 export const COMPLETION_ENDED_BY_DEFAULT = 'mark_action_complete';
 
+/**
+ * The prefix a session's `trace` and `rehydrateWith` must carry. They are addresses
+ * `@miadi/llmops` prints (`miadi-tracing:ceremony/session/<id>`); the chart stores
+ * them as given and does not resolve them.
+ */
+export const MIADI_ADDRESS_PREFIX = 'miadi-';
+
 /** One delay as a listing shows it: the record, where it sits, and what the clock says. */
 export interface DelayedResolutionEntry extends DelayedResolution {
   actionStepName: string;
@@ -56,6 +63,10 @@ export interface DelayedResolutionEntry extends DelayedResolution {
 export interface EndedDelayedResolution extends DelayedResolutionEntry {
   /** Present when the outcome is `rehydrated`: the command that resumes the session. */
   resumeCommand?: string;
+  /** Present when the outcome is `rehydrated` and the session carries one: its LLMOps trace. */
+  trace?: string;
+  /** Present when the outcome is `rehydrated` and the session carries one: the prompt that rehydrates it. */
+  rehydrateWith?: string;
 }
 
 /** The step's current delay when it is still open, else undefined. */
@@ -156,6 +167,8 @@ function entryLines(entry: DelayedResolutionEntry): string[] {
   if (entry.session) {
     const where = [entry.session.host, entry.session.tmux].filter(Boolean).join(' ');
     lines.push(`    Session: ${entry.session.agent} ${entry.session.sessionId}${where ? ` (${where})` : ''}`);
+    if (entry.session.trace) lines.push(`    Trace: ${entry.session.trace}`);
+    if (entry.session.rehydrateWith) lines.push(`    Rehydrate with: ${entry.session.rehydrateWith}`);
   }
   return lines;
 }
@@ -184,6 +197,11 @@ export function formatDelayEnded(entry: EndedDelayedResolution): string {
   const lines = [
     `Delay on '${entry.actionStepName}' ended as ${entry.outcome}. The step's status is now ${entry.status}; the record is kept.`,
   ];
-  if (entry.resumeCommand) lines.push('', `Rehydrate with:`, `  ${entry.resumeCommand}`);
+  if (entry.resumeCommand || entry.trace || entry.rehydrateWith) {
+    lines.push('', `Rehydrate with:`);
+    if (entry.resumeCommand) lines.push(`  ${entry.resumeCommand}`);
+    if (entry.trace) lines.push(`  trace: ${entry.trace}`);
+    if (entry.rehydrateWith) lines.push(`  rehydrateWith: ${entry.rehydrateWith}`);
+  }
   return lines.join('\n');
 }
