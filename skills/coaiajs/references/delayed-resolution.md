@@ -63,6 +63,8 @@ it as an unexplained late date.
   `owed` (the date has passed). `dueWithinDays` narrows it; `includeEnded` widens it.
 - `end_delayed_resolution` — `outcome` is `rehydrated` (returns the session's resume
   command) or `released`. The record is kept, with who ended it and when.
+- Completing a delayed step (`mark_action_complete`, with `completedBy` when you know who)
+  ends its delay as `resolved`, noted `completed`. `resolved` comes only from completion.
 
 A delayed step reads `delayed` in `get_action_step`, `get_chart`, `get_chart_progress`,
 `list_active_charts` and the markdown export. `completionStatus` is unchanged by a delay.

@@ -23,6 +23,7 @@ import type {
 import { readJsonlMemoryFile, writeJsonlMemoryFile } from './jsonl-preservation.js';
 import { assertNoUnparsedCallSyntax } from './argument-hygiene.js';
 import {
+  COMPLETION_ENDED_BY_DEFAULT,
   DELAYED_RESOLUTION_OUTCOMES,
   daysUntil,
   deriveActionStepStatus,
@@ -581,7 +582,16 @@ export class KnowledgeGraphManager {
 
   // ─── Mark Action Complete ───────────────────────────────────────────
 
-  async markActionStepComplete(actionStepName: string): Promise<void> {
+  /**
+   * Mark a step complete. A step completed while its resolution was delayed ends
+   * that delay as `resolved` (design rule 4b): ended by `completedBy`, or by
+   * "mark_action_complete" when no one is named, with the note "completed". The
+   * delay that was ended is returned so the caller can say so.
+   */
+  async markActionStepComplete(
+    actionStepName: string,
+    completedBy?: string,
+  ): Promise<{ endedDelay?: DelayedResolution }> {
     const graph = await this.loadGraph();
     const actionStep = graph.entities.find(
       e =>
@@ -601,6 +611,17 @@ export class KnowledgeGraphManager {
     if (actionStep.metadata) {
       actionStep.metadata.completionStatus = true;
       actionStep.metadata.updatedAt = new Date().toISOString();
+    }
+
+    // Completion is the third way a delay ends: the resolution it waited for came.
+    // Left open, the record would say the step is still waiting on a date that no
+    // longer means anything.
+    const delay = openDelay(actionStep);
+    if (delay) {
+      delay.endedAt = new Date().toISOString();
+      delay.endedBy = completedBy?.trim() || COMPLETION_ENDED_BY_DEFAULT;
+      delay.outcome = 'resolved';
+      delay.endNote = 'completed';
     }
 
     // Also mark the parent chart entity as complete
@@ -631,6 +652,7 @@ export class KnowledgeGraphManager {
     }
 
     await this.saveGraph(graph);
+    return delay ? { endedDelay: delay } : {};
   }
 
   // ─── Chart Progress ─────────────────────────────────────────────────
@@ -1368,6 +1390,7 @@ export class KnowledgeGraphManager {
 
   /**
    * End a step's open delay, by rehydrating its session or by releasing the step.
+   * The third outcome, `resolved`, is not accepted here: completing the step writes it.
    *
    * The record is kept, with `endedAt`, `endedBy`, `outcome` and an optional
    * `endNote`, and the step reads as it did before the delay. `rehydrated` needs a
@@ -1385,6 +1408,12 @@ export class KnowledgeGraphManager {
     const now = options.now ?? new Date();
     if (typeof options.endedBy !== 'string' || options.endedBy.trim() === '') {
       throw new Error('endedBy is required: an ended delay records who ended it.');
+    }
+    if (options.outcome === 'resolved') {
+      throw new Error(
+        `outcome 'resolved' is written only when the step is completed (mark_action_complete). ` +
+          `End a delay here as 'rehydrated' or 'released'.`,
+      );
     }
     if (!DELAYED_RESOLUTION_OUTCOMES.includes(options.outcome)) {
       throw new Error(

@@ -125,7 +125,7 @@ updateChart, viewChart, listCharts, getProgress, getStats, performMmot,
 exportChart, exportAllCharts, exportChartToMarkdown, exportAllChartsToMarkdown,
 exportChartProgress, exportChartStats, writeMarkdownToFile, getDefaultFilename,
 delayAction, listDelayedActions, endActionDelay,
-DELAYED_RESOLUTION_OUTCOMES, deriveActionStepStatus, openDelay, isOwed, daysUntil,
+DELAYED_RESOLUTION_OUTCOMES, COMPLETION_ENDED_BY_DEFAULT, deriveActionStepStatus, openDelay, isOwed, daysUntil,
 resumeCommandFor, formatDelayedResolutionList, formatDelayChosen, formatDelayEnded,
 handleToolCall, ALL_TOOL_DEFINITIONS, CORE_TOOLS, KG_TOOLS, NARRATIVE_TOOLS,
 STC_TOOLS, WAMPUM_TOOLS,
@@ -337,7 +337,10 @@ step's `metadata.delayedResolution`; a re-delay moves the earlier one into
 `metadata.delayedResolutionHistory`. A completed step and a past `resolveBy` are refused.
 `list_delayed_resolutions` lists open delays soonest first with `daysRemaining` and
 `owed`; `end_delayed_resolution` ends one as `rehydrated` (returning the session's
-resume command) or `released`, keeping the record. `get_action_step`, `get_chart`,
+resume command) or `released`, keeping the record. Completing a delayed step
+(`mark_action_complete`, optional `completedBy`) ends its delay as `resolved`, ended by
+the completer or `"mark_action_complete"`, noted `"completed"`; `end_delayed_resolution`
+does not accept `resolved`. `get_action_step`, `get_chart`,
 `get_chart_progress`, `list_active_charts` and the markdown export report a derived
 status `delayed`; `completionStatus` stays the stored truth.
 
@@ -416,7 +419,7 @@ Subcommands:
 
 - **`fuse`** — `traces`, `prompts`, `datasets`, `sessions`, `scores` (`sc`), `score-configs` (`scc`), `comments`, `media`, `dataset-items`, `projects`
 - **`skill`** — `show`, `install` (`--global`, `--yes`, `--force`), `check` (`--global`)
-- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`, `--redistribute`), `delay` (`--resolve-by`, `--reason`, `--chosen-by`, `--wake-on`, `--session-id`…), `delayed` (`--within`, `--all`), `end-delay` (`--by`, `--outcome`, `--note`), `link-issue`
+- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`, `--by`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`, `--redistribute`), `delay` (`--resolve-by`, `--reason`, `--chosen-by`, `--wake-on`, `--session-id`…), `delayed` (`--within`, `--all`), `end-delay` (`--by`, `--outcome`, `--note`), `link-issue`
 - **`pde`** — `import <pdeId>`, `list`, `sessions`, `show <sessionId>`
 - **`plan`** — `parse <planPath>`, `convert <planPath>`, `sync-to-chart <planPath> <chartsPath>`, `sync-to-plan <chartsPath> <planPath>`
 - **`pipeline`** — `list`, `show <name>`, `create <name>`, `init <name>`

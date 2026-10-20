@@ -363,11 +363,17 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'mark_action_complete',
-    description: 'Mark an action step as completed and update current reality',
+    description:
+      'Mark an action step as completed and update current reality. A step whose resolution was delayed has that delay ended as resolved.',
     inputSchema: {
       type: 'object',
       properties: {
         actionStepName: { type: 'string', description: 'Name of the completed action step' },
+        completedBy: {
+          type: 'string',
+          description:
+            "Who completed the step. Recorded as who ended its delay, when it had one (default 'mark_action_complete').",
+        },
       },
       required: ['actionStepName'],
     },
@@ -569,7 +575,8 @@ export const ALL_TOOL_DEFINITIONS: ToolDefinition[] = [
         outcome: {
           type: 'string',
           enum: ['rehydrated', 'released'],
-          description: "'rehydrated' when the session is resumed, 'released' when the step is let go of its delay.",
+          description:
+            "'rehydrated' when the session is resumed, 'released' when the step is let go of its delay. ('resolved' is written by mark_action_complete when a delayed step is completed.)",
         },
         endNote: { type: 'string', description: 'Optional note on how the delay ended.' },
       },

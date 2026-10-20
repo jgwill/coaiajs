@@ -22,10 +22,17 @@ import type {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * The outcomes end_delayed_resolution accepts. The third outcome, `resolved`, is
+ * written only when a delayed step is completed (design rule 4b).
+ */
 export const DELAYED_RESOLUTION_OUTCOMES: readonly DelayedResolutionOutcome[] = [
   'rehydrated',
   'released',
 ];
+
+/** Who ended a delay by completing its step, when the completer is not named. */
+export const COMPLETION_ENDED_BY_DEFAULT = 'mark_action_complete';
 
 /** One delay as a listing shows it: the record, where it sits, and what the clock says. */
 export interface DelayedResolutionEntry extends DelayedResolution {
@@ -130,7 +137,7 @@ export function stepMark(status: ActionStepStatus, record?: DelayedResolution, n
 }
 
 function entryLines(entry: DelayedResolutionEntry): string[] {
-  const mark = entry.endedAt ? '⏹️' : entry.owed ? '⏰' : '⏸️';
+  const mark = entry.endedAt ? (entry.outcome === 'resolved' ? '✅' : '⏹️') : entry.owed ? '⏰' : '⏸️';
   const lines = [
     `${mark} **${entry.title}**`,
     `    Step: ${entry.actionStepName} · Chart: ${entry.chartId}`,

@@ -73,6 +73,7 @@ export type { MarkdownOptions } from './markdown-export.js';
 // Delayed resolution: deriving a step's status, measuring what is owed, rendering.
 export {
   DELAYED_RESOLUTION_OUTCOMES,
+  COMPLETION_ENDED_BY_DEFAULT,
   deriveActionStepStatus,
   openDelay,
   isOwed,
@@ -194,11 +195,14 @@ export async function addObservation(chartId: string, observation: string): Prom
   ));
 }
 
-export async function completeAction(actionName: string): Promise<string> {
+export async function completeAction(
+  actionName: string,
+  opts: { completedBy?: string } & CliGlobals = {},
+): Promise<string> {
   return firstText(await handleToolCall(
     'mark_action_complete',
-    { actionStepName: actionName },
-    managerFrom(),
+    { actionStepName: actionName, ...(opts.completedBy ? { completedBy: opts.completedBy } : {}) },
+    managerFrom(opts),
   ));
 }
 

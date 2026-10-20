@@ -1160,10 +1160,14 @@ function registerNarrativeCommands(program: Command): void {
   narr
     .command('complete')
     .alias('done')
-    .description('Mark an action step complete')
+    .description('Mark an action step complete (a delayed step has its delay ended as resolved)')
     .argument('<actionName>', 'Action step name')
-    .action(actionHandler(async (actionName: string, opts: Record<string, unknown>, cmd: Command) => {
-      const result = await callModule('narrative', 'completeAction', actionName);
+    .option('--by <who>', 'Who completed it; recorded as who ended its delay, when it had one')
+    .action(actionHandler(async (actionName: string, opts: { by?: string }, cmd: Command) => {
+      const result = await callModule('narrative', 'completeAction', actionName, {
+        ...globals(cmd),
+        completedBy: opts.by,
+      });
       if (typeof result === 'string') console.log(formatSuccess(result));
       else output(result, cmd);
     }));

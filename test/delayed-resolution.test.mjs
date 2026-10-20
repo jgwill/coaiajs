@@ -448,6 +448,109 @@ describe('status reads delayed, then returns', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
+describe('completing a delayed step resolves its delay (rule 4b)', () => {
+  test('the delay ends as resolved, by whoever completed it, noted "completed"', async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, {
+      resolveBy: inDays(9),
+      reason: 'waits on review',
+      chosenBy: 'mia',
+      session: SESSION,
+    });
+
+    const { endedDelay } = await manager.markActionStepComplete(written, 'William');
+    assert.equal(endedDelay.outcome, 'resolved');
+
+    const record = storedEntity(path, written).metadata.delayedResolution;
+    assert.equal(record.outcome, 'resolved');
+    assert.equal(record.endedBy, 'William');
+    assert.equal(record.endNote, 'completed');
+    assert.ok(!Number.isNaN(Date.parse(record.endedAt)));
+    assert.equal(record.reason, 'waits on review', 'the record was not kept');
+
+    const all = await manager.listDelayedResolutions({ includeEnded: true });
+    assert.equal(all.length, 1);
+    assert.equal(all[0].outcome, 'resolved');
+    assert.equal(all[0].status, 'completed');
+    assert.equal(all[0].owed, false);
+  });
+
+  test('a completer not named is recorded as mark_action_complete', async () => {
+    const { path, manager } = fresh();
+    const { telescoped } = await seed(manager);
+    await manager.delayResolution(telescoped, { resolveBy: inDays(4), reason: 'r', chosenBy: 'mia' });
+    await manager.markActionStepComplete(telescoped);
+    const record = storedEntity(path, telescoped).metadata.delayedResolution;
+    assert.equal(record.outcome, 'resolved');
+    assert.equal(record.endedBy, 'mark_action_complete');
+  });
+
+  test('mark_action_complete takes completedBy and says the delay was resolved', async () => {
+    const { manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, { resolveBy: inDays(4), reason: 'r', chosenBy: 'mia' });
+    const result = await handleToolCall(
+      'mark_action_complete',
+      { actionStepName: written, completedBy: 'mia' },
+      manager,
+    );
+    assert.ok(!result.isError);
+    assert.match(result.content[0].text, /ended as resolved, by mia/);
+    assert.doesNotMatch(result.content[0].text, /Ignored unrecognised/);
+  });
+
+  test('a step with no open delay is completed without writing a record', async () => {
+    const { path, manager } = fresh();
+    const { written, telescoped } = await seed(manager);
+
+    const plain = await manager.markActionStepComplete(written, 'mia');
+    assert.equal(plain.endedDelay, undefined);
+    assert.equal(storedEntity(path, written).metadata.delayedResolution, undefined);
+
+    await manager.delayResolution(telescoped, { resolveBy: inDays(4), reason: 'r', chosenBy: 'mia' });
+    await manager.endDelayedResolution(telescoped, { endedBy: 'William', outcome: 'released' });
+    await manager.markActionStepComplete(telescoped, 'mia');
+    const record = storedEntity(path, telescoped).metadata.delayedResolution;
+    assert.equal(record.outcome, 'released', 'an ended delay was rewritten by completion');
+    assert.equal(record.endedBy, 'William');
+  });
+
+  test('end_delayed_resolution does not accept resolved', async () => {
+    const { manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, { resolveBy: inDays(4), reason: 'r', chosenBy: 'mia' });
+
+    await assert.rejects(
+      manager.endDelayedResolution(written, { endedBy: 'mia', outcome: 'resolved' }),
+      /written only when the step is completed/,
+    );
+    const result = await handleToolCall(
+      'end_delayed_resolution',
+      { actionStepName: written, endedBy: 'mia', outcome: 'resolved' },
+      manager,
+    );
+    assert.equal(result.isError, true);
+    assert.match(result.content[0].text, /outcome must be one of: rehydrated, released/);
+  });
+
+  test('coaia narrative complete --by resolves the delay', async () => {
+    const { path } = fresh();
+    const { written } = await seed(new KnowledgeGraphManager(path));
+    const run = (...args) => execFileSync('node', [CLI, '-M', path, ...args], { encoding: 'utf8' });
+
+    run('narrative', 'delay', written, '--resolve-by', inDays(6), '--reason', 'r', '--chosen-by', 'mia');
+    run('narrative', 'complete', written, '--by', 'William');
+
+    const listed = JSON.parse(run('--json', 'narrative', 'delayed', '--all'));
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].outcome, 'resolved');
+    assert.equal(listed[0].endedBy, 'William');
+    assert.equal(listed[0].endNote, 'completed');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
 describe('surfaces', () => {
   test('the three tools are defined and grouped with the chart tools', () => {
     const names = ALL_TOOL_DEFINITIONS.map(t => t.name);
