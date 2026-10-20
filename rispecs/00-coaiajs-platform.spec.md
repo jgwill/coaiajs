@@ -79,7 +79,7 @@ Environment variables → `.env` file → `coaia.json` → defaults. Deep merge 
 
 | Module | Inherited tools | Target tools |
 |--------|----------------|--------------|
-| narrative-engine | 27 (coaia-narrative) | 28 |
+| narrative-engine | 27 (coaia-narrative) | 35 on 0.6.1, including the three delay tools (spec 11) |
 | pde-engine | 12 (coaia-pde) | 12 |
 | planning-engine | 5 (coaia-planning) | 6 |
 | redis | 0 (new) | 5 |

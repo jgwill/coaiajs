@@ -20,6 +20,8 @@ A KnowledgeGraphManager that provides full CRUD for entities and relations store
 - Types are shared through [`src/types.ts`](../src/types.ts) and re-exported through [`src/narrative/types.ts`](../src/narrative/types.ts).
 - [`mcp/server.ts`](../mcp/server.ts) now routes narrative tools to `handleToolCall()` with a `KnowledgeGraphManager`.
 - `coaia narrative list` smoke-tested successfully against an empty memory file.
+- [`delayed-resolution.ts`](../src/narrative/delayed-resolution.ts) (0.6.0, 0.6.1) holds the pure half of delayed resolution: a step's derived status, days remaining, owed, and the resume command. The graph manager writes the records. Specified in [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md) (Episode 297, `miadi-chronicle://297`).
+- The narrative surface counts 35 MCP tools on 0.6.1 (`tool-definitions.ts`): 19 STC, 3 narrative beat, 3 Wampum Belt, 9 knowledge graph, and `init_llm_guidance`.
 
 **Desired Outcome:**
 Narrative engine in `src/narrative/` that:
@@ -28,7 +30,7 @@ Narrative engine in `src/narrative/` that:
 - Manages the full STC lifecycle
 - Supports narrative beats with dramatic typing and multi-universe perspectives
 - Enables MMOT evaluation with Elements of Performance
-- Exposes 28 MCP tools (27 from coaia-narrative + 1 new)
+- Exposes 35 MCP tools, carried forward from coaia-narrative 0.16.2 and grown on their own since (the delay tools of 0.6.0)
 
 ## Core Class: KnowledgeGraphManager
 
@@ -74,13 +76,15 @@ readGraph(): Promise<KnowledgeGraph>
 CREATE → TELESCOPE → ADVANCE → COMPLETE
 ```
 
-**Create:** Desired outcome + current reality + optional action steps → chart entity + related entities + auto-distributed due dates. Validates creative orientation (no problem-solving language) and delayed resolution (no "ready to begin" in current reality).
+**Create:** Desired outcome + current reality + optional action steps → chart entity + related entities + auto-distributed due dates. Validates creative orientation (no problem-solving language) and refuses readiness language in current reality ("ready to", "prepared to", "all set", "ready for", "set to"), which would resolve the tension early by assumption. This older sense of "delayed resolution" (holding the tension) is distinct from the recorded delay on a step below.
 
 **Telescope:** Break an action step into a sub-chart with its own desired outcome, current reality, and action steps. Inherits due date constraints from parent.
 
 **Advance:** Mark action step complete → completion flows into parent current reality as fact. Update progress without completion via progress observations.
 
 **Complete:** All action steps done → chart marked complete. Phase transitions: germination → assimilation → completion.
+
+**Delay (0.6.0):** A step not yet completed can carry a recorded choice to delay its resolution until `resolveBy`, which becomes its due date. Its derived status reads `delayed` until the delay is ended (rehydrated or released) or the step is completed (`resolved`). `completionStatus` stays the stored truth. See [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md).
 
 ### STC Tools
 
@@ -89,14 +93,22 @@ CREATE → TELESCOPE → ADVANCE → COMPLETE
 | `create_structural_tension_chart` | Create master chart |
 | `list_active_charts` | Overview all charts with progress |
 | `get_chart` | Full chart details |
-| `get_chart_progress` | Progress metrics and next action |
+| `get_chart_progress` | Progress metrics, next action, `delayedActions` and `owedActions` |
 | `manage_action_step` | Add or telescope action steps (unified) |
-| `mark_action_complete` | Complete an action, flow to parent reality |
+| `add_action_step` | Deprecated in favour of `manage_action_step`; still registered |
+| `telescope_action_step` | Break a step into a sub-chart |
+| `mark_action_complete` | Complete an action, flow to parent reality; ends an open delay as `resolved` (optional `completedBy`) |
 | `update_action_progress` | Track progress without completion |
 | `update_current_reality` | Add observations to current reality |
 | `update_desired_outcome` | Modify chart goal |
-| `get_action_step` | Get telescoped action step details |
+| `update_chart_due_date` | Move a chart's due date with its desired outcome; optionally redistribute open steps |
+| `get_action_step` | A written step as itself plus any chart it grew into, or a telescoped step as its chart (written steps answered "not found" before 0.6.0) |
 | `remove_action_step` | Delete action step from chart |
+| `delay_resolution` | Record a strategic choice to delay a step's resolution (0.6.0) |
+| `list_delayed_resolutions` | Delayed steps by `resolveBy`, with days remaining and owed (0.6.0) |
+| `end_delayed_resolution` | End a delay as `rehydrated` (returns the resume command) or `released` (0.6.0) |
+| `link_chart_to_github_issue` | Record the `owner/repo#number` a chart was written from |
+| `perform_mmot_evaluation` | MMOT (listed below) |
 
 ### Narrative Beat System
 
@@ -112,6 +124,10 @@ Narrative beats document story progression within a structural tension chart. Ea
 | `create_narrative_beat` | Create dramatic beat within chart |
 | `telescope_narrative_beat` | Break beat into sub-beats |
 | `list_narrative_beats` | List beats for a chart |
+
+### Wampum Belt
+
+`create_wampum_belt`, `add_wampum_bead`, `read_wampum_belt`: sequencing parallel to linear narrative beats, carried from coaia-narrative.
 
 ### MMOT Evaluation
 
@@ -172,12 +188,13 @@ dates[i] = startDate + (stepInterval * i)
 - `coaia-narrative/rispecs/storage_knowledge_graph.spec.md` — JSONL format specification
 - `coaia-narrative/rispecs/mmot_evaluation_loop.spec.md` — MMOT phases
 - `coaia-narrative/rispecs/narrative_beat_creation.spec.md` — beat system
-- `coaia-narrative/rispecs/mcp_api_specification.spec.md` — tool schemas (28 tools)
+- `coaia-narrative/rispecs/mcp_api_specification.spec.md` — tool schemas (28 tools at the time it was written)
+- [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md) — the recorded delay on a step, its session, listing and ending
 
 ## Quality Criteria
 
 - ✅ JSONL output is byte-compatible with coaia-narrative output
-- ✅ All 27 coaia-narrative MCP tools produce identical results
+- ✅ The 27 original coaia-narrative MCP tools produce identical results (the tools added since, including the delay tools, are coaiajs's own port and may differ in detail: see spec 11)
 - ✅ Graph loads correctly from existing coaia-narrative JSONL files
 - ✅ Creative orientation validation matches coaia-narrative behavior exactly
 - ✅ STC lifecycle (create → telescope → advance → complete) is complete

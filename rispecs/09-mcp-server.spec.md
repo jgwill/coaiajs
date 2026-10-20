@@ -15,7 +15,7 @@ A single MCP server (`coaiajs-mcp`) that consolidates the 44 tools from coaia-na
 - [`mcp/tools/coaiapy-tools.ts`](../mcp/tools/coaiapy-tools.ts) defines coaiapy-compatible Redis and Langfuse tool schemas.
 - [`mcp/resources.ts`](../mcp/resources.ts) implements `coaia://templates/` resources backed by the pipeline template loader.
 - [`mcp/prompts.ts`](../mcp/prompts.ts) implements the three coaiapy-mcp prompt templates.
-- `npx coaiajs-mcp` starts successfully from an installed package tarball and reports `STANDARD: 64 tools, 3 prompts, 3 resources`.
+- `npx coaiajs-mcp` starts successfully from an installed package tarball. The server built from 0.6.1 (`dist/mcp/server.js`, measured 2026-10-20 with `tools/list` after `initialize`) reports `coaiajs-mcp v0.6.1 started (STANDARD: 70 tools, 3 prompts, 3 resources)`, and 72 tools at FULL. The count grew from the first measured 64 as tools were carried from coaia-narrative 0.16.2 and the three delay tools arrived in 0.6.0 (see spec 04).
 - Remaining gap: several desired package-native tool groups (audio and pipeline execution tools) are not exposed as standalone MCP tools yet; pipeline templates are currently exposed as resources.
 
 **Desired Outcome:**
@@ -70,9 +70,13 @@ await server.connect(transport);
 
 ## Tool Registry
 
-### Narrative Engine (28 tools — always loaded)
+### Narrative Engine (35 tools — STANDARD+)
 
-STC: `create_structural_tension_chart`, `list_active_charts`, `get_chart`, `get_chart_progress`, `manage_action_step`, `mark_action_complete`, `update_action_progress`, `update_current_reality`, `update_desired_outcome`, `get_action_step`, `remove_action_step`
+STC: `create_structural_tension_chart`, `list_active_charts`, `get_chart`, `get_chart_progress`, `manage_action_step`, `add_action_step` (deprecated), `telescope_action_step`, `mark_action_complete`, `update_action_progress`, `update_current_reality`, `update_desired_outcome`, `update_chart_due_date`, `get_action_step`, `remove_action_step`, `link_chart_to_github_issue`
+
+Delayed resolution (0.6.0, Episode 297, `miadi-chronicle://297`): `delay_resolution`, `list_delayed_resolutions`, `end_delayed_resolution`. Specified in [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md).
+
+Wampum Belt: `create_wampum_belt`, `add_wampum_bead`, `read_wampum_belt`
 
 Knowledge Graph: `create_entities`, `create_relations`, `add_observations`, `search_nodes`, `open_nodes`, `read_graph`, `delete_entities`, `delete_relations`, `delete_observations`
 

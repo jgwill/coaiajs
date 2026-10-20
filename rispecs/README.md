@@ -39,6 +39,7 @@ These specs use the RISE Framework at `/src/llms/llms-rise-framework.txt` as the
 | 04 | [narrative-engine](./04-narrative-engine.spec.md) | JSONL knowledge graph, STC, beats, MMOT | coaia-narrative `graph-manager.ts` |
 | 05 | [pde-engine](./05-pde-engine.spec.md) | PDE→STC transformation, session management | coaia-pde `stc-mapper.ts` |
 | 06 | [planning-engine](./06-planning-engine.spec.md) | Plan parsing, plan↔STC sync | coaia-planning `plan-parser.ts` |
+| 11 | [delayed-resolution](./11-delayed-resolution.spec.md) | A step's chosen delay, its session to rehydrate, listing and ending | Episode 297 design, shared with coaia-narrative and the medicine wheel |
 
 ### Support Modules
 
@@ -52,7 +53,7 @@ These specs use the RISE Framework at `/src/llms/llms-rise-framework.txt` as the
 | # | Spec | Scope | Lineage |
 |---|------|-------|---------|
 | 08 | [cli-interface](./08-cli-interface.spec.md) | Unified `coaia` CLI with all subcommands | coaiapy argparse + coaia-narrative minimist |
-| 09 | [mcp-server](./09-mcp-server.spec.md) | Unified MCP server with 64+ tools | 4 separate MCP servers |
+| 09 | [mcp-server](./09-mcp-server.spec.md) | Unified MCP server (70 tools at STANDARD, 72 at FULL, on 0.6.1) | 4 separate MCP servers |
 
 ## How Specs Relate
 
@@ -97,6 +98,7 @@ These specs use the RISE Framework at `/src/llms/llms-rise-framework.txt` as the
 | 08 CLI | [`src/cli.ts`](../src/cli.ts), [`package.json`](../package.json) `bin.coaia` |
 | 09 MCP | [`mcp/server.ts`](../mcp/server.ts), [`mcp/config.ts`](../mcp/config.ts), [`mcp/prompts.ts`](../mcp/prompts.ts) |
 | 10 audio | [`src/audio.ts`](../src/audio.ts), [`src/llm.ts`](../src/llm.ts) |
+| 11 delayed resolution | [`src/narrative/delayed-resolution.ts`](../src/narrative/delayed-resolution.ts), [`src/narrative/graph-manager.ts`](../src/narrative/graph-manager.ts) |
 
 ## Conventions
 

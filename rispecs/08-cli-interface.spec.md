@@ -26,7 +26,7 @@ coaia fuse [traces|trace|prompts|scores|datasets]
 coaia pipeline [list|render|execute] <template>
 coaia transcribe <audio-file>
 coaia gh [issues|issue|comments]
-coaia narrative [charts|chart|progress|export]
+coaia narrative [list|view|current|update|add-action|add-obs|complete|export|export-all|stats|progress|mmot|set-date|delay|delayed|end-delay|link-issue]
 coaia pde [import|list|sessions|show]
 coaia plan [parse|convert|sync-to-chart|sync-to-plan]
 ```
@@ -85,11 +85,34 @@ coaia fuse sessions view <id>                            # Session reconstructed
 Langfuse v4 removes legacy session entities and immutable observation updates, so the CLI does not expose session creation/add-node or trace patch-output commands.
 
 ### Narrative Commands
+
+`coaia narrative` (alias `coaia n`). On 0.6.1, `list`, `view`, `complete`, `set-date`, `link-issue`, `delay`, `delayed` and `end-delay` honour the global `-M, --memory-path <path>`. `update`, `add-action`, `add-obs`, `export`, `export-all`, `stats`, `progress` and `mmot` do not yet: they open `COAIAJS_MEMORY_PATH` or `coaia-memory.jsonl` (their helpers in `src/narrative/index.ts` call `managerFrom()` without the options). The desired outcome is that every narrative command honours `-M`.
+
 ```
-coaia narrative charts                  # List all active charts
-coaia narrative chart <id>              # Show chart details
-coaia narrative progress <id>           # Show chart progress
-coaia narrative export <id> [--format md|json]  # Export chart
+coaia narrative list                    # List active charts
+coaia narrative view <chartId>          # Show chart details
+coaia narrative current [chartId]       # Show or set the current chart
+coaia narrative update <chartId> [--desired-outcome <text>] [--current-reality <text>]
+coaia narrative add-action <chartId> --title <text> [--current-reality <text>] [--due <ISO>]
+coaia narrative add-obs <chartId> [text...]
+coaia narrative complete <actionName> [--by <who>]   # a delayed step has its delay ended as resolved
+coaia narrative export <chartId> [--output <path>]
+coaia narrative export-all [--output <dir>]
+coaia narrative stats
+coaia narrative progress <chartId>
+coaia narrative mmot <chartId> [--assessment <text>] [--direction South|East|West|North]
+coaia narrative set-date <chartId> <ISO> [-r, --redistribute]
+coaia narrative link-issue <chartId> <owner/repo#number>
+```
+
+Delayed resolution (0.6.0, Episode 297, `miadi-chronicle://297`; specified in [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md)):
+
+```
+coaia narrative delay <actionStepName> --resolve-by <ISO> --reason <text> --chosen-by <who>
+    [--primary-choice <text>] [--wake-on <cue>]... [--session-id <id> --agent <name> --host <host>
+    --cwd <dir> --tmux <target> --resume-command <cmd> --inventory-record <path>]
+coaia narrative delayed [--within <days>] [--all]
+coaia narrative end-delay <actionStepName> --by <who> --outcome rehydrated|released [--note <text>]
 ```
 
 ### PDE Commands
