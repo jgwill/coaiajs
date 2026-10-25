@@ -162,7 +162,7 @@ A step is named the way the package's other step tools name it: a written step (
 
 ## Out of scope
 
-- The clock that steers a session before `resolveBy`. Who runs it is undecided (Episode 297, resolve-by 2026-10-27).
+- The clock that opens the follow-up circle shortly before `resolveBy`. William named it on 2026-10-22 (Episode 297, screenwalk 2610221013, 27:43): tide-runtime, in jgwill/Miadi `runtime/tide-runtime`, built by a T1 lane. It reads `followUpPrompt.address`. coaiajs does not run it.
 - Writing these fields from the session inventory, which owns its own records.
 
 ## Quality Criteria
