@@ -1,10 +1,10 @@
 # 11 — Delayed Resolution
 
-> An action step records that someone strategically chose to delay its resolution, until when, why, for what, and which agent session to rehydrate when the delay ends.
+> An action step records that someone strategically chose to delay its resolution, until when, why, for what, the follow-up prompt composed when the delay was chosen, and which agent session to rehydrate when the delay ends.
 
-**Status:** 0.7.0. `coaiajs` 0.6.0 (`880b7a7`) brought the record, the three operations, the CLI and the derived status; 0.6.1 (`8565dee`) made completion end a delay as `resolved`, and a consumer installing 0.6.1 from npm ran delay, list and end with exit 0 (Episode 297 `validation/coaiajs/output-261019.txt`). 0.7.0 adds the session's `trace` and `rehydrateWith` (design addition of 2026-10-20, Episode 297 `c06b57cd`) and makes every narrative command honour `-M`; 123 of 123 tests on the release commit. Its consumer run, against `@miadi/llmops` 0.1.0, is kept as Episode 297 `validation/coaiajs/output-261020.txt`.
+**Status:** 0.8.0. 0.8.0 adds the follow-up prompt (`followUpPrompt`, Episode 297 design section "The follow-up prompt", added 2026-10-25 from the feedback map's V1 and V2): a delay names the prompt composed when it was chosen, and a delay that names one can end as `rehydrated` without a session, because what is rehydrated is that prompt, "potentially with the session" (William). 134 of 134 tests on the release commit; its consumer run is kept as Episode 297 `validation/coaiajs/output-261025.txt`. Earlier: `coaiajs` 0.6.0 (`880b7a7`) brought the record, the three operations, the CLI and the derived status; 0.6.1 (`8565dee`) made completion end a delay as `resolved`, and a consumer installing 0.6.1 from npm ran delay, list and end with exit 0 (Episode 297 `validation/coaiajs/output-261019.txt`). 0.7.0 adds the session's `trace` and `rehydrateWith` (design addition of 2026-10-20, Episode 297 `c06b57cd`) and makes every narrative command honour `-M`; 123 of 123 tests on the release commit. Its consumer run, against `@miadi/llmops` 0.1.0, is kept as Episode 297 `validation/coaiajs/output-261020.txt`.
 **Origin:** Miadi Chronicle Episode 297 (`miadi-chronicle://297`), design `2026-07-24-episode-297-mino-bimaadizi-daa-stc-bot-ceremony/delayed-resolution-design-261019.md`, shared with `coaia-narrative` and the medicine wheel. coaiajs carries its own port and depends on neither.
-**Lineage:** coaia-narrative's `delayed-resolution` (0.24.0, 0.24.1) is the sibling implementation; the two were built the same night from the same design.
+**Lineage:** coaia-narrative's `delayed-resolution` (0.24.0, 0.24.1) is the sibling implementation; the two were built the same night from the same design. coaia-narrative 0.26.0 carries the same follow-up prompt fields; coaiajs 0.8.0 implements them on its own, sharing only the design.
 
 ## Desired Outcome
 
@@ -12,8 +12,9 @@ A person or an agent holding a structural tension chart in coaiajs can:
 
 1. choose to delay a step's resolution until a date, saying why and what the delay serves, with the agent session that holds the work;
 2. list every delayed step by that date, with the days remaining and which are now owed;
-3. end a delay by rehydrating its session (and receive the command that resumes it) or by releasing the step;
-4. see a delay end as `resolved` when the step is completed.
+3. name, when choosing the delay, the follow-up prompt a talking circle takes up at the date;
+4. end a delay by rehydrating it (and receive the follow-up prompt and, when a session is recorded, the command that resumes it) or by releasing the step;
+5. see a delay end as `resolved` when the step is completed.
 
 Fritz, course lesson `LAA-w04-22bc-Delay_Resolution`: "Part of the maturation process is to learn how to delay resolution in favor of longer-term goals." The delay "is a secondary choice to our primary choice". William, 2026-10-19: "It's not just there is a due date... there is a due date and we chose to delay resolution."
 
@@ -27,6 +28,7 @@ Fritz, course lesson `LAA-w04-22bc-Delay_Resolution`: "Part of the maturation pr
 - The MCP server exposes the three tools at every feature level that loads narrative tools (STANDARD: 70 tools, FULL: 72, measured on the server built from 0.6.1 with `tools/list`).
 - The CLI carries `coaia narrative delay`, `delayed`, `end-delay`, and `complete --by`.
 - From 0.7.0 a session carries `trace` and `rehydrateWith`, the two addresses `@miadi/llmops` 0.1.0 prints (jgwill/Miadi#829), and ending a delay as `rehydrated` hands them back beside `resumeCommand`.
+- From 0.8.0 a delay carries `followUpPrompt`, named by an address beginning with `miadi-`. Ending as `rehydrated` returns it beside `resumeCommand`, and needs a follow-up prompt or a session, no longer a session alone.
 
 **Desired Outcome:** every surface of the package (library, MCP, CLI, markdown export) says the same thing about the same delayed step, and the record is kept whole after it ends.
 
@@ -44,6 +46,13 @@ interface AgentSessionRef {
   rehydrateWith?: string;     // 0.7.0: the pinned prompt version that rehydrates it, begins with "miadi-"
 }
 
+interface FollowUpPrompt {     // 0.8.0
+  address: string;            // required, begins with "miadi-", e.g. miadi-prompt:ceremony/<name>@<v>; stored as given
+  text?: string;              // the prompt's text as composed, so a circle can read it without the provider
+  composedAt: string;         // ISO, set by the tool to the delay's chosenAt; a caller's value is ignored
+  composedBy?: string;        // the person or seat that composed it (an agent may propose it)
+}
+
 type DelayedResolutionOutcome = 'rehydrated' | 'released' | 'resolved';
 
 interface DelayedResolution {
@@ -54,6 +63,7 @@ interface DelayedResolution {
   primaryChoice?: string;     // defaults to the chart's desired outcome, copied when chosen
   wakeOn?: string[];          // event cues, in words
   session?: AgentSessionRef;
+  followUpPrompt?: FollowUpPrompt;   // 0.8.0
   endedAt?: string; endedBy?: string;
   outcome?: DelayedResolutionOutcome;
   endNote?: string;
@@ -71,35 +81,37 @@ A step is named the way the package's other step tools name it: a written step (
 ## Rules
 
 1. Choosing a delay sets the step's `dueDate` to `resolveBy`. For a telescoped step, the step's desired outcome and its chart carry the date together; a written step that grew a child chart carries that chart along.
-2. A completed step is refused. `resolveBy` must parse as a date and lie in the future. `reason` and `chosenBy` are required. A `session` must carry a `sessionId`. A session's `trace` and `rehydrateWith`, when given, must each be a string beginning with `miadi-` (case-sensitive; an empty string is refused) and are stored exactly as given. The chart does not resolve them: that is `@miadi/llmops`' work.
-3. Delaying a step that already carries a record, open or ended, moves that record to `delayedResolutionHistory` and writes the new one.
+2. A completed step is refused. `resolveBy` must parse as a date and lie in the future. `reason` and `chosenBy` are required. A `session` must carry a `sessionId`. A session's `trace` and `rehydrateWith`, when given, must each be a string beginning with `miadi-` (case-sensitive; an empty string is refused) and are stored exactly as given. The chart does not resolve them: that is `@miadi/llmops`' work. A `followUpPrompt`, when given, must be an object whose `address` is a string beginning with `miadi-` (same rule); its `text` and `composedBy`, when given, must be strings. An empty `text` or `composedBy` is left out.
+3. Delaying a step that already carries a record, open or ended, moves that record, with its follow-up prompt, to `delayedResolutionHistory` and writes the new one.
 4. Ending keeps the record with `endedAt`, `endedBy`, `outcome` and an optional `endNote`. `completionStatus` is never changed by a delay, so the step reads as it did before.
 4b. Completing a delayed step (`markActionStepComplete(name, completedBy?)`, `mark_action_complete` with `completedBy`, `coaia narrative complete --by`) ends its open delay with `outcome: "resolved"`, `endedBy` = the completer or `"mark_action_complete"`, `endNote: "completed"`. A delay already ended is not rewritten.
 5. The derived status: `completed` when `completionStatus` is true (it wins over an open delay), else `delayed` while a delay is open, else `pending`.
 6. Owed: an open delay whose `resolveBy` is at or before now. An ended delay is never owed.
-7. Free-text arguments (`reason`, `primaryChoice`, `wakeOn`, `endNote`) are refused when they carry unparsed call syntax, as in the package's other writing operations.
+7. Free-text arguments (`reason`, `primaryChoice`, `wakeOn`, `endNote`, `followUpPrompt.text`, `followUpPrompt.composedBy`) are refused when they carry unparsed call syntax, as in the package's other writing operations.
 
 ## Operations
 
 | library | MCP tool | CLI | input | result |
 |---|---|---|---|---|
-| `delayResolution(name, opts)` | `delay_resolution` | `coaia narrative delay <name> --resolve-by --reason --chosen-by [--primary-choice] [--wake-on]... [--session-id --agent --host --cwd --tmux --resume-command --inventory-record --trace --rehydrate-with]` | `actionStepName`, `resolveBy`, `reason`, `chosenBy`, optional `primaryChoice`, `wakeOn[]`, `session` | the listing entry of the new delay; `historyCount` says how many earlier records were kept |
+| `delayResolution(name, opts)` | `delay_resolution` | `coaia narrative delay <name> --resolve-by --reason --chosen-by [--primary-choice] [--wake-on]... [--session-id --agent --host --cwd --tmux --resume-command --inventory-record --trace --rehydrate-with] [--follow-up-prompt <address> [--follow-up-text] [--follow-up-by]]` | `actionStepName`, `resolveBy`, `reason`, `chosenBy`, optional `primaryChoice`, `wakeOn[]`, `session`, `followUpPrompt` | the listing entry of the new delay; `historyCount` says how many earlier records were kept |
 | `listDelayedResolutions(opts)` | `list_delayed_resolutions` | `coaia narrative delayed [--within <days>] [--all]` | optional `dueWithinDays` (≥ 0), `includeEnded` | entries sorted by `resolveBy`, soonest first |
-| `endDelayedResolution(name, opts)` | `end_delayed_resolution` | `coaia narrative end-delay <name> --by <who> --outcome <rehydrated\|released> [--note]` | `actionStepName`, `endedBy`, `outcome`, optional `endNote` | the closed entry; when rehydrated, `resumeCommand`, `trace` and `rehydrateWith`, each when known |
+| `endDelayedResolution(name, opts)` | `end_delayed_resolution` | `coaia narrative end-delay <name> --by <who> --outcome <rehydrated\|released> [--note]` | `actionStepName`, `endedBy`, `outcome`, optional `endNote` | the closed entry, carrying the record's `followUpPrompt`; when rehydrated, `resumeCommand`, `trace` and `rehydrateWith`, each when known |
 
 - A listing entry is the record plus `actionStepName`, `title`, `chartId` (the chart the step advances), `telescopedChartId` (for a telescoped step), `status`, `dueDate`, `daysRemaining`, `owed`, `historyCount`.
 - `daysRemaining` is whole days to `resolveBy`, rounded up, never `-0`: 0 within the last day, negative once owed.
 - Without `includeEnded`, only steps whose derived status is `delayed` are listed. With it, steps whose latest record has ended (or whose step was completed while the delay stood) appear too. Records in history are not listed.
 - `dueWithinDays: N` keeps entries resolving at or before now + N days, owed ones included.
-- `end_delayed_resolution` accepts only `rehydrated` and `released`; `resolved` is refused with a message naming `mark_action_complete`. `rehydrated` is refused when the record has no session.
+- `end_delayed_resolution` accepts only `rehydrated` and `released`; `resolved` is refused with a message naming `mark_action_complete`. `rehydrated` is refused when the record has neither a follow-up prompt nor a session (before 0.8.0: when it had no session).
 - `resumeCommand`: the stored one; for a `claude` session without one, `claude --resume <sessionId>`, prefixed by `cd <cwd> && ` when `cwd` is known; for any other agent, none is guessed.
 - When a delay ends as `rehydrated`, the entry carries `trace` and `rehydrateWith` at its top level, copied from the session, each only when the session holds it. `released` returns neither; the record keeps them either way. `delayed` shows them under the session line, and `end-delay` prints them after the resume command.
+- The follow-up prompt (0.8.0) is part of the record, so every entry carries it at its top level as `followUpPrompt`, beside `resumeCommand` when the delay ends as `rehydrated`. `delayed` and `list_delayed_resolutions` show its address (`Follow-up prompt: <address> (composed by <who>)`). `end-delay --outcome rehydrated` prints the address and the text before the resume command; `released` prints neither and keeps the prompt on the record. A delay with a follow-up prompt and no session ends as `rehydrated` with no `resumeCommand`.
+- `--follow-up-text` and `--follow-up-by` without `--follow-up-prompt` are refused (exit 1).
 - `delay`, `delayed`, `end-delay` and `complete` honour the global `-M, --memory-path` (`complete` from 0.6.1; it opened the default store before). From 0.7.0 every narrative command that opens a store does (spec 08).
-- The pure helpers are exported from `coaiajs/narrative`: `deriveActionStepStatus`, `openDelay`, `isOwed`, `daysUntil`, `resumeCommandFor`, `formatDelayedResolutionList`, `formatDelayChosen`, `formatDelayEnded`, `DELAYED_RESOLUTION_OUTCOMES`, `COMPLETION_ENDED_BY_DEFAULT`, `MIADI_ADDRESS_PREFIX` (0.7.0).
+- The pure helpers are exported from `coaiajs/narrative`: `deriveActionStepStatus`, `openDelay`, `isOwed`, `daysUntil`, `resumeCommandFor`, `describeFollowUpPrompt` (0.8.0), `formatDelayedResolutionList`, `formatDelayChosen`, `formatDelayEnded`, `DELAYED_RESOLUTION_OUTCOMES`, `COMPLETION_ENDED_BY_DEFAULT`, `MIADI_ADDRESS_PREFIX` (0.7.0).
 
 ## Where the status shows
 
-`get_action_step`, `get_chart`, `get_chart_progress` (adds `delayedActions` and `owedActions`), `list_active_charts` and the markdown export report the derived status and, for an open delay, "delayed until <date> (in N days | due today | owed by N days)". Listing marks: ✅ completed, ⏸️ delayed, ⏰ owed, 🎯 pending. `nextAction` in `get_chart_progress` is the incomplete step due earliest, delayed ones included (the medicine wheel skips them).
+`get_action_step`, `get_chart`, `get_chart_progress` (adds `delayedActions` and `owedActions`), `list_active_charts` and the markdown export report the derived status and, for an open delay, "delayed until <date> (in N days | due today | owed by N days)". From 0.8.0 the markdown export adds the follow-up prompt's address beside each open delay it shows (`Follow-up prompt: <address>`). Listing marks: ✅ completed, ⏸️ delayed, ⏰ owed, 🎯 pending. `nextAction` in `get_chart_progress` is the incomplete step due earliest, delayed ones included (the medicine wheel skips them).
 
 `get_action_step` reads a written step as itself plus any chart it grew into, and a telescoped step as its chart. Before 0.6.0 it answered "not found" for every written step, because nothing in this package writes `telescopes_into`.
 
@@ -127,6 +139,17 @@ A step is named the way the package's other step tools name it: a written step (
 **Achieved Outcome**: The session comes back with the trace that recorded it and the prompt version that restarts it, both exactly as `@miadi/llmops` printed them.
 **Supporting Features**: `AgentSessionRef.trace`, `AgentSessionRef.rehydrateWith`, `MIADI_ADDRESS_PREFIX`, `formatDelayEnded`.
 
+**Creative Advancement Scenario**: A circle takes up the follow-up prompt at the date (0.8.0)
+
+**User Intent**: When William sets a step aside, he wants the prompt that will open the follow-up conversation composed now, so that at the date a talking circle starts from it, with or without the session that held the work.
+**Current Reality**: A seat (or William) has composed the follow-up prompt and pinned it under an address such as `miadi-prompt:ceremony/<name>@<v>`.
+**Natural Progression Steps**:
+  1. `coaia narrative delay <step> --resolve-by <date> --reason "..." --chosen-by william --follow-up-prompt miadi-prompt:ceremony/<name>@<v> --follow-up-text "..." --follow-up-by mia` records the delay and the prompt, composed at the moment the delay was chosen.
+  2. `coaia narrative delayed` shows `Follow-up prompt: <address> (composed by mia)` on the delay.
+  3. At the date, `coaia narrative end-delay <step> --by william --outcome rehydrated` prints the prompt's address and text, and the resume command when a session was recorded.
+**Achieved Outcome**: The circle starts from the prompt composed when the delay was chosen. It may resume the session or open a new context.
+**Supporting Features**: `FollowUpPrompt`, `delayResolution({ followUpPrompt })`, `formatDelayEnded`, `describeFollowUpPrompt`.
+
 **Creative Advancement Scenario**: A delayed step is completed before its date
 
 **User Intent**: Work that was set aside gets done another way, earlier.
@@ -150,7 +173,8 @@ A step is named the way the package's other step tools name it: a written step (
 - ✅ Completing a delayed step ends its delay as `resolved`
 - ✅ Library, MCP, CLI and markdown export report the same derived status
 - ✅ A session's `trace` and `rehydrateWith` are refused unless they begin with `miadi-`, stored as given, and returned when rehydrated
-- ✅ `test/delayed-resolution.test.mjs` covers the three operations, rule 4b and the session's LLMOps fields (31 tests)
+- ✅ A follow-up prompt's address is refused unless it begins with `miadi-`, stored as given, kept in history, listed, and returned when rehydrated; a delay with only a follow-up prompt ends as `rehydrated`, and one with neither is refused
+- ✅ `test/delayed-resolution.test.mjs` covers the three operations, rule 4b, the session's LLMOps fields and the follow-up prompt (41 tests)
 
 ## Implementation Links
 

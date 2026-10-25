@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
+import { Command, type Option, type ParseOptions } from 'commander';
 import chalk from 'chalk';
 import { readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -1280,6 +1280,9 @@ function registerNarrativeCommands(program: Command): void {
     .option('--inventory-record <path>', "Path of the session's record in the session inventory")
     .option('--trace <addr>', "The session's LLMOps trace, e.g. miadi-tracing:ceremony/session/<id> (must begin with miadi-)")
     .option('--rehydrate-with <addr>', 'The pinned prompt version that rehydrates the session, e.g. miadi-tracing:ceremony/prompt/miadiRun-<name>@<N> (must begin with miadi-)')
+    .option('--follow-up-prompt <address>', 'The follow-up prompt composed now, taken up at the date, e.g. miadi-prompt:ceremony/<name>@<v> (must begin with miadi-)')
+    .option('--follow-up-text <text>', "The follow-up prompt's text as composed (needs --follow-up-prompt)")
+    .option('--follow-up-by <who>', 'Who composed the follow-up prompt (needs --follow-up-prompt)')
     .action(actionHandler(async (actionStepName: string, opts: Record<string, string | string[] | undefined>, cmd: Command) => {
       const session = {
         sessionId: opts['sessionId'] as string | undefined,
@@ -1300,6 +1303,13 @@ function registerNarrativeCommands(program: Command): void {
         primaryChoice: opts['primaryChoice'],
         wakeOn: opts['wakeOn'],
         session: Object.values(session).some(Boolean) ? session : undefined,
+        followUpPrompt: [opts['followUpPrompt'], opts['followUpText'], opts['followUpBy']].some(v => v !== undefined)
+          ? {
+              address: opts['followUpPrompt'] as string | undefined,
+              text: opts['followUpText'] as string | undefined,
+              composedBy: opts['followUpBy'] as string | undefined,
+            }
+          : undefined,
       });
       if (globals(cmd).json) output(result, cmd);
       else console.log(await callModule('narrative', 'formatDelayChosen', result));
@@ -1322,7 +1332,7 @@ function registerNarrativeCommands(program: Command): void {
 
   narr
     .command('end-delay')
-    .description("End a step's delay: rehydrate its agent session, or release the step")
+    .description("End a step's delay: rehydrate its follow-up prompt, potentially with its agent session, or release the step")
     .argument('<actionStepName>', 'The delayed step')
     .requiredOption('--by <who>', 'The person or seat ending the delay')
     .requiredOption('--outcome <outcome>', 'rehydrated | released')
@@ -1446,6 +1456,32 @@ function registerPlanCommands(program: Command): void {
 // ---------------------------------------------------------------------------
 
 /**
+ * The command a line of user arguments reaches: subcommand names are followed from the
+ * root, options (and the values they take) are stepped over, and the walk stops at the
+ * first operand that names no subcommand.
+ */
+function commandReached(program: Command, args: readonly string[]): Command {
+  let cmd = program;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--') break;
+    if (arg.startsWith('-')) {
+      const flag = arg.split('=')[0];
+      let option: Option | undefined;
+      for (let c: Command | null = cmd; c && !option; c = c.parent) {
+        option = c.options.find(o => o.long === flag || o.short === flag);
+      }
+      if (option && (option.required || option.optional) && !arg.includes('=')) i++;
+      continue;
+    }
+    const sub = cmd.commands.find(c => c.name() === arg || c.aliases().includes(arg));
+    if (!sub) break;
+    cmd = sub;
+  }
+  return cmd;
+}
+
+/**
  * Assemble the full command tree without running it.
  *
  * Exported so the packaged skill can render its CLI map from the real program rather
@@ -1487,6 +1523,21 @@ export function buildProgram(): Command {
   program.hook('postAction', async () => {
     try { await redisDisconnect(); } catch { /* client may not have been initialized */ }
   });
+
+  // A subcommand's own --version (`fuse prompts get --version <n>`, `fuse traces create
+  // --version <v>`) takes precedence over the root's. Commander reads root options
+  // anywhere on the line, so the root printed the package version and exited instead.
+  const rootVersion = program.options.find(o => o.long === '--version');
+  const parseAsync = program.parseAsync.bind(program);
+  program.parseAsync = ((argv?: readonly string[], parseOptions?: ParseOptions) => {
+    const userArgs = parseOptions?.from === 'user' ? argv ?? [] : (argv ?? process.argv).slice(2);
+    const reached = commandReached(program, userArgs);
+    if (rootVersion && reached !== program && reached.options.some(o => o.long === '--version')) {
+      const options = program.options as Option[];
+      options.splice(options.indexOf(rootVersion), 1);
+    }
+    return parseAsync(argv, parseOptions);
+  }) as typeof program.parseAsync;
 
   return program;
 }

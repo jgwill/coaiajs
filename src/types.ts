@@ -240,6 +240,23 @@ export interface AgentSessionRef {
 }
 
 /**
+ * The follow-up prompt composed when a delay was chosen (0.8.0). At the date, a
+ * talking circle takes it up: what is rehydrated is this prompt, "potentially with
+ * the session" (William, 2026-10-22). The chart names it by its address and does
+ * not resolve it.
+ */
+export interface FollowUpPrompt {
+  /** Must begin with `miadi-`, e.g. `miadi-prompt:ceremony/<name>@<v>`; stored as given. */
+  address: string;
+  /** The prompt's text as composed, so a circle can read it without the provider. */
+  text?: string;
+  /** Set by the tool to the delay's `chosenAt`; a caller's value is ignored. */
+  composedAt: string;
+  /** The person or seat that composed it (an agent may propose it). */
+  composedBy?: string;
+}
+
+/**
  * How a delay ended: its session was resumed (`rehydrated`), the step was let go of
  * its delay (`released`), or the step was completed while delayed (`resolved`,
  * written only by completion, never by end_delayed_resolution).
@@ -260,6 +277,8 @@ export interface DelayedResolution {
   /** Event cues, in words. */
   wakeOn?: string[];
   session?: AgentSessionRef;
+  /** The follow-up prompt composed when the delay was chosen (0.8.0). */
+  followUpPrompt?: FollowUpPrompt;
   endedAt?: string;
   endedBy?: string;
   outcome?: DelayedResolutionOutcome;

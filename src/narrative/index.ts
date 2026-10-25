@@ -80,6 +80,7 @@ export {
   isOwed,
   daysUntil,
   resumeCommandFor,
+  describeFollowUpPrompt,
   formatDelayedResolutionList,
   formatDelayChosen,
   formatDelayEnded,
@@ -98,6 +99,7 @@ export type {
   AgentSessionRef,
   DelayedResolution,
   DelayedResolutionOutcome,
+  FollowUpPrompt,
 } from './types.js';
 
 import { writeFileSync } from 'node:fs';
@@ -299,11 +301,17 @@ export async function delayAction(
     primaryChoice?: string;
     wakeOn?: string[];
     session?: Partial<AgentSessionRef>;
+    /** 0.8.0: `--follow-up-prompt`, `--follow-up-text`, `--follow-up-by`. */
+    followUpPrompt?: { address?: string; text?: string; composedBy?: string };
   } & CliGlobals,
 ): Promise<DelayedResolutionEntry> {
   if (!opts.resolveBy) throw new Error('--resolve-by is required');
   if (!opts.reason) throw new Error('--reason is required');
   if (!opts.chosenBy) throw new Error('--chosen-by is required');
+  const followUp = opts.followUpPrompt;
+  if (followUp && followUp.address === undefined && (followUp.text !== undefined || followUp.composedBy !== undefined)) {
+    throw new Error('--follow-up-prompt <address> is required when --follow-up-text or --follow-up-by is given');
+  }
   const session = opts.session?.sessionId
     ? (opts.session as Partial<AgentSessionRef> & { sessionId: string })
     : undefined;
@@ -317,6 +325,10 @@ export async function delayAction(
     primaryChoice: opts.primaryChoice,
     wakeOn: opts.wakeOn,
     session,
+    followUpPrompt:
+      followUp?.address !== undefined
+        ? { address: followUp.address, text: followUp.text, composedBy: followUp.composedBy }
+        : undefined,
   });
 }
 

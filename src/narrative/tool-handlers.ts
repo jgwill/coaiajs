@@ -425,6 +425,14 @@ export async function handleToolCall(
             rehydrateWith: { type: 'string' },
           },
         },
+        followUpPrompt: {
+          type: 'object',
+          properties: {
+            address: ValidationSchemas.nonEmptyString(),
+            text: { type: 'string' },
+            composedBy: { type: 'string' },
+          },
+        },
       });
       if (!valResult.valid) return { content: [{ type: 'text', text: `Error: ${valResult.error}` }], isError: true };
       try {
@@ -435,6 +443,9 @@ export async function handleToolCall(
           primaryChoice: toolArgs.primaryChoice as string | undefined,
           wakeOn: toolArgs.wakeOn as string[] | undefined,
           session: toolArgs.session as (Partial<AgentSessionRef> & { sessionId: string }) | undefined,
+          followUpPrompt: toolArgs.followUpPrompt as
+            | { address: string; text?: string; composedBy?: string }
+            | undefined,
         });
         return noteIgnored(
           { content: [{ type: 'text', text: `${formatDelayChosen(entry)}\n\n${JSON.stringify(entry, null, 2)}` }] },

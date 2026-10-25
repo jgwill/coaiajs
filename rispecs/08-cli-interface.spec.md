@@ -77,10 +77,12 @@ coaia env unset <key>                   # Remove env var
 coaia fuse traces list [--from ISO --to ISO --cursor X]  # V4 traces reconstructed from observations
 coaia fuse traces trace-view <id>                        # V4 observation tree
 coaia fuse traces create --name X [--input JSON --output JSON] # OTEL root observation
-coaia fuse prompts get <name> [--md]                     # Markdown by default
+coaia fuse prompts get <name> [--version <n>] [--label <l>] [--md]  # Markdown by default
 coaia fuse scores list [--trace-id X --cursor X]         # Scores API v3
 coaia fuse sessions view <id>                            # Session reconstructed by sessionId
 ```
+
+A subcommand's own `--version` takes precedence over the root's `-V, --version` (0.8.0): `fuse prompts get <name> --version <n>` asks Langfuse for that prompt version, and `fuse traces create --version <v>` sets the trace version. Before 0.8.0 commander read the root option anywhere on the line, so both printed the package version and exited (found 2026-10-22). `buildProgram()` finds the command the arguments reach and, when that command declares `--version`, leaves the flag to it; `coaia --version` and `coaia -V` still print the package version.
 
 Langfuse v4 removes legacy session entities and immutable observation updates, so the CLI does not expose session creation/add-node or trace patch-output commands.
 
@@ -105,18 +107,21 @@ coaia narrative set-date <chartId> <ISO> [-r, --redistribute]
 coaia narrative link-issue <chartId> <owner/repo#number>
 ```
 
-Delayed resolution (0.6.0, Episode 297, `miadi-chronicle://297`; `--trace` and `--rehydrate-with` from 0.7.0; specified in [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md)):
+Delayed resolution (0.6.0, Episode 297, `miadi-chronicle://297`; `--trace` and `--rehydrate-with` from 0.7.0; `--follow-up-prompt`, `--follow-up-text`, `--follow-up-by` from 0.8.0; specified in [`11-delayed-resolution.spec.md`](./11-delayed-resolution.spec.md)):
 
 ```
 coaia narrative delay <actionStepName> --resolve-by <ISO> --reason <text> --chosen-by <who>
     [--primary-choice <text>] [--wake-on <cue>]... [--session-id <id> --agent <name> --host <host>
     --cwd <dir> --tmux <target> --resume-command <cmd> --inventory-record <path>
     --trace <miadi-addr> --rehydrate-with <miadi-addr>]
+    [--follow-up-prompt <miadi-addr> [--follow-up-text <text>] [--follow-up-by <who>]]
 coaia narrative delayed [--within <days>] [--all]
 coaia narrative end-delay <actionStepName> --by <who> --outcome rehydrated|released [--note <text>]
 ```
 
 `--trace` is the session's LLMOps record and `--rehydrate-with` the pinned prompt version that rehydrates it, as `@miadi/llmops rehydrate` prints them (e.g. `miadi-tracing:ceremony/session/<id>`, `miadi-tracing:ceremony/prompt/miadiRun-<name>@<N>`). Each needs `--session-id` and must begin with `miadi-`; the CLI exits 1 otherwise. `delayed` shows them under the session line (`Trace:`, `Rehydrate with:`), and `end-delay --outcome rehydrated` prints them after the resume command (`--json` returns `resumeCommand`, `trace`, `rehydrateWith` at the top level).
+
+`--follow-up-prompt` (0.8.0) names the follow-up prompt composed when the delay is chosen, by an address beginning with `miadi-` (e.g. `miadi-prompt:ceremony/<name>@<v>`), stored as given; `--follow-up-text` is its text and `--follow-up-by` who composed it. Either of those two without `--follow-up-prompt`, or an address not beginning with `miadi-`, exits 1. The record's `followUpPrompt.composedAt` is the delay's `chosenAt`. `delayed` shows `Follow-up prompt: <address> (composed by <who>)`. `end-delay --outcome rehydrated` prints the address and text before the resume command, and `--json` returns `followUpPrompt` at the top level beside `resumeCommand`. A delay with a follow-up prompt and no session can end as `rehydrated`; one with neither is refused.
 
 ### PDE Commands
 ```

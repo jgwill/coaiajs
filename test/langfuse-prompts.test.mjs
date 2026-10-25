@@ -85,3 +85,44 @@ test('prompt get help exposes explicit Markdown output option', () => {
 
   assert.match(help, /--md\s+Markdown output \(default\)/);
 });
+
+// Found 2026-10-22: commander reads root options anywhere on the line, so the root's
+// --version swallowed `fuse prompts get <name> --version <n>` and printed the package
+// version. A subcommand's own --version now takes precedence.
+test('prompt get --version <n> asks for that prompt version; the root --version still prints the package', async () => {
+  const cli = fileURLToPath(new URL('../dist/src/cli.js', import.meta.url));
+  const { buildProgram } = await import('../dist/src/cli.js');
+  const { getPackageVersion } = await import('../dist/src/version.js');
+
+  for (const flag of ['--version', '-V']) {
+    assert.equal(execFileSync(process.execPath, [cli, flag], { encoding: 'utf8' }).trim(), getPackageVersion());
+  }
+
+  const originalFetch = globalThis.fetch;
+  const originalLog = console.log;
+  const requestedUrls = [];
+  const printed = [];
+  globalThis.fetch = async (url) => {
+    requestedUrls.push(new URL(String(url)));
+    return new Response(JSON.stringify({ name: 'prompt/name', version: 3, type: 'text', prompt: 'found' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+  console.log = (...args) => printed.push(args.join(' '));
+  try {
+    resetClient();
+    await buildProgram().parseAsync(['fuse', 'prompts', 'get', 'prompt/name', '--version', '3'], { from: 'user' });
+  } finally {
+    globalThis.fetch = originalFetch;
+    console.log = originalLog;
+    resetClient();
+  }
+
+  assert.deepEqual(
+    requestedUrls.map((url) => `${url.pathname}${url.search}`),
+    ['/api/public/v2/prompts/prompt%2Fname?version=3'],
+  );
+  assert.ok(!printed.includes(getPackageVersion()), 'the package version was printed instead');
+  assert.match(printed.join('\n'), /^# prompt\/name \(v3\)$/m);
+});

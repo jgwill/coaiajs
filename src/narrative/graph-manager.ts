@@ -1254,6 +1254,8 @@ export class KnowledgeGraphManager {
       primaryChoice?: string;
       wakeOn?: string[];
       session?: Partial<AgentSessionRef> & { sessionId: string };
+      /** 0.8.0: the follow-up prompt composed now. `composedAt` is set to `chosenAt`. */
+      followUpPrompt?: { address: string; text?: string; composedBy?: string; composedAt?: string };
       now?: Date;
     },
   ): Promise<DelayedResolutionEntry> {
@@ -1297,9 +1299,28 @@ export class KnowledgeGraphManager {
         }
       }
     }
+    const followUp = options.followUpPrompt;
+    if (followUp !== undefined) {
+      if (typeof followUp !== 'object' || followUp === null || Array.isArray(followUp)) {
+        throw new Error('followUpPrompt must be an object with an address.');
+      }
+      if (typeof followUp.address !== 'string' || !followUp.address.startsWith(MIADI_ADDRESS_PREFIX)) {
+        throw new Error(
+          `followUpPrompt.address must be an address beginning with '${MIADI_ADDRESS_PREFIX}' ` +
+            `(got ${JSON.stringify(followUp.address)}), e.g. miadi-prompt:ceremony/<name>@<v>.`,
+        );
+      }
+      for (const field of ['text', 'composedBy'] as const) {
+        if (followUp[field] !== undefined && typeof followUp[field] !== 'string') {
+          throw new Error(`followUpPrompt.${field} must be a string (got ${typeof followUp[field]}).`);
+        }
+      }
+    }
     assertNoUnparsedCallSyntax(options.reason, 'reason');
     assertNoUnparsedCallSyntax(options.primaryChoice, 'primaryChoice');
     assertNoUnparsedCallSyntax(options.wakeOn, 'wakeOn');
+    assertNoUnparsedCallSyntax(followUp?.text, 'followUpPrompt.text');
+    assertNoUnparsedCallSyntax(followUp?.composedBy, 'followUpPrompt.composedBy');
 
     const graph = await this.loadGraph();
     const step = this.findStep(graph, actionStepName);
@@ -1346,6 +1367,17 @@ export class KnowledgeGraphManager {
       ...(primaryChoice ? { primaryChoice } : {}),
       ...(options.wakeOn && options.wakeOn.length > 0 ? { wakeOn: [...options.wakeOn] } : {}),
       ...(session ? { session } : {}),
+      // The prompt is composed when the delay is chosen: its composedAt is chosenAt.
+      ...(followUp
+        ? {
+            followUpPrompt: {
+              address: followUp.address,
+              ...(followUp.text ? { text: followUp.text } : {}),
+              composedAt: timestamp,
+              ...(followUp.composedBy ? { composedBy: followUp.composedBy } : {}),
+            },
+          }
+        : {}),
     };
 
     step.metadata = step.metadata || {};
@@ -1412,7 +1444,8 @@ export class KnowledgeGraphManager {
    *
    * The record is kept, with `endedAt`, `endedBy`, `outcome` and an optional
    * `endNote`, and the step reads as it did before the delay. `rehydrated` needs a
-   * session on the record, and returns the command that resumes it.
+   * follow-up prompt or a session on the record: what is rehydrated is the prompt,
+   * potentially with the session, and the command that resumes the session is returned.
    */
   async endDelayedResolution(
     actionStepName: string,
@@ -1448,10 +1481,10 @@ export class KnowledgeGraphManager {
     }
 
     const resumeCommand = resumeCommandFor(record.session);
-    if (options.outcome === 'rehydrated' && !record.session) {
+    if (options.outcome === 'rehydrated' && !record.session && !record.followUpPrompt) {
       throw new Error(
-        `The delay on ${step.name} records no agent session, so there is nothing to rehydrate. ` +
-          `End it as 'released', or delay it again with a session.`,
+        `The delay on ${step.name} records neither a follow-up prompt nor an agent session, so there is nothing to rehydrate. ` +
+          `End it as 'released', or delay it again with a follow-up prompt or a session.`,
       );
     }
 
@@ -1466,8 +1499,9 @@ export class KnowledgeGraphManager {
 
     const entry = this.delayEntry(graph, step, record, now);
     if (options.outcome !== 'rehydrated') return entry;
-    // Rehydrating hands back what resumes the session: its command, its LLMOps trace,
-    // and the prompt version that rehydrates it, each only when the record holds it.
+    // Rehydrating hands back the follow-up prompt (already on the entry, from the
+    // record) and what resumes the session: its command, its LLMOps trace, and the
+    // prompt version that rehydrates it, each only when the record holds it.
     const trace = record.session?.trace;
     const rehydrateWith = record.session?.rehydrateWith;
     return {

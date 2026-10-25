@@ -372,14 +372,16 @@ describe('end a delay', () => {
     );
   });
 
-  test('rehydrated is refused when no session was recorded', async () => {
+  test('rehydrated is refused when neither a session nor a follow-up prompt was recorded', async () => {
     const { manager } = fresh();
     const { written } = await seed(manager);
     await manager.delayResolution(written, { resolveBy: inDays(3), reason: 'r', chosenBy: 'mia' });
     await assert.rejects(
       manager.endDelayedResolution(written, { endedBy: 'mia', outcome: 'rehydrated' }),
-      /nothing to rehydrate/,
+      /records neither a follow-up prompt nor an agent session, so there is nothing to rehydrate/,
     );
+    const [still] = await manager.listDelayedResolutions();
+    assert.equal(still.endedAt, undefined, 'a refused end closed the delay');
   });
 });
 
@@ -769,5 +771,230 @@ describe('a session carries its trace and the prompt that rehydrates it', () => 
     assert.equal(ended.resumeCommand, `cd ${SESSION.cwd} && claude --resume ${SESSION.sessionId}`);
     assert.equal(ended.trace, TRACE);
     assert.equal(ended.rehydrateWith, REHYDRATE_WITH);
+  });
+});
+
+// 0.8.0: a delay names the follow-up prompt composed when it was chosen (Episode 297,
+// feedback map V1, V2). At the date a talking circle takes it up: what is rehydrated is
+// that prompt, "potentially with the session" (William). The chart stores its address
+// as given and does not resolve it.
+const FOLLOW_UP = {
+  address: 'miadi-prompt:ceremony/ep297-follow-up-delay@2',
+  text: 'Where does the delayed step stand now?\nWhat did the sibling lineage land?',
+  composedBy: 'mia',
+};
+
+describe('a delay names its follow-up prompt', () => {
+  test('stored as given, composedAt set to chosenAt, a caller value ignored; listed and rendered', async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    const entry = await manager.delayResolution(written, {
+      resolveBy: inDays(6),
+      reason: 'a circle takes it up at the date',
+      chosenBy: 'william',
+      followUpPrompt: { ...FOLLOW_UP, composedAt: '2001-01-01T00:00:00.000Z' },
+    });
+    assert.deepEqual(entry.followUpPrompt, {
+      address: FOLLOW_UP.address,
+      text: FOLLOW_UP.text,
+      composedAt: entry.chosenAt,
+      composedBy: 'mia',
+    });
+
+    const stored = storedEntity(path, written).metadata.delayedResolution;
+    assert.equal(stored.followUpPrompt.address, FOLLOW_UP.address, 'the address was not stored as given');
+    assert.equal(stored.followUpPrompt.composedAt, stored.chosenAt, "composedAt is not the delay's chosenAt");
+
+    const [listed] = await manager.listDelayedResolutions();
+    assert.equal(listed.followUpPrompt.address, FOLLOW_UP.address);
+    const listing = await handleToolCall('list_delayed_resolutions', {}, manager);
+    assert.match(listing.content[0].text, new RegExp(`Follow-up prompt: ${FOLLOW_UP.address} \\(composed by mia\\)`));
+  });
+
+  test('address alone is enough; text and composedBy are left out when not given', async () => {
+    const { manager } = fresh();
+    const { written } = await seed(manager);
+    const entry = await manager.delayResolution(written, {
+      resolveBy: inDays(6),
+      reason: 'r',
+      chosenBy: 'mia',
+      followUpPrompt: { address: FOLLOW_UP.address },
+    });
+    assert.deepEqual(Object.keys(entry.followUpPrompt), ['address', 'composedAt']);
+  });
+
+  test("an address not beginning with 'miadi-' is refused, and the store is left as it was", async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    const before = readFileSync(path, 'utf8');
+    for (const followUpPrompt of [
+      { address: 'prompt:ceremony/x@1' },
+      { address: '' },
+      { address: 'Miadi-prompt:ceremony/x@1' },
+      { address: 42 },
+      { text: 'no address' },
+    ]) {
+      await assert.rejects(
+        manager.delayResolution(written, { resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt }),
+        /followUpPrompt\.address must be an address beginning with 'miadi-'/,
+        `${JSON.stringify(followUpPrompt)} was accepted`,
+      );
+    }
+    await assert.rejects(
+      manager.delayResolution(written, {
+        resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt: 'miadi-prompt:ceremony/x@1',
+      }),
+      /followUpPrompt must be an object/,
+    );
+    await assert.rejects(
+      manager.delayResolution(written, {
+        resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt: { address: FOLLOW_UP.address, text: 7 },
+      }),
+      /followUpPrompt\.text must be a string/,
+    );
+    assert.equal(readFileSync(path, 'utf8'), before, 'a refused delay wrote to the store');
+  });
+
+  test('a re-delay moves the open record, with its follow-up prompt, into history', async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, {
+      resolveBy: inDays(3), reason: 'first', chosenBy: 'mia', followUpPrompt: FOLLOW_UP,
+    });
+    const second = { address: 'miadi-prompt:ceremony/ep297-follow-up-delay@3' };
+    const entry = await manager.delayResolution(written, {
+      resolveBy: inDays(9), reason: 'second', chosenBy: 'mia', followUpPrompt: second,
+    });
+    assert.equal(entry.historyCount, 1);
+    const meta = storedEntity(path, written).metadata;
+    assert.equal(meta.delayedResolutionHistory[0].followUpPrompt.address, FOLLOW_UP.address);
+    assert.equal(meta.delayedResolutionHistory[0].followUpPrompt.text, FOLLOW_UP.text);
+    assert.equal(meta.delayedResolution.followUpPrompt.address, second.address);
+  });
+
+  test('rehydrated returns the follow-up prompt beside resumeCommand', async () => {
+    const { manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, {
+      resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', session: SESSION, followUpPrompt: FOLLOW_UP,
+    });
+    const ended = await manager.endDelayedResolution(written, { endedBy: 'william', outcome: 'rehydrated' });
+    assert.equal(ended.resumeCommand, `cd ${SESSION.cwd} && claude --resume ${SESSION.sessionId}`);
+    assert.equal(ended.followUpPrompt.address, FOLLOW_UP.address);
+    assert.equal(ended.followUpPrompt.text, FOLLOW_UP.text);
+  });
+
+  test('a delay with a follow-up prompt and no session ends as rehydrated, with no resume command', async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, {
+      resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt: FOLLOW_UP,
+    });
+    const result = await handleToolCall(
+      'end_delayed_resolution',
+      { actionStepName: written, endedBy: 'william', outcome: 'rehydrated' },
+      manager,
+    );
+    assert.ok(!result.isError, result.content[0].text);
+    const text = result.content[0].text;
+    assert.match(text, /ended as rehydrated/);
+    assert.match(text, new RegExp(`Follow-up prompt: ${FOLLOW_UP.address}`));
+    assert.match(text, /^  Where does the delayed step stand now\?$/m, 'the prompt text was not printed');
+    assert.doesNotMatch(text, /Rehydrate with:/);
+    const json = JSON.parse(text.slice(text.indexOf('{')));
+    assert.equal(json.followUpPrompt.address, FOLLOW_UP.address);
+    assert.equal(json.resumeCommand, undefined);
+    assert.equal(storedEntity(path, written).metadata.delayedResolution.outcome, 'rehydrated');
+  });
+
+  test('released keeps the follow-up prompt on the record and does not print it as rehydrated', async () => {
+    const { path, manager } = fresh();
+    const { written } = await seed(manager);
+    await manager.delayResolution(written, {
+      resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt: FOLLOW_UP,
+    });
+    const result = await handleToolCall(
+      'end_delayed_resolution',
+      { actionStepName: written, endedBy: 'mia', outcome: 'released' },
+      manager,
+    );
+    assert.ok(!result.isError, result.content[0].text);
+    assert.doesNotMatch(result.content[0].text.split('\n\n')[0], /Follow-up prompt/);
+    assert.equal(storedEntity(path, written).metadata.delayedResolution.followUpPrompt.address, FOLLOW_UP.address);
+  });
+
+  test('the MCP delay_resolution schema declares it, and the tool accepts and refuses it', async () => {
+    const tool = ALL_TOOL_DEFINITIONS.find(t => t.name === 'delay_resolution');
+    const schema = tool.inputSchema.properties.followUpPrompt;
+    assert.equal(schema?.type, 'object', 'followUpPrompt is not in the delay_resolution schema');
+    assert.deepEqual(schema.required, ['address']);
+    assert.deepEqual(Object.keys(schema.properties).sort(), ['address', 'composedBy', 'text']);
+    assert.match(schema.properties.address.description, /miadi-/);
+
+    const { manager } = fresh();
+    const { written } = await seed(manager);
+    const refused = await handleToolCall(
+      'delay_resolution',
+      { actionStepName: written, resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt: { address: 'prompt/x@1' } },
+      manager,
+    );
+    assert.equal(refused.isError, true);
+    assert.match(refused.content[0].text, /followUpPrompt\.address must be an address beginning with 'miadi-'/);
+
+    const delayed = await handleToolCall(
+      'delay_resolution',
+      { actionStepName: written, resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt: FOLLOW_UP },
+      manager,
+    );
+    assert.ok(!delayed.isError, delayed.content[0].text);
+    assert.doesNotMatch(delayed.content[0].text, /ignored/i);
+    assert.match(delayed.content[0].text, new RegExp(`Follow-up prompt: ${FOLLOW_UP.address}`));
+  });
+
+  test('the markdown export shows the address wherever it shows the delay', async () => {
+    const { manager } = fresh();
+    const { chartId, written, telescoped, telescopedChartId } = await seed(manager);
+    await manager.delayResolution(written, {
+      resolveBy: inDays(4), reason: 'r', chosenBy: 'mia', followUpPrompt: FOLLOW_UP,
+    });
+    await manager.delayResolution(telescoped, {
+      resolveBy: inDays(5), reason: 'r', chosenBy: 'mia', followUpPrompt: { address: 'miadi-prompt:ceremony/telescoped@1' },
+    });
+    assert.match(await exportChartToMarkdown(chartId, manager), new RegExp(`\\*\\*Follow-up prompt\\*\\*: ${FOLLOW_UP.address}`));
+    assert.match(await exportChartToMarkdown(telescopedChartId, manager), /\*\*Follow-up prompt\*\*: miadi-prompt:ceremony\/telescoped@1/);
+    assert.match(await exportChartProgress(chartId, manager), new RegExp(`Follow-up prompt: ${FOLLOW_UP.address}`));
+    assert.match(await exportAllChartsToMarkdown(manager), /Follow-up prompt: miadi-prompt:ceremony\/telescoped@1/);
+  });
+
+  test('the coaia CLI takes --follow-up-prompt, --follow-up-text and --follow-up-by; delayed and end-delay show it', async () => {
+    const { path } = fresh();
+    const { written } = await seed(new KnowledgeGraphManager(path));
+    const run = (...args) => execFileSync('node', [CLI, '-M', path, ...args], { encoding: 'utf8', stdio: 'pipe' });
+    const base = ['narrative', 'delay', written, '--resolve-by', inDays(5), '--reason', 'r', '--chosen-by', 'mia'];
+
+    for (const extra of [['--follow-up-text', 'orphan'], ['--follow-up-by', 'mia']]) {
+      assert.throws(
+        () => run(...base, ...extra),
+        e => e.status === 1 && /--follow-up-prompt <address> is required when --follow-up-text or --follow-up-by is given/.test(String(e.stderr)),
+        `${extra[0]} without --follow-up-prompt was accepted`,
+      );
+    }
+    assert.throws(
+      () => run(...base, '--follow-up-prompt', 'prompt:ceremony/x@1'),
+      e => e.status === 1 && /followUpPrompt\.address must be an address beginning with 'miadi-'/.test(String(e.stderr)),
+    );
+
+    run(...base, '--follow-up-prompt', FOLLOW_UP.address, '--follow-up-text', 'Where does it stand?', '--follow-up-by', 'mia');
+
+    assert.match(run('narrative', 'delayed'), new RegExp(`Follow-up prompt: ${FOLLOW_UP.address} \\(composed by mia\\)`));
+    const [listed] = JSON.parse(run('--json', 'narrative', 'delayed'));
+    assert.equal(listed.followUpPrompt.address, FOLLOW_UP.address);
+    assert.equal(listed.followUpPrompt.text, 'Where does it stand?');
+    assert.equal(listed.followUpPrompt.composedAt, listed.chosenAt);
+
+    const ended = JSON.parse(run('--json', 'narrative', 'end-delay', written, '--by', 'william', '--outcome', 'rehydrated'));
+    assert.equal(ended.outcome, 'rehydrated');
+    assert.equal(ended.followUpPrompt.address, FOLLOW_UP.address);
+    assert.equal(ended.resumeCommand, undefined);
   });
 });

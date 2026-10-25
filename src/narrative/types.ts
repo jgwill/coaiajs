@@ -33,4 +33,5 @@ export type {
   AgentSessionRef,
   DelayedResolution,
   DelayedResolutionOutcome,
+  FollowUpPrompt,
 } from '../types.js';

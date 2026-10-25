@@ -336,12 +336,20 @@ event cues (`wakeOn`) and the agent `session` to rehydrate. From 0.7.0 the sessi
 also takes `trace` and `rehydrateWith`, the addresses `@miadi/llmops rehydrate` prints
 (e.g. `miadi-tracing:ceremony/session/<id>`); each must begin with `miadi-`, is stored
 as given, and comes back beside the resume command when the delay ends as `rehydrated`.
+From 0.8.0 a delay also takes `followUpPrompt`, the follow-up prompt composed when the
+delay is chosen: `address` (required, must begin with `miadi-`, e.g.
+`miadi-prompt:ceremony/<name>@<v>`, stored as given), optional `text` and `composedBy`;
+`composedAt` is set to the delay's `chosenAt`. At the date a talking circle takes it up:
+what is rehydrated is that prompt, potentially with the session. A re-delay keeps it in
+history, `list_delayed_resolutions` shows its address, and ending as `rehydrated` returns
+it beside `resumeCommand`. A delay with a follow-up prompt and no session can end as
+`rehydrated`; one with neither is refused.
 The record lives in the
 step's `metadata.delayedResolution`; a re-delay moves the earlier one into
 `metadata.delayedResolutionHistory`. A completed step and a past `resolveBy` are refused.
 `list_delayed_resolutions` lists open delays soonest first with `daysRemaining` and
-`owed`; `end_delayed_resolution` ends one as `rehydrated` (returning the session's
-resume command) or `released`, keeping the record. Completing a delayed step
+`owed`; `end_delayed_resolution` ends one as `rehydrated` (returning the follow-up
+prompt and the session's resume command, each when recorded) or `released`, keeping the record. Completing a delayed step
 (`mark_action_complete`, optional `completedBy`) ends its delay as `resolved`, ended by
 the completer or `"mark_action_complete"`, noted `"completed"`; `end_delayed_resolution`
 does not accept `resolved`. `get_action_step`, `get_chart`,
@@ -423,7 +431,7 @@ Subcommands:
 
 - **`fuse`** — `traces`, `prompts`, `datasets`, `sessions`, `scores` (`sc`), `score-configs` (`scc`), `comments`, `media`, `dataset-items`, `projects`
 - **`skill`** — `show`, `install` (`--global`, `--yes`, `--force`), `check` (`--global`)
-- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`, `--by`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`, `--redistribute`), `delay` (`--resolve-by`, `--reason`, `--chosen-by`, `--wake-on`, `--session-id`…, `--trace`, `--rehydrate-with`), `delayed` (`--within`, `--all`), `end-delay` (`--by`, `--outcome`, `--note`), `link-issue`. Every narrative command that opens a store honours `-M, --memory-path` (from 0.7.0; `update`, `add-action`, `add-obs`, `export`, `export-all`, `stats`, `progress` and `mmot` ignored it before)
+- **`narrative`** — `list` (`ls`), `view` (`v`), `current` (`cur`), `update` (`up`), `add-action` (`aa`), `add-obs` (`ao`), `complete` (`done`, `--by`), `export` (`exp`), `export-all`, `stats` (`st`), `progress` (`pg`), `mmot`, `set-date` (`sd`, `--redistribute`), `delay` (`--resolve-by`, `--reason`, `--chosen-by`, `--wake-on`, `--session-id`…, `--trace`, `--rehydrate-with`, `--follow-up-prompt`, `--follow-up-text`, `--follow-up-by`), `delayed` (`--within`, `--all`), `end-delay` (`--by`, `--outcome`, `--note`), `link-issue`. Every narrative command that opens a store honours `-M, --memory-path` (from 0.7.0; `update`, `add-action`, `add-obs`, `export`, `export-all`, `stats`, `progress` and `mmot` ignored it before)
 - **`pde`** — `import <pdeId>`, `list`, `sessions`, `show <sessionId>`
 - **`plan`** — `parse <planPath>`, `convert <planPath>`, `sync-to-chart <planPath> <chartsPath>`, `sync-to-plan <chartsPath> <planPath>`
 - **`pipeline`** — `list`, `show <name>`, `create <name>`, `init <name>`

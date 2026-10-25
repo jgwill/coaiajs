@@ -71,6 +71,12 @@ function delayedLine(step: Entity | undefined): string | undefined {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** The follow-up prompt's address on a step's open delay, when it names one (0.8.0). */
+function followUpLine(step: Entity | undefined): string | undefined {
+  const prompt = openDelay(step)?.followUpPrompt;
+  return prompt ? `Follow-up prompt: ${prompt.address}` : undefined;
+}
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -127,6 +133,8 @@ export async function exportChartToMarkdown(
     const chartDelay = delayedLine(chartOutcome);
     if (chartDelay) {
       md += `> **Status**: ${chartDelay}\n`;
+      const followUp = openDelay(chartOutcome)?.followUpPrompt;
+      if (followUp) md += `> **Follow-up prompt**: ${escapeMarkdown(followUp.address)}\n`;
     }
     md += '\n';
   }
@@ -196,6 +204,9 @@ export async function exportChartToMarkdown(
       if (delayed) {
         const record = openDelay(step)!;
         md += `- **Delay chosen by**: ${escapeMarkdown(record.chosenBy)} — ${escapeMarkdown(record.reason)}\n`;
+        if (record.followUpPrompt) {
+          md += `- **Follow-up prompt**: ${escapeMarkdown(record.followUpPrompt.address)}\n`;
+        }
       }
       if (step.metadata?.dueDate) {
         md += `- **Due**: ${formatDateForMarkdown(step.metadata.dueDate)}\n`;
@@ -375,6 +386,8 @@ export async function exportAllCharts(
         md += `  - ID: ${actionChartId}\n`;
         if (delayed) {
           md += `  - ${delayed}\n`;
+          const followUp = followUpLine(actionOutcome);
+          if (followUp) md += `  - ${escapeMarkdown(followUp)}\n`;
         }
         if (actionChart.metadata?.dueDate) {
           md += `  - Due: ${formatDateForMarkdown(actionChart.metadata.dueDate)}\n`;
@@ -454,6 +467,8 @@ export async function exportChartProgress(
       const delayed = delayedLine(action);
       if (delayed) {
         md += `   - ${delayed}\n`;
+        const followUp = followUpLine(action);
+        if (followUp) md += `   - ${escapeMarkdown(followUp)}\n`;
       }
       if (action.metadata?.dueDate) {
         md += `   - Due: ${formatDateForMarkdown(action.metadata.dueDate)}\n`;

@@ -18,6 +18,7 @@ import type {
   DelayedResolution,
   DelayedResolutionOutcome,
   Entity,
+  FollowUpPrompt,
 } from '../types.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -41,6 +42,11 @@ export const COMPLETION_ENDED_BY_DEFAULT = 'mark_action_complete';
  */
 export const MIADI_ADDRESS_PREFIX = 'miadi-';
 
+/** "miadi-prompt:ceremony/x@2 (composed by mia)": how a listing names a follow-up prompt. */
+export function describeFollowUpPrompt(prompt: FollowUpPrompt): string {
+  return prompt.composedBy ? `${prompt.address} (composed by ${prompt.composedBy})` : prompt.address;
+}
+
 /** One delay as a listing shows it: the record, where it sits, and what the clock says. */
 export interface DelayedResolutionEntry extends DelayedResolution {
   actionStepName: string;
@@ -59,7 +65,11 @@ export interface DelayedResolutionEntry extends DelayedResolution {
   historyCount: number;
 }
 
-/** What ending a delay returns. */
+/**
+ * What ending a delay returns. The record's `followUpPrompt` (0.8.0) sits at the top
+ * level beside `resumeCommand`: when the outcome is `rehydrated`, that prompt is what
+ * is rehydrated, potentially with the session.
+ */
 export interface EndedDelayedResolution extends DelayedResolutionEntry {
   /** Present when the outcome is `rehydrated`: the command that resumes the session. */
   resumeCommand?: string;
@@ -170,6 +180,7 @@ function entryLines(entry: DelayedResolutionEntry): string[] {
     if (entry.session.trace) lines.push(`    Trace: ${entry.session.trace}`);
     if (entry.session.rehydrateWith) lines.push(`    Rehydrate with: ${entry.session.rehydrateWith}`);
   }
+  if (entry.followUpPrompt) lines.push(`    Follow-up prompt: ${describeFollowUpPrompt(entry.followUpPrompt)}`);
   return lines;
 }
 
@@ -197,6 +208,14 @@ export function formatDelayEnded(entry: EndedDelayedResolution): string {
   const lines = [
     `Delay on '${entry.actionStepName}' ended as ${entry.outcome}. The step's status is now ${entry.status}; the record is kept.`,
   ];
+  if (entry.outcome !== 'rehydrated') return lines.join('\n');
+  // What is rehydrated is the follow-up prompt, potentially with the session.
+  if (entry.followUpPrompt) {
+    lines.push('', `Follow-up prompt: ${describeFollowUpPrompt(entry.followUpPrompt)}`);
+    if (entry.followUpPrompt.text) {
+      lines.push(...entry.followUpPrompt.text.split('\n').map(line => `  ${line}`));
+    }
+  }
   if (entry.resumeCommand || entry.trace || entry.rehydrateWith) {
     lines.push('', `Rehydrate with:`);
     if (entry.resumeCommand) lines.push(`  ${entry.resumeCommand}`);
