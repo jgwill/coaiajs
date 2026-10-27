@@ -6,15 +6,15 @@ focuses on removing unwanted conditions. `coaiajs` biases toward creation.
 Ask: "What do you want to create?" Then define current reality in relation to that
 desired outcome.
 
-Structural tension is not a gap to bridge. It is the active disequilibrium created by
-holding desired outcome and current reality clearly at the same time.
+Structural tension is the active disequilibrium created by holding the desired outcome and
+current reality clearly at the same time. Fritz also calls it discrepancy. Action steps
+resolve it.
 
 Use this language:
 
 | Avoid | Prefer |
 |---|---|
-| bridge the gap | resolve the tension |
-| close the gap | advance toward the desired outcome |
+| treating the tension as a distance to cross or fill | resolve the tension, advance toward the desired outcome |
 | tasks to fix the problem | strategic secondary choices |
 | ready to begin | factual current reality |
 

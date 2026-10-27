@@ -20,7 +20,7 @@ A comprehensive Langfuse client covering traces, observations, prompts, datasets
 - The focused [`agents/custom_gpt/ceremony-observations.yml`](../agents/custom_gpt/ceremony-observations.yml) spec provides 23 GPT Actions for root-trace creation, nested observation append through OTLP/HTTP JSON, observations-first reads, and the ceremony's core prompt, dataset, score, comment, media, and project operations. Its companion instructions document Basic authorization, v4 ingestion headers, immutable-span rules, parent context, and the exact-byte media workflow using padded Base64 SHA-256 digests and a separate presigned PUT.
 - The deployable [`src/media-upload-proxy.ts`](../src/media-upload-proxy.ts) bridge and one-operation [`ceremony-media-proxy.yml`](../agents/custom_gpt/ceremony-media-proxy.yml) companion Action use OpenAI `openaiFileIdRefs` to transfer the actual conversation file, complete the Langfuse record/PUT/finalize flow, and return a renderable media token. Together the focused specs expose 24 non-consequential actions.
 - Types defined in [`src/types.ts`](../src/types.ts): `ScoreCategory`, `ScoreConfig`.
-- Remaining gap: not every Langfuse formatting and cache helper from `cofuse.py` has a TypeScript equivalent; the core trace/observation/prompt/dataset/score/comment/media path is present.
+- Not every Langfuse formatting and cache helper from `cofuse.py` has a TypeScript equivalent. The core trace/observation/prompt/dataset/score/comment/media path is present.
 
 **Desired Outcome:**
 TypeScript Langfuse client with:

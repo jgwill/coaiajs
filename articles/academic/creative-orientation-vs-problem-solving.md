@@ -44,7 +44,7 @@ The dominant paradigms in AI agent design are structurally problem-solving:
 
 **Reinforcement Learning:** An agent receives negative reward (penalty) for undesirable states and learns to avoid them. The reward signal is fundamentally reactive—it measures distance from problems, not proximity to creative vision. Reward shaping can approximate creative orientation, but the underlying structure remains problem-reactive.
 
-**Loss Minimization:** Neural networks are trained to minimize a loss function—the gap between predicted and target outputs. This is structurally identical to problem-solving: the "problem" (high loss) drives action, and as loss approaches zero, gradient magnitude diminishes.
+**Loss Minimization:** Neural networks are trained to minimize a loss function—the difference between predicted and target outputs. This is structurally identical to problem-solving: the "problem" (high loss) drives action, and as loss approaches zero, gradient magnitude diminishes.
 
 **Error Correction:** Agent architectures that detect errors and trigger correction routines (retry logic, fallback strategies, error handlers) are purely reactive—they activate only when problems occur.
 
@@ -117,7 +117,7 @@ The MMOT (Managerial Moment of Truth) cycle is inherently creative-orientation: 
 
 #### Energy Management
 
-Problem-solving agents need external triggers (error events, threshold violations) to activate. Creative-orientation agents generate their own energy through structural tension—the gap between vision and reality is an intrinsic motivator that doesn't require external events.
+Problem-solving agents need external triggers (error events, threshold violations) to activate. Creative-orientation agents generate their own energy through structural tension—the discrepancy between vision and reality is an intrinsic motivator that doesn't require external events.
 
 This has practical implications for agent scheduling: problem-solving agents need polling loops or event subscriptions; creative-orientation agents can self-schedule based on tension assessment.
 

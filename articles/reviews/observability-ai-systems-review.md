@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Observability for AI systems—particularly LLM-powered applications—has evolved rapidly from ad-hoc logging to structured tracing frameworks that capture the full lifecycle of model interactions. This literature review examines the current state of AI observability through four lenses: OpenTelemetry as the emerging standard for vendor-neutral instrumentation, Langfuse as the leading open-source LLM observability platform, LangSmith as the LangChain-native monitoring solution, and Weights & Biases (W&B Weave) as the experiment-tracking platform extending into production monitoring. We analyze the convergence on a trace/span/generation data model, evaluate each platform's approach to evaluation and scoring, and identify the gap that structural tension methodology fills: transforming observability from a problem-detection tool into a creative advancement instrument.
+Observability for AI systems—particularly LLM-powered applications—has evolved rapidly from ad-hoc logging to structured tracing frameworks that capture the full lifecycle of model interactions. This literature review examines the current state of AI observability through four lenses: OpenTelemetry as the emerging standard for vendor-neutral instrumentation, Langfuse as the leading open-source LLM observability platform, LangSmith as the LangChain-native monitoring solution, and Weights & Biases (W&B Weave) as the experiment-tracking platform extending into production monitoring. We analyze the convergence on a trace/span/generation data model, evaluate each platform's approach to evaluation and scoring, and identify what structural tension methodology contributes that none of them offers: transforming observability from a problem-detection tool into a creative advancement instrument.
 
 ## Introduction
 
@@ -134,11 +134,11 @@ The literature reveals several convergent trends:
 
 5. **Self-hosting demand.** Data sovereignty requirements are driving open-source and self-hostable solutions, with Langfuse leading this trend.
 
-### The Structural Tension Observability Gap
+### What Structural Tension Adds to Observability
 
-The literature reveals a gap in current observability thinking: all platforms treat observability as **problem-detection**—finding errors, identifying bottlenecks, detecting drift. None frame observability as **creative advancement**—measuring progress toward a desired quality standard while maintaining honest current reality assessment.
+The literature shows one framing absent from current observability thinking: all platforms treat observability as **problem-detection**—finding errors, identifying bottlenecks, detecting drift. None frame observability as **creative advancement**—measuring progress toward a desired quality standard while stating current reality as fact.
 
-This gap is precisely where structural tension methodology contributes. By mapping:
+Structural tension methodology contributes that framing. By mapping:
 - Traces → STC progressions (how is the agent advancing toward its creative goal?)
 - Scores → MMOT evaluations (honest assessment of output quality against Elements of Performance)
 - Reality updates → observation data (what does the observability data tell us about current reality?)
@@ -155,7 +155,7 @@ This gap is precisely where structural tension methodology contributes. By mappi
 
 ## Conclusion
 
-AI observability has matured rapidly from ad-hoc logging to structured, platform-supported monitoring with evaluation capabilities. The convergence on the trace/span/generation model, OpenTelemetry standardization, and active evaluation workflows provides a solid foundation. The remaining gap—transforming observability from problem-detection to creative advancement—is addressed by integrating structural tension methodology with the observability data model, a contribution that CoAiA.js implements through MMOT-as-score and creative-orientation dashboards.
+AI observability has matured rapidly from ad-hoc logging to structured, platform-supported monitoring with evaluation capabilities. The convergence on the trace/span/generation model, OpenTelemetry standardization, and active evaluation workflows provides a solid foundation. What remains—transforming observability from problem-detection to creative advancement—is addressed by integrating structural tension methodology with the observability data model, a contribution that CoAiA.js implements through MMOT-as-score and creative-orientation dashboards.
 
 ## References
 

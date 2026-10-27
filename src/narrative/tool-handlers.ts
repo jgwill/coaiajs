@@ -115,7 +115,7 @@ const LLM_GUIDANCE_FULL = `## 🚨 COAIA Memory — Structural Tension Methodolo
    - ❌ "Fix the bug" → ✅ "Achieve reliable error handling"
    - ❌ "Reduce latency" → ✅ "Deliver responsive user experience"
 
-2. **Structural Tension**: The gap between Desired Outcome and Current Reality creates productive tension that drives advancement.
+2. **Structural Tension**: The discrepancy between Desired Outcome and Current Reality is productive tension that drives advancement. Action steps resolve it.
 
 3. **Delayed Resolution**: "Tolerate discrepancy, tension, and delayed resolution" - Robert Fritz
    - Current Reality must be honest factual assessment

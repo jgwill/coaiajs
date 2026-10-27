@@ -86,7 +86,7 @@ The structural tension methodology provides a reframing of observability that al
 
 In CoAiA.js, this manifests as:
 - **Traces map to STC progressions.** Each agent session trace corresponds to progress along a structural tension chart.
-- **Scores map to MMOT evaluations.** Quality scores correspond to Managerial Moment of Truth assessments—honest acknowledgment of the gap between desired and actual output quality.
+- **Scores map to MMOT evaluations.** Quality scores correspond to Managerial Moment of Truth assessments—acknowledgment, stated as fact, of the discrepancy between desired and actual output quality.
 - **Reality updates derive from observation data.** The current reality of a structural tension chart is continuously updated based on observability data—trace durations, generation quality scores, cost metrics.
 
 ### Cost and Token Economics

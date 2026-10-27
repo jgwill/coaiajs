@@ -4,7 +4,7 @@
 
 ## Desired Outcome
 
-A PDE module that transforms `DecompositionResult` objects into coaia-narrative-compatible JSONL, creating Structural Tension Charts from decomposed prompts — bridging the gap between intent extraction (EAST direction) and strategic action planning (NORTH direction).
+A PDE module that transforms `DecompositionResult` objects into coaia-narrative-compatible JSONL, creating Structural Tension Charts from decomposed prompts — intent extraction (EAST direction) carried into strategic action planning (NORTH direction).
 
 ## Structural Tension
 
@@ -17,7 +17,7 @@ A PDE module that transforms `DecompositionResult` objects into coaia-narrative-
   - [`index.ts`](../src/pde/index.ts) exposes library and CLI helper functions.
 - PDE types are defined in [`src/types.ts`](../src/types.ts): `DecompositionResult`, `PrimaryIntent`, `SecondaryIntent`, `DirectionMap`, `ActionItem`, `AmbiguityFlag`, `StoredDecomposition`, `PdeSession`.
 - [`mcp/server.ts`](../mcp/server.ts) wires PDE tools and namespaces session-action tools that conflict with narrative names (`pde_add_action_step`, `pde_update_current_reality`, etc.).
-- Remaining gap: prompt decomposition itself (`pde_decompose`, `pde_parse_response`, `pde_get`, `pde_list`, `pde_export_markdown`) is not implemented inside `coaiajs`; `coaiajs` currently consumes stored/external PDE outputs and maps them to STC.
+- Prompt decomposition itself (`pde_decompose`, `pde_parse_response`, `pde_get`, `pde_list`, `pde_export_markdown`) is not implemented inside `coaiajs`. `coaiajs` consumes stored/external PDE outputs and maps them to STC.
 
 **Desired Outcome:**
 PDE engine in `src/pde/` that:
@@ -46,7 +46,7 @@ directions.west[]       → STC structural_tension (validation/reflection)
 directions.north[]      → STC action_steps (execution items)
 actionStack[]           → STC action_steps (ordered, with dependencies)
 secondary[].confidence  → STC action step priority weighting
-ambiguities[]           → STC current_reality gaps / tension sources
+ambiguities[]           → STC current_reality observations ("⚠️ Ambiguity: …")
 ```
 
 ## Core API

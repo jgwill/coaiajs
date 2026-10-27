@@ -10,7 +10,7 @@ Prompt engineering has evolved from simple instruction formatting to a sophistic
 
 The quality of LLM output is profoundly shaped by input construction. A well-structured prompt can transform a mediocre model into an effective problem-solver, while a poorly structured prompt can cause a capable model to miss critical requirements, hallucinate details, or produce superficially correct but substantively incomplete results [1][2].
 
-The prompt engineering community has responded with an expanding toolkit of strategies, each addressing different aspects of the prompting challenge. This review organizes these strategies into a taxonomy based on what they optimize, examines their empirical support, and identifies the gaps that remain.
+The prompt engineering community has responded with an expanding toolkit of strategies, each addressing different aspects of the prompting challenge. This review organizes these strategies into a taxonomy based on what they optimize, examines their empirical support, and names the questions that remain open.
 
 ## Review
 

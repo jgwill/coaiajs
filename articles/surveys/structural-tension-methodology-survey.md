@@ -4,11 +4,11 @@
 
 ## Abstract
 
-Structural tension—the creative gap between a desired outcome and current reality—has been a productive concept in organizational science since Robert Fritz introduced it in 1989. This survey traces the evolution of structural tension from its origins in Fritz's creative process methodology, through Peter Senge's integration into learning organization theory, to its contemporary application in computational systems and AI agent architectures. We examine three waves of structural tension research: (1) Fritz's foundational work on creative orientation and advancing vs. oscillating structures; (2) Senge's synthesis with systems thinking, mental models, and organizational learning; and (3) emerging computational implementations that encode structural tension as data structures driving autonomous agent behavior. The survey identifies key theoretical contributions, practical implementations, and open questions for the field, with particular attention to how structural tension provides a computational alternative to reward-based optimization in AI systems.
+Structural tension—the discrepancy between a desired outcome and current reality, which generates creative action—has been a productive concept in organizational science since Robert Fritz introduced it in 1989. This survey traces the evolution of structural tension from its origins in Fritz's creative process methodology, through Peter Senge's integration into learning organization theory, to its contemporary application in computational systems and AI agent architectures. We examine three waves of structural tension research: (1) Fritz's foundational work on creative orientation and advancing vs. oscillating structures; (2) Senge's synthesis with systems thinking, mental models, and organizational learning; and (3) emerging computational implementations that encode structural tension as data structures driving autonomous agent behavior. The survey identifies key theoretical contributions, practical implementations, and open questions for the field, with particular attention to how structural tension provides a computational alternative to reward-based optimization in AI systems.
 
 ## Introduction
 
-The concept of structural tension—tension between what is desired and what currently exists—appears across multiple intellectual traditions. In physics, potential energy stored in a stretched spring drives motion toward equilibrium. In psychology, cognitive dissonance theory describes the tension between conflicting beliefs. In organizational science, the gap between strategic vision and operational reality drives organizational change [1].
+The concept of structural tension—tension between what is desired and what currently exists—appears across multiple intellectual traditions. In physics, potential energy stored in a stretched spring drives motion toward equilibrium. In psychology, cognitive dissonance theory describes the tension between conflicting beliefs. In organizational science, the discrepancy between strategic vision and operational reality drives organizational change [1].
 
 Robert Fritz, working at the intersection of music composition, organizational development, and structural dynamics, formalized this concept as a methodology for creative work. Unlike prior treatments that viewed tension as a problem to resolve, Fritz positioned structural tension as a **creative force to harness**—the engine that drives purposeful advancement from current reality toward desired outcomes [2].
 
@@ -34,7 +34,7 @@ Fritz demonstrated that reactive orientation produces oscillating structures (th
 - A clearly articulated desired outcome (what you want to create)
 - An honest assessment of current reality (what currently exists)
 
-The gap between these elements generates structural tension, which resolves through the path of least resistance—ideally, through advancement toward the desired outcome [4].
+The discrepancy between these elements generates structural tension, which resolves through the path of least resistance—ideally, through advancement toward the desired outcome [4].
 
 #### Creating (1991) and Corporate Tides (1996)
 
@@ -87,7 +87,7 @@ The emerging wave treats structural tension not as a metaphorical framework but 
 The key insight enabling this transition is that Fritz's structural tension chart can be formalized as a tuple: `STC = (D, R, A[], T, Δ)` where D is the desired outcome, R is current reality (append-only log), A[] is the action step array, T is computed tension, and Δ is the temporal delta history.
 
 This formalization enables:
-- **Tension computation:** Algorithms that measure the gap between D and R
+- **Tension computation:** Algorithms that measure the discrepancy between D and R
 - **Oscillation detection:** Analysis of Δ history to identify advancing vs. oscillating patterns
 - **Telescoping:** Recursive decomposition where each action step becomes its own STC
 - **MMOT automation:** Systematic evaluation of agent output against Elements of Performance
@@ -100,7 +100,7 @@ Traditional AI agent goal architectures (goal stacks, utility functions, BDI mod
 - **Utility functions** encode preferences over states but don't maintain the vision-reality duality.
 - **BDI models** maintain beliefs (roughly analogous to current reality) and desires (analogous to desired outcomes) but don't formalize the tension between them as a driving force.
 
-Structural tension charts fill this gap by making the tension itself—the measured gap between vision and reality—the primary driver of agent behavior.
+Structural tension charts supply what these models lack by making the tension itself—the measured discrepancy between vision and reality—the primary driver of agent behavior.
 
 #### Implementation: CoAiA Framework
 
@@ -121,7 +121,7 @@ Several themes persist across all three waves:
 
 3. **Creative orientation outperforms problem-solving.** Across domains (personal, organizational, computational), systems oriented toward creating desired outcomes outperform systems oriented toward eliminating problems.
 
-4. **Self-evaluation requires a framework.** Left to their own devices, both humans and AI agents rationalize gaps rather than honestly acknowledging them. The MMOT cycle provides the structured framework that overcomes this tendency.
+4. **Self-evaluation requires a framework.** Left to their own devices, both humans and AI agents rationalize a discrepancy rather than stating it as fact. The MMOT cycle provides the structured framework that overcomes this tendency.
 
 ## Implications for CoAiA.js
 
@@ -134,7 +134,7 @@ This survey establishes CoAiA.js's theoretical lineage:
 
 ## Conclusion
 
-Structural tension methodology has evolved from a personal creativity tool (Fritz, 1989) through an organizational learning framework (Senge, 1990) to an emerging computational paradigm for AI agent design (2024–present). Each wave has deepened the understanding of how the gap between vision and reality can serve as a creative force rather than a source of frustration. The computational wave—represented by implementations like CoAiA.js—promises to make structural tension methodology accessible to AI systems, enabling agents that advance toward creative goals rather than merely reacting to problems.
+Structural tension methodology has evolved from a personal creativity tool (Fritz, 1989) through an organizational learning framework (Senge, 1990) to an emerging computational paradigm for AI agent design (2024–present). Each wave has deepened the understanding of how the tension between vision and reality can serve as a creative force rather than a source of frustration. The computational wave—represented by implementations like CoAiA.js—promises to make structural tension methodology accessible to AI systems, enabling agents that advance toward creative goals rather than merely reacting to problems.
 
 ## References
 

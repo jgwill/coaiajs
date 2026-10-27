@@ -134,7 +134,7 @@ Narrative beats document story progression within a structural tension chart. Ea
 Managerial Moment of Truth — autonomous self-evaluation against Elements of Performance:
 
 1. **Acknowledge** — Compare expected vs delivered output
-2. **Analyze** — What dynamics caused the gap?
+2. **Analyze** — What dynamics caused the discrepancy?
 3. **Update** — Write findings into current reality
 4. **Recommit** — Add corrective action steps if needed
 

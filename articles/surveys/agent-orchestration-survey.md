@@ -99,7 +99,7 @@ groupchat = GroupChat(agents=[user_proxy, assistant, critic], messages=[], max_r
 - Debugging difficulty: tracing which conversational turn caused which outcome
 - Performance unpredictability: conversation length varies significantly
 
-**Structural Tension Analysis:** AutoGen's conversational model naturally surfaces tension—critics identify gaps between desired and actual output. However, this tension is implicit in conversation rather than explicitly tracked, making it difficult to measure advancement vs. oscillation.
+**Structural Tension Analysis:** AutoGen's conversational model naturally surfaces tension—critics identify discrepancies between desired and actual output. However, this tension is implicit in conversation rather than explicitly tracked, making it difficult to measure advancement vs. oscillation.
 
 ### 4. Protocol-Standardized Tool Invocation: MCP
 

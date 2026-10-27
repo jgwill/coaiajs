@@ -13,7 +13,7 @@ A single `coaia` CLI binary that provides subcommands for every CoAiA module —
 - [`src/cli.ts`](../src/cli.ts) implements a commander-based CLI covering root coaiapy parity commands, Langfuse, pipeline, environment, GitHub, narrative, PDE, and planning command groups.
 - [`src/narrative/index.ts`](../src/narrative/index.ts), [`src/pde/index.ts`](../src/pde/index.ts), and [`src/planning/index.ts`](../src/planning/index.ts) expose helper functions used by the CLI dynamic module loader.
 - `npx coaia --help` works from an installed package tarball.
-- Remaining gaps: `synthesize` and explicit `mcp` CLI subcommands are desired but not currently registered as CLI groups.
+- `synthesize` and explicit `mcp` CLI subcommands are desired and not registered as CLI groups yet.
 
 **Desired Outcome:**
 Unified CLI at `src/cli.ts` using commander, with subcommands:

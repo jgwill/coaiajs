@@ -15,7 +15,7 @@ A template engine that loads pipeline definitions, renders them with `{{variable
 - Types are defined in [`src/types.ts`](../src/types.ts): `PipelineVariable`, `PipelineStep`, `PipelineTemplate`.
 - Pipeline templates use `{{variable}}` substitution, simple filters, conditionals, defaults, and built-in functions.
 - [`mcp/resources.ts`](../mcp/resources.ts) exposes template listing, template detail, and template-variable resources.
-- Remaining gap: pipeline execution as a first-class MCP tool remains desired; current implementation renders template steps but does not execute external action dependencies.
+- Pipeline execution is not a first-class MCP tool yet. The current implementation renders template steps and does not execute external action dependencies.
 
 **Desired Outcome:**
 Pipeline engine in `src/pipeline/` that:

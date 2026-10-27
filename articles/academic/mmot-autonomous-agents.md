@@ -8,7 +8,7 @@ Autonomous AI agents operating over extended sessions face a persistent challeng
 
 ## Introduction
 
-The central challenge of autonomous AI agent operation is not capability—modern LLMs can generate code, write documents, and make decisions—but **calibration**: ensuring that what the agent produces matches what was intended. In human organizations, this calibration is achieved through management: periodic assessment of performance against expectations, honest acknowledgment of gaps, and structured correction plans [1].
+The central challenge of autonomous AI agent operation is not capability—modern LLMs can generate code, write documents, and make decisions—but **calibration**: ensuring that what the agent produces matches what was intended. In human organizations, this calibration is achieved through management: periodic assessment of performance against expectations, acknowledgment as fact of where results differ from them, and structured correction plans [1].
 
 Robert Fritz and Bruce Bodaken formalized this process in *The Managerial Moment of Truth* (2006), identifying a four-step cycle that transforms moments of discrepancy between expected and actual performance into opportunities for genuine advancement rather than blame, avoidance, or oscillation [2]. The MMOT framework was implemented at Blue Shield of California with documented improvements in organizational performance, demonstrating its practical effectiveness in complex, multi-agent (human) systems [3].
 
@@ -20,7 +20,7 @@ This paper argues that the MMOT cycle is directly applicable to autonomous AI ag
 
 Fritz and Bodaken define the Managerial Moment of Truth as occurring whenever there is a discrepancy between what was expected and what actually happened. The four steps are:
 
-**Step 1: Acknowledge the Truth.** The first and most critical step is honest recognition of the gap between expectation and reality. This requires:
+**Step 1: Acknowledge the Truth.** The first and most critical step is recognizing, as fact, the discrepancy between expectation and reality. This requires:
 - Separating objective observations from opinions or rationalizations
 - Neither minimizing ("it's almost right") nor catastrophizing ("everything is broken")
 - Stating the discrepancy clearly and specifically
@@ -61,7 +61,7 @@ The MMOT cycle can be formalized as a state machine with four states and well-de
 ```
 ┌──────────────┐     discrepancy     ┌─────────────────┐
 │   OPERATING  │ ──────detected────► │  ACKNOWLEDGE     │
-│              │                     │  (observe gap)   │
+│              │                     │  (state facts)   │
 └──────────────┘                     └────────┬─────────┘
        ▲                                      │
        │                                      ▼
@@ -113,7 +113,7 @@ Fritz's insight that honest acknowledgment is the critical first step has a dire
 
 - **Rationalization:** "The code doesn't compile, but the logic is correct." An agent in ACKNOWLEDGE mode must report: "The code does not compile. Expected: compilable code. Actual: 3 syntax errors."
 - **Minimization:** "Minor formatting issues." An honest agent acknowledges: "Output does not meet the formatting Element of Performance. Specific deviations: [list]."
-- **Deflection:** "The instructions were ambiguous." While possibly true, the ACKNOWLEDGE step first establishes the gap; ANALYZE then examines whether instruction ambiguity was a causal factor.
+- **Deflection:** "The instructions were ambiguous." While possibly true, the ACKNOWLEDGE step first establishes the discrepancy; ANALYZE then examines whether instruction ambiguity was a causal factor.
 
 By forcing honest acknowledgment before analysis, the MMOT cycle prevents agents from entering the oscillatory pattern where problems are rationalized away, resurface in different forms, and are rationalized away again.
 

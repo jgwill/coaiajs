@@ -104,7 +104,7 @@ These specs use the RISE Framework at `/src/llms/llms-rise-framework.txt` as the
 
 - **Creative orientation**: Desired Outcome describes what IS CREATED, not what is fixed
 - **Honest current reality**: Factual assessment of where things stand today
-- **Structural tension**: The gap between current and desired that drives advancement
+- **Structural tension**: The discrepancy between current reality and the desired outcome. It drives advancement, and action steps resolve it
 - **Variable detail**: Broad for obvious patterns, precise for critical behavior
 - **Naming**: `NN-kebab-case.spec.md`
 - **Code-linked**: Specs describe behavior and link to the implementation files that currently carry it
@@ -124,5 +124,5 @@ When code changes, update the relevant spec in the same pass:
 
 1. Adjust **Current Reality** to match implemented files and verified behavior.
 2. Add or revise implementation links in the local spec and this README map.
-3. Keep **Desired Outcome** forward-looking only where a gap remains.
+3. Keep **Desired Outcome** forward-looking only where current reality has not reached it.
 4. Re-run `npm run build`, `npm test`, and `npm pack --dry-run` before handing off.

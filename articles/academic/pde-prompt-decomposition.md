@@ -32,7 +32,7 @@ The prompt engineering landscape has produced several strategies for improving L
 
 **Plan-and-Solve (PS):** Wang et al. (2023) proposed devising a plan before executing, then following the plan step-by-step. PS addresses sequencing but not completeness—the plan may omit implicit intents [6].
 
-### The Completeness Gap
+### Completeness of Intent Extraction
 
 All existing strategies share a common assumption: the model correctly identifies all intents in the input prompt. This assumption fails for complex, multi-intent prompts—particularly those containing:
 
@@ -42,7 +42,7 @@ All existing strategies share a common assumption: the model correctly identifie
 - **Conversational asides:** "oh and we'll need..." signals an afterthought the model may deprioritize
 - **Scope ambiguity:** "make sure everything works" requires decomposition to define "everything"
 
-PDE addresses this completeness gap by operating on the prompt itself, before any reasoning strategy is applied.
+PDE addresses completeness by operating on the prompt itself, before any reasoning strategy is applied.
 
 ## Analysis
 
@@ -170,7 +170,7 @@ PDE is the entry point of the CoAiA.js agent pipeline:
 
 ## Conclusion
 
-Prompt Decomposition Engineering addresses a fundamental gap in the prompt engineering landscape: the completeness of intent extraction from complex, multi-intent prompts. By operating on the input prompt rather than the reasoning process, PDE complements existing strategies (CoT, ToT, DecomP) while solving a distinct problem. The methodology's systematic extraction of primary, secondary, and implicit intents—combined with dependency mapping and Four Directions organization—provides the completeness safeguard that complex agent sessions require.
+Prompt Decomposition Engineering addresses a question the prompt engineering landscape leaves open: the completeness of intent extraction from complex, multi-intent prompts. By operating on the input prompt rather than the reasoning process, PDE complements existing strategies (CoT, ToT, DecomP) while solving a distinct problem. The methodology's systematic extraction of primary, secondary, and implicit intents—combined with dependency mapping and Four Directions organization—provides the completeness safeguard that complex agent sessions require.
 
 ## References
 

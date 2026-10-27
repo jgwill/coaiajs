@@ -4,13 +4,13 @@
 
 ## Abstract
 
-Autonomous AI agents face a fundamental challenge: maintaining coherent progress toward goals while continuously adapting to evolving environments. This paper examines how Robert Fritz's structural tension methodology—originally developed for human creative processes—can be formalized as a computational framework for AI agent goal management. We define structural tension charts (STCs) as first-class data structures encoding the gap between a desired outcome and an assessed current reality, with tension resolution driving agent behavior. Unlike traditional goal-stack or utility-maximization approaches, structural tension provides a creative orientation that sustains forward momentum without the oscillatory patterns characteristic of problem-solving architectures. We analyze the formal properties of STCs, their implementation as JSONL-backed state machines, and their implications for agent autonomy, self-correction, and telescoping goal decomposition. The framework is evaluated in the context of CoAiA.js, a JavaScript runtime for structurally-tensioned AI agents.
+Autonomous AI agents face a fundamental challenge: maintaining coherent progress toward goals while continuously adapting to evolving environments. This paper examines how Robert Fritz's structural tension methodology—originally developed for human creative processes—can be formalized as a computational framework for AI agent goal management. We define structural tension charts (STCs) as first-class data structures encoding the tension, or discrepancy, between a desired outcome and an assessed current reality, with tension resolution driving agent behavior. Unlike traditional goal-stack or utility-maximization approaches, structural tension provides a creative orientation that sustains forward momentum without the oscillatory patterns characteristic of problem-solving architectures. We analyze the formal properties of STCs, their implementation as JSONL-backed state machines, and their implications for agent autonomy, self-correction, and telescoping goal decomposition. The framework is evaluated in the context of CoAiA.js, a JavaScript runtime for structurally-tensioned AI agents.
 
 ## Introduction
 
 The design of AI agent goal management systems has historically drawn from planning literature (STRIPS, HTN), reinforcement learning (reward maximization), and behavioral architectures (subsumption, BDI). While these approaches have proven effective in constrained domains, they share a common structural limitation: they are fundamentally problem-solving architectures, oriented toward the elimination of undesirable states rather than the creation of desired ones.
 
-Robert Fritz, in *The Path of Least Resistance* (1989) and *Creating* (1991), identified a critical distinction between two orientations toward action. Problem-solving orientation generates energy by moving away from what is unwanted; creative orientation generates energy by moving toward what is desired. Fritz demonstrated that problem-solving architectures produce oscillatory dynamics—as the problem diminishes, so does motivation, leading to cyclical regression. Creative orientation, by contrast, produces advancing dynamics through structural tension: the sustained gap between a clearly articulated desired outcome and an honestly assessed current reality [1].
+Robert Fritz, in *The Path of Least Resistance* (1989) and *Creating* (1991), identified a critical distinction between two orientations toward action. Problem-solving orientation generates energy by moving away from what is unwanted; creative orientation generates energy by moving toward what is desired. Fritz demonstrated that problem-solving architectures produce oscillatory dynamics—as the problem diminishes, so does motivation, leading to cyclical regression. Creative orientation, by contrast, produces advancing dynamics through structural tension: the sustained discrepancy between a clearly articulated desired outcome and a current reality stated as fact [1].
 
 This paper formalizes structural tension as a computational construct for AI agent systems. We argue that encoding desired outcomes and current reality as co-evolving data structures—with the tension between them as the primary driver of agent behavior—produces agents with superior goal coherence, self-correction capabilities, and resistance to the oscillatory patterns that plague reactive architectures.
 
@@ -20,7 +20,7 @@ This paper formalizes structural tension as a computational construct for AI age
 
 The structural tension model rests on three axioms:
 
-1. **Tension seeks resolution.** A system with a gap between desired outcome and current reality will tend toward resolution of that gap, following the path of least resistance.
+1. **Tension seeks resolution.** A system holding a discrepancy between desired outcome and current reality tends toward its resolution, following the path of least resistance.
 2. **The path of least resistance is determined by underlying structure.** The arrangement of elements in a system determines how tension resolves—whether through advancement toward the desired outcome or oscillation between states.
 3. **Creative orientation produces advancing structures.** When the desired outcome is held constant and current reality is honestly assessed, tension resolves through advancement. When the problem is the primary reference point, tension resolves through oscillation [1][2].
 
@@ -51,7 +51,7 @@ Where:
 - **D** (Desired Outcome): A natural-language description of the target state, held constant unless explicitly revised.
 - **R** (Current Reality): A timestamped, append-only log of observations about the present state. Critically, R must be an honest assessment—not a readiness statement or aspiration.
 - **A[]** (Action Steps): An ordered set of intermediate goals, each of which is itself a telescoped STC.
-- **T** (Tension): The computed gap between D and R, which drives agent decision-making.
+- **T** (Tension): The computed discrepancy between D and R, which drives agent decision-making and which action steps resolve.
 - **Δ** (Delta History): A temporal record of reality updates, enabling the agent to assess whether it is advancing or oscillating.
 
 The key innovation is that **tension is not a problem to solve but a creative force to harness**. The agent does not minimize a loss function; it moves toward a desired creation while continuously updating its understanding of reality.
@@ -78,7 +78,7 @@ Fritz observed that problem-solving systems oscillate because their energy sourc
 Structural tension charts prevent this because:
 
 1. **The desired outcome remains constant.** The vision does not diminish as reality improves.
-2. **Current reality is continuously re-assessed.** New observations may reveal previously unknown gaps, maintaining or even increasing tension.
+2. **Current reality is continuously re-assessed.** New observations may reveal discrepancies not seen before, maintaining or even increasing tension.
 3. **Completion is binary and explicit.** An action step is marked complete through deliberate assessment (the Managerial Moment of Truth), not through gradient convergence.
 
 ### Implementation: JSONL-Backed State Machines
@@ -99,10 +99,10 @@ The append-only format ensures that no historical state is lost—every observat
 Rather than selecting actions through utility maximization or plan execution, a structurally-tensioned agent operates through the following cycle:
 
 1. **Assess tension:** Compare desired outcome against current reality across all active STCs.
-2. **Select highest-tension chart:** The STC with the greatest gap between D and R receives attention.
+2. **Select highest-tension chart:** The STC with the greatest discrepancy between D and R receives attention.
 3. **Identify next action:** Within the selected chart, find the next incomplete action step.
 4. **Execute and observe:** Perform the action and update current reality with honest observations.
-5. **Evaluate via MMOT:** Apply the Managerial Moment of Truth to assess whether the action advanced the chart or revealed new gaps.
+5. **Evaluate via MMOT:** Apply the Managerial Moment of Truth to assess whether the action advanced the chart or revealed new discrepancies.
 
 This cycle naturally produces depth-first progress on high-priority goals while enabling context switching when new information shifts the tension landscape.
 
@@ -118,7 +118,7 @@ CoAiA.js implements structural tension charts as its primary goal management pri
 
 ## Conclusion
 
-Structural tension charts offer a fundamentally different paradigm for AI agent goal management—one rooted in creative orientation rather than problem-solving. By encoding the gap between desired outcomes and current reality as a first-class data structure, and by driving agent behavior through tension resolution rather than reward maximization, we obtain agents that advance coherently toward creative goals without the oscillatory dynamics that plague reactive architectures. The formalization presented here provides a foundation for building AI systems that create rather than merely optimize.
+Structural tension charts offer a fundamentally different paradigm for AI agent goal management—one rooted in creative orientation rather than problem-solving. By encoding the tension between desired outcomes and current reality as a first-class data structure, and by driving agent behavior through tension resolution rather than reward maximization, we obtain agents that advance coherently toward creative goals without the oscillatory dynamics that plague reactive architectures. The formalization presented here provides a foundation for building AI systems that create rather than merely optimize.
 
 ## References
 
