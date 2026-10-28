@@ -50,7 +50,7 @@ Import from the root, or from a subpath to pull in only what you need. Every ent
 | `coaiajs/github` | `listIssues`, `getIssue`, `getIssueComments`, `resetClient` |
 | `coaiajs/environment` | `EnvironmentManager`, `createEnvironment`, `findEnvironment` |
 | `coaiajs/version` | `getPackageVersion`, `getPackageRoot` |
-| `coaiajs/langfuse` | Langfuse JS SDK v5/OpenTelemetry tracing plus v4 observations, prompts, datasets, scores, comments, media, projects, and formatters (56 runtime exports) |
+| `coaiajs/langfuse` | Langfuse JS SDK v6/OpenTelemetry tracing plus v4 observations, prompts, datasets, scores, comments, media, projects, and formatters (56 runtime exports) |
 | `coaiajs/media-upload-proxy` | Deployable Custom GPT conversation-file to Langfuse media bridge |
 | `coaiajs/narrative` | `KnowledgeGraphManager`, chart operations, markdown export, tool definitions, JSONL preservation, argument hygiene, GitHub bridge |
 | `coaiajs/narrative/contract` | The store read contract for renderers — zero I/O, tolerant of a bad line |
@@ -138,7 +138,7 @@ npx coaia <command>          # or: npm i -g coaiajs && coaia <command>
 
 ### Langfuse v4 compatibility
 
-`coaia fuse` uses the current scoped Langfuse JS SDK v5. Trace writes are exported as immutable OpenTelemetry spans to `POST /api/public/otel/v1/traces` with ingestion version 4. Trace, observation, and session reads use Observations API v2; score reads use Scores API v3. The removed v4 concepts are reflected in the CLI: sessions are reconstructed from observations, and legacy trace-output patching is no longer exposed. Langfuse Cloud sunsets the legacy APIs on **November 16, 2026**.
+`coaia fuse` uses the current scoped Langfuse JS SDK v6. Trace writes are exported as immutable OpenTelemetry spans to `POST /api/public/otel/v1/traces` with ingestion version 4. Trace, observation, and session reads use Observations API v2; score reads use Scores API v3. The removed v4 concepts are reflected in the CLI: sessions are reconstructed from observations, and legacy trace-output patching is no longer exposed. Langfuse Cloud sunsets the legacy APIs on **November 16, 2026**.
 
 Migration references: [Langfuse v4](https://langfuse.com/docs/v4) · [versions and compatibility](https://langfuse.com/docs/compatibility) · [deprecated API mapping](https://langfuse.com/faq/all/deprecated-api-migration) · [custom ingestion migration](https://langfuse.com/integrations/native/opentelemetry/migration-to-v4) · [current OpenAPI reference](https://cloud.langfuse.com/generated/api/openapi.yml).
 

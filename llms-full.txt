@@ -229,7 +229,7 @@ MobileTemplateEngine, TemplateLoader, TemplateRenderer
 
 Client and errors: `LangfuseClient`, `LangfuseApiError`, `getClient`, `resetClient`, `nowISO`, `detectContentType`
 
-Langfuse Cloud v4 compatibility: writes use the scoped JS SDK v5 and OpenTelemetry endpoint; trace/observation/session reads use Observations API v2; score reads use Scores API v3. `patchTraceOutput` remains as a compatibility export that throws because v4 observations are immutable.
+Langfuse Cloud v4 compatibility: writes use the scoped JS SDK v6 and OpenTelemetry endpoint; trace/observation/session reads use Observations API v2; score reads use Scores API v3. `patchTraceOutput` remains as a compatibility export that throws because v4 observations are immutable.
 
 - **Traces:** `createTrace`, `addTrace`, `getTrace`, `listTraces`, `patchTraceOutput`, `traceView`, `sessionView`
 - **Observations:** `addObservation`, `addObservations`, `listObservations`, `getObservation`

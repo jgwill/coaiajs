@@ -97,7 +97,7 @@ export async function listScores(filters: ScoreFilters = {}): Promise<string> {
   let cursor = filters.cursor;
 
   do {
-    const data = await client.api.scoresV3.getManyV3({
+    const data = await client.api.scores.getMany({
       fields: 'details,subject,annotation',
       id: filters.id,
       name: filters.name,

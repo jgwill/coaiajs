@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import http from 'node:http';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 import yaml from 'js-yaml';
 
 import {
@@ -48,7 +49,9 @@ async function createLangfuseStub() {
         method: request.method,
         url: request.url,
         headers: request.headers,
-        body: Buffer.concat(chunks),
+        body: request.headers['content-encoding'] === 'gzip'
+          ? gunzipSync(Buffer.concat(chunks))
+          : Buffer.concat(chunks),
       });
 
       response.statusCode = 200;
@@ -142,6 +145,7 @@ test('trace creation exports immutable spans to the v4 OpenTelemetry endpoint', 
       tags: ['v4'],
       inputData: { request: true },
       outputData: { response: true },
+      metadata: { env: 'prod', attempts: 5 },
     }));
 
     assert.equal(result.traceId, '123e4567e89b12d3a456426614174000');
@@ -164,6 +168,8 @@ test('trace creation exports immutable spans to the v4 OpenTelemetry endpoint', 
     assert.equal(attributes['langfuse.user.id'], 'user-1');
     assert.equal(attributes['langfuse.observation.input'], '{"request":true}');
     assert.equal(attributes['langfuse.observation.output'], '{"response":true}');
+    assert.equal(attributes['langfuse.trace.metadata.env'], '"prod"');
+    assert.equal(attributes['langfuse.trace.metadata.attempts'], '5');
   } finally {
     resetClient();
     await stub.close();
@@ -345,9 +351,9 @@ test('focused Custom GPT spec can append nested observations within the action l
 test('package uses the current scoped Langfuse JS SDK instead of legacy v3', async () => {
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(packageJson.dependencies.langfuse, undefined);
-  assert.match(packageJson.dependencies['@langfuse/client'], /^\^5\./);
-  assert.match(packageJson.dependencies['@langfuse/tracing'], /^\^5\./);
-  assert.match(packageJson.dependencies['@langfuse/otel'], /^\^5\./);
+  assert.match(packageJson.dependencies['@langfuse/client'], /^\^6\./);
+  assert.match(packageJson.dependencies['@langfuse/tracing'], /^\^6\./);
+  assert.match(packageJson.dependencies['@langfuse/otel'], /^\^6\./);
 });
 
 test('every coaia fuse action maps to an exported implementation', async () => {

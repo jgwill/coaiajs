@@ -118,7 +118,7 @@ export class LangfuseClient {
   }
 
   /**
-   * Export one complete, immutable observation through the Langfuse JS SDK v5
+   * Export one complete, immutable observation through the Langfuse JS SDK v6
    * OpenTelemetry pipeline. This replaces legacy trace/observation events sent
    * to POST /api/public/ingestion.
    */
@@ -274,11 +274,12 @@ function buildTraceAttributes(input: V4ObservationInput): Record<string, string 
   return attributes;
 }
 
+// JS/TS SDK v6 JSON-encodes every metadata value on the span, strings included,
+// and Langfuse decodes that form only for spans from v6 or later.
 function stringifyMetadata(metadata?: Record<string, unknown>): Record<string, string> {
   if (!metadata) return {};
   return Object.fromEntries(Object.entries(metadata).map(([key, value]) => {
-    const serialized = typeof value === 'string' ? value : JSON.stringify(value);
-    return [key, serialized.slice(0, 200)];
+    return [key, JSON.stringify(value).slice(0, 200)];
   }));
 }
 
