@@ -10,7 +10,7 @@ Single `npm install coaiajs` provides:
 - Unified CLI (`coaia`) with all commands
 - Unified MCP server (`coaiajs-mcp`) with 64+ tools
 - Shared type system and JSONL storage engine
-- Modern Node.js 20+ (no Python 3.6 constraints)
+- Modern Node.js 22+ (no Python 3.6 constraints)
 
 ## Structural Tension
 
@@ -34,7 +34,7 @@ Single `coaiajs` npm package providing:
 - Unified CLI (`coaia`) with all commands
 - Unified MCP server (`coaiajs-mcp`) with 64+ tools
 - Shared type system and JSONL storage engine
-- Modern Node.js 20+ (no Python 3.6 constraints)
+- Modern Node.js 22+ (no Python 3.6 constraints)
 
 ## Components
 

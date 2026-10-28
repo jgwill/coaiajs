@@ -41,7 +41,7 @@ export async function createScore(params: {
   if (params.configId) data.configId = params.configId;
   if (params.comment) data.comment = params.comment;
 
-  const result = await client.request<unknown>('POST', '/api/public/scores', data);
+  const result = await client.request<unknown>('POST', '/api/public/scores', [data]);
   return JSON.stringify(result, null, 2);
 }
 
@@ -87,7 +87,7 @@ export async function createScoreForTarget(params: {
 
   if (params.comment) data.comment = params.comment;
 
-  const result = await client.request<unknown>('POST', '/api/public/scores', data);
+  const result = await client.request<unknown>('POST', '/api/public/scores', [data]);
   return JSON.stringify(result, null, 2);
 }
 

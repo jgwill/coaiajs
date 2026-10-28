@@ -136,6 +136,8 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
           outputData: args.output_data,
           startTime: args.start_time as string | undefined,
           endTime: args.end_time as string | undefined,
+          sessionId: args.session_id as string | undefined,
+          userId: args.user_id as string | undefined,
         });
         return textResult(result);
       }

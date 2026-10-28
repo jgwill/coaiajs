@@ -2,7 +2,7 @@
 
 > Complete API surface for `coaiajs`: every entry point, every export, all 70 MCP tools, and the full CLI. Written for AI agents integrating against this package.
 
-Package: `coaiajs` · License: MIT · Node.js >= 20 · **ESM only**
+Package: `coaiajs` · License: MIT · Node.js >= 22 · **ESM only**
 
 ---
 

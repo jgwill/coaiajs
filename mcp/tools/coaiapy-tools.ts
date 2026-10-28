@@ -78,6 +78,8 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
           name: { type: 'string', description: 'Observation name' },
           observation_type: { type: 'string', enum: ['SPAN', 'EVENT', 'GENERATION'], description: 'Observation type' },
           parent_id: { type: 'string', description: 'Parent observation ID for nesting' },
+          session_id: { type: 'string', description: 'Session ID the observation belongs to' },
+          user_id: { type: 'string', description: 'User ID the observation belongs to' },
           metadata: { type: 'object', description: 'Metadata' },
           input_data: { description: 'Input data' },
           output_data: { description: 'Output data' },

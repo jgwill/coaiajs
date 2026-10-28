@@ -12,7 +12,7 @@ import { parsePlan } from 'coaiajs/planning';
 import type { StructuralTensionPlan, Entity } from 'coaiajs';
 ```
 
-- **Node.js** >= 20.0.0 · **ESM only** (`"type": "module"`) · **MIT**
+- **Node.js** >= 22.0.0 · **ESM only** (`"type": "module"`) · **MIT**
 - Ships compiled JavaScript **and** TypeScript declarations for every entry point.
 
 ---

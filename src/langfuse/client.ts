@@ -275,12 +275,17 @@ function buildTraceAttributes(input: V4ObservationInput): Record<string, string 
 }
 
 // JS/TS SDK v6 JSON-encodes every metadata value on the span, strings included,
-// and Langfuse decodes that form only for spans from v6 or later.
+// and Langfuse decodes that form only for spans from v6 or later. A value whose
+// encoded form is over 200 characters is dropped, as the SDK drops it, because a
+// cut-off JSON string cannot be decoded.
 function stringifyMetadata(metadata?: Record<string, unknown>): Record<string, string> {
   if (!metadata) return {};
-  return Object.fromEntries(Object.entries(metadata).map(([key, value]) => {
-    return [key, JSON.stringify(value).slice(0, 200)];
-  }));
+  return Object.fromEntries(
+    Object.entries(metadata).flatMap(([key, value]): [string, string][] => {
+      const encoded = JSON.stringify(value) as string | undefined;
+      return encoded === undefined || encoded.length > 200 ? [] : [[key, encoded]];
+    }),
+  );
 }
 
 export function nowISO(): string {

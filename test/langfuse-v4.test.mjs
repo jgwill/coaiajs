@@ -18,6 +18,7 @@ import {
   listTraces,
   resetClient,
 } from '../dist/src/langfuse/index.js';
+import { applyScoreToTrace } from '../dist/src/langfuse/scores.js';
 
 function observation(overrides = {}) {
   return {
@@ -145,7 +146,7 @@ test('trace creation exports immutable spans to the v4 OpenTelemetry endpoint', 
       tags: ['v4'],
       inputData: { request: true },
       outputData: { response: true },
-      metadata: { env: 'prod', attempts: 5 },
+      metadata: { env: 'prod', attempts: 5, long: 'x'.repeat(250), skipped: undefined },
     }));
 
     assert.equal(result.traceId, '123e4567e89b12d3a456426614174000');
@@ -170,6 +171,30 @@ test('trace creation exports immutable spans to the v4 OpenTelemetry endpoint', 
     assert.equal(attributes['langfuse.observation.output'], '{"response":true}');
     assert.equal(attributes['langfuse.trace.metadata.env'], '"prod"');
     assert.equal(attributes['langfuse.trace.metadata.attempts'], '5');
+    assert.equal(attributes['langfuse.trace.metadata.long'], undefined, 'an encoded value over 200 characters is dropped');
+    assert.equal(attributes['langfuse.trace.metadata.skipped'], undefined, 'an undefined value is dropped');
+  } finally {
+    resetClient();
+    await stub.close();
+  }
+});
+
+test('a score write posts a batch array to /api/public/scores', async () => {
+  const stub = await createLangfuseStub();
+  resetClient();
+  getClient({ publicKey: 'pk-test', secretKey: 'sk-test', baseUrl: stub.baseUrl });
+
+  try {
+    await applyScoreToTrace('0123456789abcdef0123456789abcdef', 'score-1', 0.9);
+
+    const request = stub.requests.find((item) => item.method === 'POST' && item.url === '/api/public/scores');
+    assert.ok(request, 'expected a score write');
+    const body = JSON.parse(request.body.toString('utf8'));
+    assert.ok(Array.isArray(body), 'CreateScoresRequest is an array of scores');
+    assert.equal(body.length, 1);
+    assert.equal(body[0].id, 'score-1');
+    assert.equal(body[0].traceId, '0123456789abcdef0123456789abcdef');
+    assert.equal(body[0].value, 0.9);
   } finally {
     resetClient();
     await stub.close();
