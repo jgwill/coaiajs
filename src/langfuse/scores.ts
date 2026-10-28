@@ -2,7 +2,7 @@
 // Port of cofuse.py score functions including configs, presets, import/export
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { getClient, nowISO } from './client.js';
+import { getClient, normalizeObservationId, normalizeTraceId, nowISO } from './client.js';
 import type { ScoreConfig } from '../types.js';
 
 export interface ScoreFilters {
@@ -35,8 +35,8 @@ export async function createScore(params: {
 
   if (params.id) data.id = params.id;
   if (params.name) data.name = params.name;
-  if (params.traceId) data.traceId = params.traceId;
-  if (params.observationId) data.observationId = params.observationId;
+  if (params.traceId) data.traceId = normalizeTraceId(params.traceId);
+  if (params.observationId) data.observationId = normalizeObservationId(params.observationId);
   if (params.configId) data.configId = params.configId;
   if (params.comment) data.comment = params.comment;
 
@@ -84,8 +84,8 @@ export async function createScoreForTarget(params: {
   const data: Record<string, unknown> = { value: params.value };
 
   if (params.targetType === 'trace') {
-    data.traceId = params.targetId;
-    if (params.observationId) data.observationId = params.observationId;
+    data.traceId = normalizeTraceId(params.targetId);
+    if (params.observationId) data.observationId = normalizeObservationId(params.observationId);
   } else if (params.targetType === 'session') {
     data.sessionId = params.targetId;
   } else {
@@ -117,8 +117,8 @@ export async function listScores(filters: ScoreFilters = {}): Promise<string> {
       fromTimestamp: filters.fromTimestamp,
       toTimestamp: filters.toTimestamp,
       configId: filters.configId,
-      traceId: filters.traceId,
-      observationId: filters.observationId,
+      traceId: filters.traceId ? normalizeTraceId(filters.traceId) : undefined,
+      observationId: filters.observationId ? normalizeObservationId(filters.observationId) : undefined,
       sessionId: filters.sessionId,
       environment: filters.environment,
       dataType: filters.dataType,

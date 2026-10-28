@@ -1,6 +1,6 @@
 // coaiajs/src/langfuse/observations.ts — Langfuse v4 observation operations
 
-import { getClient } from './client.js';
+import { getClient, normalizeObservationId, normalizeTraceId } from './client.js';
 import type { V4ObservationInput, V4ObservationType } from './client.js';
 
 export const ALL_OBSERVATION_FIELDS = [
@@ -110,7 +110,7 @@ export async function fetchObservationsPage(
     userId: filters.userId,
     sessionId: filters.sessionId,
     type: filters.type,
-    traceId: filters.traceId,
+    traceId: filters.traceId ? normalizeTraceId(filters.traceId) : undefined,
     level: filters.level,
     parentObservationId: filters.parentObservationId,
     isRootObservation: filters.isRootObservation,
@@ -150,7 +150,7 @@ export async function getObservation(observationId: string): Promise<string> {
       type: 'string',
       column: 'id',
       operator: '=',
-      value: observationId,
+      value: normalizeObservationId(observationId),
     }],
   });
   const observation = result.data[0];

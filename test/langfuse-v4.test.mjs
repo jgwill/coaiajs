@@ -253,6 +253,31 @@ test('the session view reads every page of the session', async () => {
   }
 });
 
+test('a name that is not a trace ID means the same trace on writes, reads, and scores', async () => {
+  const stub = await createLangfuseStub();
+  resetClient();
+  getClient({ publicKey: 'pk-test', secretKey: 'sk-test', baseUrl: stub.baseUrl });
+  const hashed = createHash('sha256').update('my-run-42').digest('hex').slice(0, 32);
+
+  try {
+    const created = JSON.parse(await addTrace({ traceId: 'my-run-42', name: 'ceremony' }));
+    assert.equal(created.traceId, hashed);
+
+    await getTrace('my-run-42');
+    assert.ok(
+      stub.requests.some((request) => request.url.startsWith('/api/public/v2/observations') && request.url.includes(hashed)),
+      'the read asks for the hashed trace ID',
+    );
+
+    await applyScoreToTrace('my-run-42', 'score-1', 0.9);
+    const score = stub.requests.find((request) => request.method === 'POST' && request.url === '/api/public/scores');
+    assert.equal(JSON.parse(score.body.toString('utf8'))[0].traceId, hashed, 'the score lands on the hashed trace ID');
+  } finally {
+    resetClient();
+    await stub.close();
+  }
+});
+
 test('a generation exported with a prompt name and version carries the attributes that link it to that prompt (jgwill/coaiajs#14)', async () => {
   const stub = await createLangfuseStub();
   resetClient();

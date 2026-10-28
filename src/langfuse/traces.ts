@@ -1,7 +1,7 @@
 // coaiajs/src/langfuse/traces.ts — Trace operations
 // Port of cofuse.py trace functions
 
-import { getClient } from './client.js';
+import { getClient, normalizeTraceId } from './client.js';
 import {
   ALL_OBSERVATION_FIELDS,
   fetchAllObservations,
@@ -141,7 +141,7 @@ export async function listTraces(filters: TraceFilters = {}): Promise<string> {
 export async function getTrace(traceId: string): Promise<string> {
   const observations = await fetchAllObservations({
     fields: ALL_OBSERVATION_FIELDS,
-    traceId,
+    traceId: normalizeTraceId(traceId),
     limit: 1000,
   });
   if (!observations.length) throw new Error(`Trace not found: ${traceId}`);

@@ -246,14 +246,16 @@ function makeParentSpanContext(traceId: string, parentObservationId: string): Sp
   };
 }
 
-function normalizeTraceId(value?: string): string {
+// Reads and score writes apply the same mapping as trace writes, so a name such as
+// "my-run-42" points at the same trace everywhere it is used.
+export function normalizeTraceId(value?: string): string {
   if (!value) return randomBytes(16).toString('hex');
   const compact = value.replaceAll('-', '').toLowerCase();
   if (/^[0-9a-f]{32}$/.test(compact) && !/^0+$/.test(compact)) return compact;
   return createHash('sha256').update(value).digest('hex').slice(0, 32);
 }
 
-function normalizeObservationId(value?: string): string {
+export function normalizeObservationId(value?: string): string {
   if (!value) return randomBytes(8).toString('hex');
   const compact = value.replaceAll('-', '').toLowerCase();
   if (/^[0-9a-f]{16}$/.test(compact) && !/^0+$/.test(compact)) return compact;
