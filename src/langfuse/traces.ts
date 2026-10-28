@@ -162,8 +162,19 @@ export async function traceView(traceId: string): Promise<string> {
 }
 
 export async function sessionView(sessionId: string): Promise<string> {
-  const raw = await listTraces({ sessionId, limit: 20 });
-  return formatTracesMarkdown(raw);
+  const traces: Array<ReturnType<typeof traceFromRootObservation>> = [];
+  let cursor: string | undefined;
+  do {
+    const page = await fetchObservationsPage({
+      fields: ALL_OBSERVATION_FIELDS,
+      limit: 100,
+      cursor,
+      filter: buildTraceFilter({ sessionId }),
+    });
+    traces.push(...page.data.map(traceFromRootObservation));
+    cursor = page.meta.cursor;
+  } while (cursor);
+  return formatTracesMarkdown(JSON.stringify({ data: traces, meta: {} }, null, 2));
 }
 
 function buildTraceFilter(filters: TraceFilters): Array<Record<string, unknown>> {

@@ -31,7 +31,6 @@ export async function createScore(params: {
   configId?: string;
   comment?: string;
 }): Promise<string> {
-  const client = getClient();
   const data: Record<string, unknown> = { value: params.value };
 
   if (params.id) data.id = params.id;
@@ -41,7 +40,21 @@ export async function createScore(params: {
   if (params.configId) data.configId = params.configId;
   if (params.comment) data.comment = params.comment;
 
-  const result = await client.request<unknown>('POST', '/api/public/scores', [data]);
+  return postScoreBatch(data);
+}
+
+// The batch endpoint answers 202 when every score is accepted and 207 with
+// accepted/rejected counts when some are not. A rejected score is an error here.
+async function postScoreBatch(data: Record<string, unknown>): Promise<string> {
+  const client = getClient();
+  const result = await client.request<{ rejected?: number; errors?: unknown } | undefined>(
+    'POST',
+    '/api/public/scores',
+    [data],
+  );
+  if (result?.rejected && result.rejected > 0) {
+    throw new Error(`Langfuse rejected the score: ${JSON.stringify(result.errors)}`);
+  }
   return JSON.stringify(result, null, 2);
 }
 
@@ -68,14 +81,15 @@ export async function createScoreForTarget(params: {
   configId?: string;
   comment?: string;
 }): Promise<string> {
-  const client = getClient();
   const data: Record<string, unknown> = { value: params.value };
 
   if (params.targetType === 'trace') {
     data.traceId = params.targetId;
     if (params.observationId) data.observationId = params.observationId;
-  } else {
+  } else if (params.targetType === 'session') {
     data.sessionId = params.targetId;
+  } else {
+    throw new Error(`Unknown score target type: ${params.targetType}`);
   }
 
   if (params.configId) {
@@ -87,8 +101,7 @@ export async function createScoreForTarget(params: {
 
   if (params.comment) data.comment = params.comment;
 
-  const result = await client.request<unknown>('POST', '/api/public/scores', [data]);
-  return JSON.stringify(result, null, 2);
+  return postScoreBatch(data);
 }
 
 export async function listScores(filters: ScoreFilters = {}): Promise<string> {

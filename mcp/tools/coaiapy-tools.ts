@@ -56,6 +56,9 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
           trace_id: { type: 'string', description: 'Unique trace identifier' },
           user_id: { type: 'string', description: 'User identifier' },
           session_id: { type: 'string', description: 'Session identifier' },
+          tags: { type: 'array', items: { type: 'string' }, description: 'Trace tags' },
+          version: { type: 'string', description: 'Application version' },
+          environment: { type: 'string', description: 'Environment name' },
           name: { type: 'string', description: 'Trace name' },
           metadata: { type: 'object', description: 'Metadata dictionary' },
           input_data: { description: 'Input data' },
@@ -80,6 +83,8 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
           parent_id: { type: 'string', description: 'Parent observation ID for nesting' },
           session_id: { type: 'string', description: 'Session ID the observation belongs to' },
           user_id: { type: 'string', description: 'User ID the observation belongs to' },
+          trace_name: { type: 'string', description: 'Trace name for the trace this observation belongs to' },
+          tags: { type: 'array', items: { type: 'string' }, description: 'Trace tags' },
           metadata: { type: 'object', description: 'Metadata' },
           input_data: { description: 'Input data' },
           output_data: { description: 'Output data' },
@@ -210,7 +215,7 @@ export function getCoaiapyToolDefinitions(featureConfig: FeatureConfig): ToolDef
   if (featureConfig.isToolEnabled('coaia_fuse_datasets_get')) {
     tools.push({
       name: 'coaia_fuse_datasets_get',
-      description: 'Get a specific dataset by name with its items',
+      description: 'Get a specific dataset by name',
       inputSchema: {
         type: 'object',
         properties: {

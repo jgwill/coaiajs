@@ -120,6 +120,9 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
           metadata: args.metadata as Record<string, unknown> | undefined,
           inputData: args.input_data,
           outputData: args.output_data,
+          tags: args.tags as string[] | undefined,
+          version: args.version as string | undefined,
+          environment: args.environment as string | undefined,
         });
         return textResult(result);
       }
@@ -138,6 +141,8 @@ async function handleCoaiapyTool(name: string, args: ToolArgs): Promise<CallTool
           endTime: args.end_time as string | undefined,
           sessionId: args.session_id as string | undefined,
           userId: args.user_id as string | undefined,
+          traceName: args.trace_name as string | undefined,
+          tags: args.tags as string[] | undefined,
         });
         return textResult(result);
       }

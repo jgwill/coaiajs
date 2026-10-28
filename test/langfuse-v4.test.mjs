@@ -19,6 +19,7 @@ import {
   resetClient,
 } from '../dist/src/langfuse/index.js';
 import { applyScoreToTrace } from '../dist/src/langfuse/scores.js';
+import { sessionView } from '../dist/src/langfuse/traces.js';
 
 function observation(overrides = {}) {
   return {
@@ -77,6 +78,10 @@ async function createLangfuseStub() {
           }],
           meta: { limit: 100 },
         }));
+      } else if (request.url === '/api/public/scores' && Buffer.concat(chunks).toString('utf8').includes('reject-me')) {
+        response.statusCode = 207;
+        response.setHeader('content-type', 'application/json');
+        response.end(JSON.stringify({ accepted: 0, rejected: 1, errors: [{ index: 0, message: 'bad score' }] }));
       } else {
         response.end();
       }
@@ -171,7 +176,7 @@ test('trace creation exports immutable spans to the v4 OpenTelemetry endpoint', 
     assert.equal(attributes['langfuse.observation.output'], '{"response":true}');
     assert.equal(attributes['langfuse.trace.metadata.env'], '"prod"');
     assert.equal(attributes['langfuse.trace.metadata.attempts'], '5');
-    assert.equal(attributes['langfuse.trace.metadata.long'], undefined, 'an encoded value over 200 characters is dropped');
+    assert.equal(attributes['langfuse.trace.metadata.long'], JSON.stringify('x'.repeat(250)), 'the full encoded value is written');
     assert.equal(attributes['langfuse.trace.metadata.skipped'], undefined, 'an undefined value is dropped');
   } finally {
     resetClient();
@@ -198,6 +203,53 @@ test('a score write posts a batch array to /api/public/scores', async () => {
   } finally {
     resetClient();
     await stub.close();
+  }
+});
+
+test('a rejected score write throws instead of reporting success', async () => {
+  const stub = await createLangfuseStub();
+  resetClient();
+  getClient({ publicKey: 'pk-test', secretKey: 'sk-test', baseUrl: stub.baseUrl });
+
+  try {
+    await assert.rejects(
+      applyScoreToTrace('0123456789abcdef0123456789abcdef', 'reject-me', 0.9),
+      /rejected the score/,
+    );
+  } finally {
+    resetClient();
+    await stub.close();
+  }
+});
+
+test('the session view reads every page of the session', async () => {
+  const requests = [];
+  const server = http.createServer((request, response) => {
+    requests.push(request.url);
+    response.setHeader('content-type', 'application/json');
+    const url = new URL(request.url, 'http://127.0.0.1');
+    if (url.searchParams.get('cursor') === 'page-2') {
+      response.end(JSON.stringify({
+        data: [observation({ id: 'obs-root-2', traceId: 'fedcba9876543210fedcba9876543210' })],
+        meta: {},
+      }));
+    } else {
+      response.end(JSON.stringify({ data: [observation()], meta: { cursor: 'page-2' } }));
+    }
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  resetClient();
+  getClient({ publicKey: 'pk-test', secretKey: 'sk-test', baseUrl: `http://127.0.0.1:${server.address().port}` });
+
+  try {
+    const markdown = await sessionView('session-1');
+    assert.match(markdown, /0123456789abcdef0\.\.\./);
+    assert.match(markdown, /fedcba9876543210f\.\.\./, 'the second page is in the session view');
+    assert.match(markdown, /Total: 2 trace/);
+    assert.equal(requests.filter((url) => url.includes('cursor=page-2')).length, 1);
+  } finally {
+    resetClient();
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
 
